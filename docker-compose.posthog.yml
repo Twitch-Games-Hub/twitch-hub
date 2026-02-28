@@ -1,5 +1,5 @@
 # PostHog self-hosted stack for local development
-# Runs at http://localhost:8000
+# Runs at http://localhost:8333
 # Manage via: ./scripts/dev-init.sh posthog [up|down|nuke]
 
 services:
@@ -86,7 +86,7 @@ services:
       posthog-objectstorage:
         condition: service_started
     ports:
-      - '8000:8000'
+      - '8333:8000'
     env_file:
       - .posthog.env
     environment:
@@ -97,7 +97,7 @@ services:
       CLICKHOUSE_SECURE: 'false'
       CLICKHOUSE_VERIFY: 'false'
       KAFKA_HOSTS: posthog-kafka:9092
-      SITE_URL: http://localhost:8000
+      SITE_URL: http://localhost:8333
       OBJECT_STORAGE_ENDPOINT: http://posthog-objectstorage:9000
       OBJECT_STORAGE_ACCESS_KEY_ID: object_storage_root_user
       OBJECT_STORAGE_SECRET_ACCESS_KEY: object_storage_root_password
@@ -130,7 +130,7 @@ services:
       CLICKHOUSE_SECURE: 'false'
       CLICKHOUSE_VERIFY: 'false'
       KAFKA_HOSTS: posthog-kafka:9092
-      SITE_URL: http://localhost:8000
+      SITE_URL: http://localhost:8333
       OBJECT_STORAGE_ENDPOINT: http://posthog-objectstorage:9000
       OBJECT_STORAGE_ACCESS_KEY_ID: object_storage_root_user
       OBJECT_STORAGE_SECRET_ACCESS_KEY: object_storage_root_password
@@ -162,7 +162,7 @@ services:
       CLICKHOUSE_SECURE: 'false'
       CLICKHOUSE_VERIFY: 'false'
       KAFKA_HOSTS: posthog-kafka:9092
-      SITE_URL: http://localhost:8000
+      SITE_URL: http://localhost:8333
       OBJECT_STORAGE_ENDPOINT: http://posthog-objectstorage:9000
       OBJECT_STORAGE_ACCESS_KEY_ID: object_storage_root_user
       OBJECT_STORAGE_SECRET_ACCESS_KEY: object_storage_root_password

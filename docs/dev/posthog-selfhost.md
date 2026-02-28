@@ -55,7 +55,7 @@ Start the stack:
 docker compose -f docker-compose.hobby.yml up -d
 ```
 
-PostHog will be available at `http://<server-ip>:8000`.
+PostHog will be available at `http://<server-ip>:8333`.
 
 ## 2. Set up HTTPS (recommended)
 
@@ -71,7 +71,7 @@ sudo apt install caddy
 
 ```
 posthog.yourdomain.com {
-    reverse_proxy localhost:8000
+    reverse_proxy localhost:8333
 }
 ```
 
@@ -88,7 +88,7 @@ server {
     server_name posthog.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8333;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

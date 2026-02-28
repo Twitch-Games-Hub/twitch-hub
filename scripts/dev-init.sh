@@ -120,7 +120,7 @@ posthog_up() {
   echo ""
   echo "Starting PostHog self-hosted (this may take a minute on first run)..."
   docker compose -f "$POSTHOG_COMPOSE" -p posthog up -d || fail "PostHog services failed to start"
-  info "PostHog running (http://localhost:8000)"
+  info "PostHog running (http://localhost:8333)"
 }
 
 posthog_down() {
@@ -190,7 +190,7 @@ start_tmux_session() {
   echo "  Web:      http://localhost:5173"
   echo "  Server:   http://localhost:3001"
   if [[ -f "$POSTHOG_COMPOSE" ]]; then
-    echo "  PostHog:  http://localhost:8000"
+    echo "  PostHog:  http://localhost:8333"
   fi
   echo ""
   echo "  tmux windows:"
