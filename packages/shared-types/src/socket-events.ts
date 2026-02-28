@@ -17,6 +17,7 @@ export interface RoundData {
   questionId: string;
   prompt: string;
   options?: string[];
+  optionImages?: (string | null)[]; // parallel array to options, null = no image
   endsAt?: string; // ISO timestamp
 }
 
@@ -40,6 +41,16 @@ export interface VoteAggregation {
   totalVotes: number;
 }
 
+// --- Session Snapshot (for rejoin) ---
+
+export interface SessionSnapshot {
+  sessionId: string;
+  gameState: GameState;
+  currentRound: RoundData | null;
+  votes: VoteAggregation | null;
+  participantCount: number;
+}
+
 // --- Socket.IO Event Contracts ---
 
 export interface ClientToServerEvents {
@@ -49,6 +60,7 @@ export interface ClientToServerEvents {
   'game:end': (sessionId: string) => void;
   'response:submit': (data: { sessionId: string; questionId: string; answer: unknown }) => void;
   'session:join': (sessionId: string) => void;
+  'session:rejoin': (data: { gameId: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -60,4 +72,5 @@ export interface ServerToClientEvents {
   'participants:count': (count: number) => void;
   error: (message: string) => void;
   'session:created': (data: { sessionId: string }) => void;
+  'session:rejoined': (snapshot: SessionSnapshot) => void;
 }

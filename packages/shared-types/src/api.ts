@@ -18,6 +18,7 @@ export interface ApiGame {
   status: GameStatus;
   createdAt: string;
   updatedAt: string;
+  sessions?: ApiGameSession[];
 }
 
 export interface ApiGameSession {

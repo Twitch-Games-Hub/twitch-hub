@@ -1,7 +1,11 @@
 import type { Socket, Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/shared-types';
+import { SessionStatus } from '@twitch-hub/shared-types';
 import { gameRegistry } from '../../engine/GameRegistry.js';
 import { prisma } from '../../db/client.js';
+import { logger } from '../../logger.js';
+
+const log = logger.child({ module: 'game' });
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -12,6 +16,19 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const game = await prisma.game.findUnique({ where: { id: gameId } });
       if (!game) {
         socket.emit('error', 'Game not found');
+        return;
+      }
+
+      // Prevent duplicate active sessions
+      const existing = await prisma.gameSession.findFirst({
+        where: {
+          gameId,
+          hostId: socket.data.userId,
+          status: { in: ['WAITING', 'ACTIVE'] },
+        },
+      });
+      if (existing) {
+        socket.emit('error', 'A live session already exists for this game. Reload to rejoin.');
         return;
       }
 
@@ -29,9 +46,10 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
       // Initialize game engine with host tracking
       await gameRegistry.initSession(session.id, game, socket.data.userId);
+      log.info({ sessionId: session.id, gameId, userId: socket.data.userId }, 'Session created');
     } catch (err) {
       socket.emit('error', 'Failed to create session');
-      console.error('game:create-session error:', err);
+      log.error({ err, gameId, userId: socket.data.userId }, 'game:create-session error');
     }
   });
 
@@ -61,9 +79,17 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       // Start first round
       const roundData = await engine.startRound();
       broadcastToSession(io, sessionId, 'game:round-start', roundData);
+
+      // Persist current round for recovery
+      await prisma.gameSession.update({
+        where: { id: sessionId },
+        data: { currentRound: engine.getState().currentRound },
+      });
+
+      log.info({ sessionId, userId: socket.data.userId }, 'Game started');
     } catch (err) {
       socket.emit('error', 'Failed to start game');
-      console.error('game:start error:', err);
+      log.error({ err, sessionId, userId: socket.data.userId }, 'game:start error');
     }
   });
 
@@ -89,10 +115,18 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       if (roundData) {
         broadcastToSession(io, sessionId, 'game:round-start', roundData);
         broadcastToSession(io, sessionId, 'game:state', engine.getState());
+
+        // Persist current round for recovery
+        await prisma.gameSession.update({
+          where: { id: sessionId },
+          data: { currentRound: engine.getState().currentRound },
+        });
       }
+
+      log.info({ sessionId, userId: socket.data.userId }, 'Round advanced');
     } catch (err) {
       socket.emit('error', 'Failed to advance round');
-      console.error('game:next-round error:', err);
+      log.error({ err, sessionId, userId: socket.data.userId }, 'game:next-round error');
     }
   });
 
@@ -118,9 +152,49 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
       broadcastToSession(io, sessionId, 'game:ended', finalResults);
       gameRegistry.removeEngine(sessionId);
+
+      log.info({ sessionId, userId: socket.data.userId }, 'Game ended');
     } catch (err) {
       socket.emit('error', 'Failed to end game');
-      console.error('game:end error:', err);
+      log.error({ err, sessionId, userId: socket.data.userId }, 'game:end error');
+    }
+  });
+
+  socket.on('session:rejoin', async ({ gameId }) => {
+    try {
+      // Find active session for this game + host
+      const session = await prisma.gameSession.findFirst({
+        where: {
+          gameId,
+          hostId: socket.data.userId,
+          status: { in: ['WAITING', 'ACTIVE'] },
+        },
+        include: { game: true },
+      });
+
+      if (!session) {
+        socket.emit('error', 'No active session found');
+        return;
+      }
+
+      socket.join(session.id);
+
+      // Re-init engine if missing (e.g. after server restart)
+      let engine = gameRegistry.getEngine(session.id);
+      if (!engine) {
+        engine = await gameRegistry.initSession(session.id, session.game, socket.data.userId);
+        if (session.status === 'ACTIVE') {
+          engine.restoreState(session.currentRound, SessionStatus.ACTIVE);
+        }
+      }
+
+      const snapshot = await engine.getSnapshot(session.id);
+      socket.emit('session:rejoined', snapshot);
+
+      log.info({ sessionId: session.id, gameId, userId: socket.data.userId }, 'Session rejoined');
+    } catch (err) {
+      socket.emit('error', 'Failed to rejoin session');
+      log.error({ err, gameId, userId: socket.data.userId }, 'session:rejoin error');
     }
   });
 }

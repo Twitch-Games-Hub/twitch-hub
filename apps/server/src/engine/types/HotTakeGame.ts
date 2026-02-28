@@ -17,6 +17,10 @@ export class HotTakeGame extends GameEngine<HotTakeConfig, number> {
     return this.config.statements.length;
   }
 
+  protected getRoundDurationMs(): number {
+    return (this.config.roundDurationSec || 0) * 1000;
+  }
+
   getRoundData(round: number): RoundData {
     const idx = round - 1;
     return {

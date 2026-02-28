@@ -6,6 +6,10 @@ import { BalanceGame } from './types/BalanceGame.js';
 import { PersonalityGame } from './types/PersonalityGame.js';
 import { TierListGame } from './types/TierListGame.js';
 import { BlindTestGame } from './types/BlindTestGame.js';
+import { prisma } from '../db/client.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'registry' });
 
 type GameRecord = { id: string; type: string; config: unknown };
 
@@ -55,9 +59,24 @@ class GameRegistryClass {
     if (this.broadcastCallback) {
       engine.setBroadcastCallback(this.broadcastCallback);
     }
+    engine.setOnAutoEnd(() => this.handleAutoEnd(sessionId));
     this.engines.set(sessionId, engine);
     this.sessionHosts.set(sessionId, hostId);
+    log.info({ sessionId, gameType: game.type, hostId }, 'Session initialized');
     return engine;
+  }
+
+  private async handleAutoEnd(sessionId: string) {
+    try {
+      await prisma.gameSession.update({
+        where: { id: sessionId },
+        data: { status: 'COMPLETED', endedAt: new Date() },
+      });
+      this.removeEngine(sessionId);
+      log.info({ sessionId }, 'Auto-end: session completed');
+    } catch (err) {
+      log.error({ err, sessionId }, 'Auto-end: failed to update session');
+    }
   }
 
   isHost(sessionId: string, userId: string): boolean {
@@ -73,13 +92,16 @@ class GameRegistryClass {
     engine?.cleanup();
     this.engines.delete(sessionId);
     this.sessionHosts.delete(sessionId);
+    log.info({ sessionId }, 'Engine removed');
   }
 
   async cleanupAll() {
+    const count = this.engines.size;
     const cleanups = Array.from(this.engines.values()).map((engine) => engine.cleanup());
     await Promise.allSettled(cleanups);
     this.engines.clear();
     this.sessionHosts.clear();
+    log.info({ count }, 'All engines cleaned up');
   }
 }
 

@@ -4,6 +4,7 @@ import type {
   RoundResults,
   FinalResults,
   VoteAggregation,
+  SessionSnapshot,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
 
@@ -118,6 +119,19 @@ function createGameStore() {
 
     bindSocket,
     reset,
+
+    hydrateFromSnapshot(snapshot: SessionSnapshot) {
+      state.gameState = snapshot.gameState;
+      state.currentRound = snapshot.currentRound;
+      state.votes = snapshot.votes;
+      state.participantCount = snapshot.participantCount;
+      state.roundResults = null;
+      state.finalResults = null;
+    },
+
+    rejoinSession(gameId: string) {
+      socket?.emit('session:rejoin', { gameId });
+    },
 
     joinSession(sessionId: string) {
       socket?.emit('session:join', sessionId);

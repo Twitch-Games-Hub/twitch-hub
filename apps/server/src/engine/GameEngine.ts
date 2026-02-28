@@ -5,8 +5,10 @@ import {
   type RoundResults,
   type FinalResults,
   type VoteAggregation,
+  type SessionSnapshot,
 } from '@twitch-hub/shared-types';
 import { redis } from '../db/redis.js';
+import { logger } from '../logger.js';
 
 export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   protected sessionId: string;
@@ -16,6 +18,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   protected status: SessionStatus = SessionStatus.WAITING;
   protected roundResults: RoundResults[] = [];
   protected participantIds = new Set<string>();
+  protected log;
 
   // Throttled broadcast
   private broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
@@ -23,13 +26,25 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   private pendingBroadcast?: VoteAggregation;
   private broadcastIntervalMs = 200; // 5 times per second max
 
+  // Round timer
+  private roundTimer?: ReturnType<typeof setTimeout>;
+  private roundEndsAt?: string;
+
+  // Auto-end callback (called when timer expires on last round)
+  private onAutoEnd?: () => void;
+
   constructor(sessionId: string, config: TConfig) {
     this.sessionId = sessionId;
     this.config = config;
+    this.log = logger.child({ module: 'engine', sessionId });
   }
 
   setBroadcastCallback(cb: (sessionId: string, event: string, data: unknown) => void) {
     this.broadcastCallback = cb;
+  }
+
+  setOnAutoEnd(cb: () => void) {
+    this.onAutoEnd = cb;
   }
 
   // --- Abstract methods that game types implement ---
@@ -44,6 +59,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     this.totalRounds = this.getTotalRounds();
     this.currentRound = 0;
     this.status = SessionStatus.ACTIVE;
+    this.log.info({ totalRounds: this.totalRounds }, 'Game started');
     return this.getState();
   }
 
@@ -54,6 +70,21 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     // Clear Redis vote data for this round
     await redis.del(this.voteKey());
 
+    // Start round timer if configured
+    this.clearRoundTimer();
+    const durationMs = this.getRoundDurationMs();
+    if (durationMs > 0) {
+      this.roundEndsAt = new Date(Date.now() + durationMs).toISOString();
+      roundData.endsAt = this.roundEndsAt;
+      const timerRound = this.currentRound;
+      this.roundTimer = setTimeout(() => {
+        if (this.currentRound === timerRound) {
+          this.onRoundTimerExpired();
+        }
+      }, durationMs);
+    }
+
+    this.log.debug({ round: this.currentRound }, 'Round started');
     return roundData;
   }
 
@@ -66,13 +97,17 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   }
 
   async endRound(): Promise<RoundResults> {
+    this.clearRoundTimer();
     const results = await this.computeRoundResults(this.currentRound);
     this.roundResults.push(results);
+    this.log.debug({ round: this.currentRound }, 'Round ended');
     return results;
   }
 
   async end(): Promise<FinalResults> {
+    this.clearRoundTimer();
     this.status = SessionStatus.COMPLETED;
+    this.log.info({ participants: this.participantIds.size }, 'Game ended');
     return this.computeFinalResults();
   }
 
@@ -88,6 +123,72 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   }
 
   abstract getGameType(): import('@twitch-hub/shared-types').GameType;
+
+  // --- Timer ---
+
+  protected getRoundDurationMs(): number {
+    return 0; // Override in subclasses to enable timer
+  }
+
+  private clearRoundTimer() {
+    if (this.roundTimer) {
+      clearTimeout(this.roundTimer);
+      this.roundTimer = undefined;
+    }
+    this.roundEndsAt = undefined;
+  }
+
+  private async onRoundTimerExpired() {
+    this.log.info({ round: this.currentRound }, 'Round timer expired');
+
+    const results = await this.endRound();
+    this.broadcastCallback?.(this.sessionId, 'game:round-end', results);
+
+    if (this.currentRound < this.totalRounds) {
+      const roundData = await this.startRound();
+      this.broadcastCallback?.(this.sessionId, 'game:round-start', roundData);
+      this.broadcastCallback?.(this.sessionId, 'game:state', this.getState());
+    } else {
+      const finalResults = await this.end();
+      this.broadcastCallback?.(this.sessionId, 'game:ended', finalResults);
+      this.onAutoEnd?.();
+    }
+  }
+
+  // --- Snapshot / Restore ---
+
+  async getSnapshot(sessionId: string): Promise<SessionSnapshot> {
+    const gameState = this.getState();
+    let currentRound: RoundData | null = null;
+    let votes: VoteAggregation | null = null;
+
+    if (this.currentRound > 0 && this.status === SessionStatus.ACTIVE) {
+      currentRound = this.getRoundData(this.currentRound);
+      if (this.roundEndsAt) {
+        currentRound.endsAt = this.roundEndsAt;
+      }
+
+      const questionId = currentRound.questionId;
+      const distribution = await this.getDistribution(questionId);
+      const totalVotes = distribution.reduce((sum, n) => sum + n, 0);
+      votes = { questionId, distribution, totalVotes };
+    }
+
+    return {
+      sessionId,
+      gameState,
+      currentRound,
+      votes,
+      participantCount: this.participantIds.size,
+    };
+  }
+
+  restoreState(currentRound: number, status: SessionStatus) {
+    this.totalRounds = this.getTotalRounds();
+    this.currentRound = currentRound;
+    this.status = status;
+    this.log.info({ currentRound, status, totalRounds: this.totalRounds }, 'State restored');
+  }
 
   // --- Redis helpers ---
   protected voteKey(questionId?: string): string {
@@ -141,6 +242,8 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
 
   // Cleanup
   async cleanup() {
+    this.log.debug('Cleaning up engine');
+    this.clearRoundTimer();
     if (this.broadcastTimer) {
       clearTimeout(this.broadcastTimer);
     }

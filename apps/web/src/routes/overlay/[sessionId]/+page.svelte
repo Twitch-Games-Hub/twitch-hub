@@ -4,11 +4,15 @@
   import { getOverlaySocket } from '$lib/socket';
   import { gameStore } from '$lib/stores/game.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
+  import SplitBar from '$lib/components/overlay/SplitBar.svelte';
+  import Leaderboard from '$lib/components/overlay/Leaderboard.svelte';
+  import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
   import type { Socket } from 'socket.io-client';
 
   let socket: Socket | null = null;
 
   const sessionId = $derived($page.params.sessionId!);
+  const gameType = $derived(gameStore.gameState?.gameType);
 
   onMount(() => {
     socket = getOverlaySocket();
@@ -40,18 +44,35 @@
         <div class="inline-block rounded-2xl bg-black/70 px-8 py-4 backdrop-blur-sm">
           <p class="text-sm font-medium tabular-nums text-brand-400">
             Round {gameStore.gameState?.currentRound}/{gameStore.gameState?.totalRounds}
+            {#if gameStore.currentRound?.endsAt}
+              <span class="ml-2">
+                <CountdownTimer endsAt={gameStore.currentRound.endsAt} compact />
+              </span>
+            {/if}
           </p>
           <h2 class="mt-1 text-2xl font-bold text-white">{gameStore.currentRound.prompt}</h2>
         </div>
       </div>
 
-      <!-- Histogram -->
+      <!-- Live Visualization -->
       {#if gameStore.votes}
         <div class="animate-fade-in rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
-          <Histogram
-            distribution={gameStore.votes.distribution}
-            totalVotes={gameStore.votes.totalVotes}
-          />
+          {#if gameStore.votes.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
+            <SplitBar
+              percentA={gameStore.votes.distribution[0]}
+              percentB={gameStore.votes.distribution[1]}
+              labelA={gameStore.currentRound?.options?.[0] ?? 'A'}
+              labelB={gameStore.currentRound?.options?.[1] ?? 'B'}
+              totalVotes={gameStore.votes.totalVotes}
+              imageA={gameStore.currentRound?.optionImages?.[0]}
+              imageB={gameStore.currentRound?.optionImages?.[1]}
+            />
+          {:else}
+            <Histogram
+              distribution={gameStore.votes.distribution}
+              totalVotes={gameStore.votes.totalVotes}
+            />
+          {/if}
         </div>
       {/if}
 
@@ -68,7 +89,23 @@
     <div class="w-full max-w-2xl animate-fade-in">
       <div class="rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
         <h3 class="mb-4 text-center text-xl font-bold text-brand-400">Round Results</h3>
-        {#if gameStore.roundResults.distribution}
+        {#if gameType === 'BLIND_TEST' && gameStore.roundResults.percentages}
+          <Leaderboard
+            entries={Object.entries(gameStore.roundResults.percentages).map(([userId, score]) => ({
+              userId,
+              score,
+            }))}
+            title="Leaderboard"
+          />
+        {:else if gameStore.roundResults.distribution && gameStore.roundResults.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
+          <SplitBar
+            percentA={gameStore.roundResults.distribution[0]}
+            percentB={gameStore.roundResults.distribution[1]}
+            labelA="A"
+            labelB="B"
+            totalVotes={gameStore.roundResults.totalResponses}
+          />
+        {:else if gameStore.roundResults.distribution}
           <Histogram
             distribution={gameStore.roundResults.distribution}
             totalVotes={gameStore.roundResults.totalResponses}
