@@ -6,7 +6,6 @@ import {
   type FinalResults,
 } from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
-import { redis } from '../../db/redis.js';
 
 export class BalanceGame extends GameEngine<BalanceConfig, string> {
   getGameType() {
@@ -36,22 +35,18 @@ export class BalanceGame extends GameEngine<BalanceConfig, string> {
     const isB = answer === 'B' || answer === q.optionB;
     if (!isA && !isB) return;
 
-    const isDupe = await this.isDuplicate(userId);
-    if (isDupe) return;
     const bucket = isA ? '0' : '1';
-    await redis.hincrby(this.voteKey(questionId), bucket, 1);
-    await redis.expire(this.voteKey(questionId), 3600);
+    await this.recordVote(userId, questionId, bucket);
   }
 
   async computeRoundResults(round: number): Promise<RoundResults> {
     const questionId = `balance-${round - 1}`;
-    const values = await redis.hgetall(this.voteKey(questionId));
-    const a = parseInt(values['0'] || '0', 10);
-    const b = parseInt(values['1'] || '0', 10);
+    const [a, b] = await this.getBinaryDistribution(questionId);
     const total = a + b;
     return {
       round,
       questionId,
+      distribution: [a, b],
       percentages: { A: total ? (a / total) * 100 : 0, B: total ? (b / total) * 100 : 0 },
       totalResponses: total,
     };
@@ -65,8 +60,11 @@ export class BalanceGame extends GameEngine<BalanceConfig, string> {
     };
   }
 
+  protected getRoundDurationMs(): number {
+    return (this.config.roundDurationSec ?? 0) * 1000;
+  }
+
   protected async getDistribution(questionId: string): Promise<number[]> {
-    const values = await redis.hgetall(this.voteKey(questionId));
-    return [parseInt(values['0'] || '0', 10), parseInt(values['1'] || '0', 10)];
+    return this.getBinaryDistribution(questionId);
   }
 }

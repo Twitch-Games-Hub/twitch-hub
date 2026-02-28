@@ -1,15 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
-  import { getPlaySocket } from '$lib/socket';
+  import { getPlaySocket, disconnectPlay } from '$lib/socket';
   import { gameStore } from '$lib/stores/game.svelte';
   import RatingSlider from '$lib/components/games/hot-take/RatingSlider.svelte';
   import BalanceChoice from '$lib/components/games/balance/BalanceChoice.svelte';
-  import QuizOption from '$lib/components/games/personality/QuizOption.svelte';
-  import TierListBuilder from '$lib/components/games/tier-list/TierListBuilder.svelte';
   import GuessInput from '$lib/components/games/blind-test/GuessInput.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
-  import SplitBar from '$lib/components/overlay/SplitBar.svelte';
+  import TugOfWar from '$lib/components/overlay/TugOfWar.svelte';
+  import { countsToPercents, extractBinaryPercents } from '$lib/utils/votes';
   import Card from '$lib/components/ui/Card.svelte';
   import ConnectionIndicator from '$lib/components/ui/ConnectionIndicator.svelte';
   import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
@@ -18,39 +17,57 @@
 
   let socket: Socket | null = null;
   let rating = $state(5);
-  let submitted = $state(false);
+  let pending = $state(false);
   let timeRemaining = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
 
   const sessionId = $derived($page.params.sessionId!);
   const gameType = $derived(gameStore.gameState?.gameType);
+  const questionId = $derived(gameStore.currentRound?.questionId);
+  const submitted = $derived(questionId ? gameStore.isQuestionSubmitted(questionId) : false);
 
-  onMount(() => {
-    socket = getPlaySocket();
+  onMount(async () => {
+    let token: string | undefined;
+    try {
+      const res = await fetch('/api/auth/token');
+      if (res.ok) {
+        const data = await res.json();
+        token = data.token;
+      }
+    } catch {
+      // Not authenticated, continue anonymously
+    }
+    socket = getPlaySocket(token);
     gameStore.bindSocket(socket);
     if (sessionId) gameStore.joinSession(sessionId);
   });
 
   onDestroy(() => {
-    socket?.disconnect();
+    disconnectPlay();
     if (timerInterval) clearInterval(timerInterval);
   });
 
   function submitRating(value: number) {
-    if (!gameStore.currentRound || submitted || !sessionId) return;
+    if (!gameStore.currentRound || submitted || pending || !sessionId) return;
     gameStore.submitResponse(sessionId, gameStore.currentRound.questionId, value);
-    submitted = true;
+    pending = true;
   }
 
   function submitAnswer(answer: unknown) {
-    if (!gameStore.currentRound || submitted || !sessionId) return;
+    if (!gameStore.currentRound || submitted || pending || !sessionId) return;
     gameStore.submitResponse(sessionId, gameStore.currentRound.questionId, answer);
-    submitted = true;
+    pending = true;
   }
 
   $effect(() => {
+    if (submitted) {
+      pending = false;
+    }
+  });
+
+  $effect(() => {
     if (gameStore.currentRound) {
-      submitted = false;
+      pending = false;
       rating = 5;
 
       // Start countdown for BlindTest
@@ -102,13 +119,14 @@
       {#each gameStore.finalResults.rounds as round (round.round)}
         <Card padding="md" class="mb-4 text-left">
           <p class="mb-2 text-sm text-text-muted">Round {round.round}</p>
-          {#if round.distribution && round.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
-            <SplitBar
-              percentA={round.distribution[0]}
-              percentB={round.distribution[1]}
+          {#if gameType === 'BALANCE' && extractBinaryPercents(round)}
+            {@const split = extractBinaryPercents(round)!}
+            <TugOfWar
+              percentA={split.percentA}
+              percentB={split.percentB}
               labelA="A"
               labelB="B"
-              totalVotes={round.totalResponses}
+              totalVotes={split.totalVotes}
             />
           {:else if round.distribution}
             <Histogram
@@ -137,13 +155,14 @@
       {#if gameStore.roundResults}
         <Card padding="lg" class="animate-fade-in text-center">
           <h3 class="mb-3 text-lg font-semibold text-brand-400">Results</h3>
-          {#if gameStore.roundResults.distribution && gameStore.roundResults.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
-            <SplitBar
-              percentA={gameStore.roundResults.distribution[0]}
-              percentB={gameStore.roundResults.distribution[1]}
+          {#if gameType === 'BALANCE' && extractBinaryPercents(gameStore.roundResults)}
+            {@const split = extractBinaryPercents(gameStore.roundResults)!}
+            <TugOfWar
+              percentA={split.percentA}
+              percentB={split.percentB}
               labelA={gameStore.currentRound?.options?.[0] ?? 'A'}
               labelB={gameStore.currentRound?.options?.[1] ?? 'B'}
-              totalVotes={gameStore.roundResults.totalResponses}
+              totalVotes={split.totalVotes}
             />
           {:else if gameStore.roundResults.distribution}
             <Histogram
@@ -153,7 +172,7 @@
             />
           {/if}
         </Card>
-      {:else if submitted}
+      {:else if submitted || pending}
         <Card padding="lg" class="animate-fade-in text-center">
           <div class="flex items-center justify-center gap-2 text-success-500">
             <svg
@@ -173,7 +192,7 @@
         <Card padding="lg">
           <RatingSlider bind:value={rating} onsubmit={submitRating} />
         </Card>
-      {:else if gameType === 'BALANCE' || gameType === 'BRACKET'}
+      {:else if gameType === 'BALANCE'}
         <Card padding="lg">
           <BalanceChoice
             optionA={gameStore.currentRound?.options?.[0] ?? 'A'}
@@ -181,22 +200,6 @@
             imageUrlA={gameStore.currentRound?.optionImages?.[0]}
             imageUrlB={gameStore.currentRound?.optionImages?.[1]}
             onsubmit={(choice: string) => submitAnswer(choice)}
-          />
-        </Card>
-      {:else if gameType === 'PERSONALITY'}
-        <Card padding="lg">
-          <QuizOption
-            options={gameStore.currentRound?.options ?? []}
-            disabled={false}
-            onsubmit={(idx: number) => submitAnswer(idx)}
-          />
-        </Card>
-      {:else if gameType === 'TIER_LIST'}
-        <Card padding="lg">
-          <TierListBuilder
-            items={gameStore.currentRound?.options ?? []}
-            optionImages={gameStore.currentRound?.optionImages}
-            onsubmit={(placements: Record<string, string>) => submitAnswer(placements)}
           />
         </Card>
       {:else if gameType === 'BLIND_TEST'}
@@ -214,7 +217,7 @@
         {gameStore.participantCount} participants
       </div>
     </div>
-  {:else if gameStore.gameState?.status === 'WAITING'}
+  {:else if gameStore.gameState?.status === 'LOBBY'}
     <div class="animate-fade-in py-12 text-center">
       <div class="mb-6">
         <div class="mx-auto h-16 w-16 animate-pulse rounded-full bg-brand-600/20"></div>
@@ -224,6 +227,27 @@
       <div class="mt-6 tabular-nums text-sm text-text-muted" role="status" aria-live="polite">
         {gameStore.participantCount} participants waiting
       </div>
+    </div>
+  {:else if gameStore.error}
+    <div class="animate-fade-in py-12 text-center">
+      <div
+        class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-danger-500/10"
+      >
+        <svg
+          class="h-8 w-8 text-danger-500"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+      </div>
+      <h1 class="mb-3 text-2xl font-bold text-text-primary">{gameStore.error}</h1>
+      <p class="text-text-secondary">This session is no longer available.</p>
     </div>
   {:else}
     <div class="flex flex-col items-center justify-center py-20 text-center">

@@ -4,13 +4,12 @@ Viewers interact with games by typing commands in Twitch chat. No account or log
 
 ## Command Reference
 
-| Command               | Game Type        | Example             | Description                       |
-| --------------------- | ---------------- | ------------------- | --------------------------------- |
-| `!rate N`             | Hot Take         | `!rate 7`           | Rate the current statement 1-10   |
-| `!vote A` / `!vote B` | Balance, Bracket | `!vote A`           | Vote for option A or B            |
-| `!answer text`        | Blind Test       | `!answer Mario`     | Submit a guess                    |
-| `!guess text`         | Blind Test       | `!guess Zelda`      | Alias for `!answer`               |
-| `!tier T item`        | Tier List        | `!tier S Minecraft` | Place an item in tier S/A/B/C/D/F |
+| Command               | Game Type  | Example         | Description                     |
+| --------------------- | ---------- | --------------- | ------------------------------- |
+| `!rate N`             | Hot Take   | `!rate 7`       | Rate the current statement 1-10 |
+| `!vote A` / `!vote B` | Balance    | `!vote A`       | Vote for option A or B          |
+| `!answer text`        | Blind Test | `!answer Mario` | Submit a guess                  |
+| `!guess text`         | Blind Test | `!guess Zelda`  | Alias for `!answer`             |
 
 ## How It Works
 

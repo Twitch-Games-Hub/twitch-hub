@@ -21,6 +21,7 @@ model User {
   updatedAt       DateTime   @updatedAt
   ownedGames      Game[]
   responses       Response[]
+  ratings         GameRating[]
 }
 
 enum UserRole {
@@ -29,24 +30,24 @@ enum UserRole {
 }
 
 model Game {
-  id        String     @id @default(cuid())
-  ownerId   String
-  owner     User       @relation(fields: [ownerId], references: [id])
-  type      GameType
-  title     String
-  config    Json
-  status    GameStatus @default(DRAFT)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  sessions  GameSession[]
+  id            String     @id @default(cuid())
+  ownerId       String
+  owner         User       @relation(fields: [ownerId], references: [id])
+  type          GameType
+  title         String
+  description   String?
+  coverImageUrl String?
+  config        Json
+  status        GameStatus @default(DRAFT)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  sessions      GameSession[]
+  ratings       GameRating[]
 }
 
 enum GameType {
-  BRACKET
   BALANCE
-  PERSONALITY
   HOT_TAKE
-  TIER_LIST
   BLIND_TEST
 }
 
@@ -57,12 +58,12 @@ enum GameStatus {
 }
 
 model GameSession {
-  id           String        @id @default(cuid())
+  id           String        @id @default(uuid())
   gameId       String
-  game         Game          @relation(fields: [gameId], references: [id])
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
   hostId       String
   channelId    String
-  status       SessionStatus @default(WAITING)
+  status       SessionStatus @default(LOBBY)
   currentRound Int           @default(0)
   state        Json          @default("{}")
   startedAt    DateTime?
@@ -74,16 +75,15 @@ model GameSession {
 }
 
 enum SessionStatus {
-  WAITING
-  ACTIVE
-  PAUSED
-  COMPLETED
+  LOBBY
+  LIVE
+  ENDED
 }
 
 model Response {
   id          String         @id @default(cuid())
   sessionId   String
-  session     GameSession    @relation(fields: [sessionId], references: [id])
+  session     GameSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId      String?
   user        User?          @relation(fields: [userId], references: [id])
   twitchLogin String?
@@ -100,4 +100,18 @@ model Response {
 enum ResponseSource {
   WEB
   CHAT
+}
+
+model GameRating {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     Int      // +1 upvote, -1 downvote
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameId, userId])
+  @@index([gameId])
 }

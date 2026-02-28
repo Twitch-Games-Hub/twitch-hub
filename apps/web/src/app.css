@@ -44,6 +44,7 @@
   --animate-slide-up: slide-up 0.4s ease-out;
   --animate-slide-down: slide-down 0.3s ease-out;
   --animate-bar-grow: bar-grow 0.6s ease-out;
+  --animate-tow-wobble: tow-wobble 0.6s ease-in-out infinite;
 
   @keyframes fade-in {
     from {
@@ -82,6 +83,19 @@
     }
     to {
       transform: scaleY(1);
+    }
+  }
+
+  @keyframes tow-wobble {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) rotate(0deg) translateX(0);
+    }
+    25% {
+      transform: translate(-50%, -50%) rotate(3deg) translateX(2px);
+    }
+    75% {
+      transform: translate(-50%, -50%) rotate(-3deg) translateX(-2px);
     }
   }
 }

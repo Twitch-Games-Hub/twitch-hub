@@ -6,7 +6,6 @@ import {
   type FinalResults,
 } from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
-import { redis } from '../../db/redis.js';
 
 export class HotTakeGame extends GameEngine<HotTakeConfig, number> {
   getGameType() {
@@ -37,14 +36,8 @@ export class HotTakeGame extends GameEngine<HotTakeConfig, number> {
       throw new Error('Rating must be between 1 and 10');
     }
 
-    // Deduplicate: one vote per user per round
-    const isDupe = await this.isDuplicate(userId);
-    if (isDupe) return;
-
     // Increment the bucket in Redis (0-indexed: bucket 0 = rating 1)
-    const key = this.voteKey(questionId);
-    await redis.hincrby(key, String(rating - 1), 1);
-    await redis.expire(key, 3600);
+    await this.recordVote(userId, questionId, String(rating - 1));
   }
 
   async computeRoundResults(round: number): Promise<RoundResults> {

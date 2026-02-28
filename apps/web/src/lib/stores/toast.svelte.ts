@@ -1,3 +1,5 @@
+import { TOAST_TIMEOUT_MS } from '$lib/constants';
+
 export interface ToastItem {
   id: number;
   message: string;
@@ -19,7 +21,7 @@ function createToastStore() {
       toasts = [...toasts, { id, message, variant }];
       setTimeout(() => {
         toasts = toasts.filter((t) => t.id !== id);
-      }, 4000);
+      }, TOAST_TIMEOUT_MS);
     },
 
     dismiss(id: number) {

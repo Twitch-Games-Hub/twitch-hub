@@ -5,13 +5,9 @@
   let { title }: { title: string } = $props();
 
   const status = $derived(gameStore.gameState?.status);
-  const phase = $derived(status === 'ACTIVE' ? 'LIVE' : status === 'WAITING' ? 'LOBBY' : 'ENDED');
+  const phase = $derived(status === 'LIVE' ? 'LIVE' : status === 'LOBBY' ? 'LOBBY' : 'ENDED');
   const dotColor = $derived(
-    status === 'ACTIVE'
-      ? 'bg-success-500'
-      : status === 'WAITING'
-        ? 'bg-warning-500'
-        : 'bg-text-muted',
+    status === 'LIVE' ? 'bg-success-500' : status === 'LOBBY' ? 'bg-warning-500' : 'bg-text-muted',
   );
   const displayTitle = $derived(gameStore.currentRound?.prompt ?? title);
 </script>
@@ -20,7 +16,7 @@
   <!-- Live dot -->
   <div class="relative flex-shrink-0">
     <span class="block h-2.5 w-2.5 rounded-full {dotColor}" aria-hidden="true"></span>
-    {#if status === 'ACTIVE'}
+    {#if status === 'LIVE'}
       <span
         class="absolute inset-0 animate-ping rounded-full {dotColor} opacity-75"
         aria-hidden="true"
@@ -30,9 +26,9 @@
 
   <!-- Phase label -->
   <span
-    class="flex-shrink-0 text-xs font-bold uppercase tracking-wider {status === 'ACTIVE'
+    class="flex-shrink-0 text-xs font-bold uppercase tracking-wider {status === 'LIVE'
       ? 'text-success-500'
-      : status === 'WAITING'
+      : status === 'LOBBY'
         ? 'text-warning-500'
         : 'text-text-muted'}"
   >

@@ -10,18 +10,20 @@ import {
 import { redis } from '../db/redis.js';
 import { logger } from '../logger.js';
 
+export const REDIS_VOTE_TTL_SEC = 3600;
+
 export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   protected sessionId: string;
   protected config: TConfig;
   protected currentRound = 0;
   protected totalRounds = 0;
-  protected status: SessionStatus = SessionStatus.WAITING;
+  protected status: SessionStatus = SessionStatus.LOBBY;
   protected roundResults: RoundResults[] = [];
   protected participantIds = new Set<string>();
   protected log;
 
   // Throttled broadcast
-  private broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
+  protected broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
   private broadcastTimer?: ReturnType<typeof setTimeout>;
   private pendingBroadcast?: VoteAggregation;
   private broadcastIntervalMs = 200; // 5 times per second max
@@ -31,7 +33,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   private roundEndsAt?: string;
 
   // Auto-end callback (called when timer expires on last round)
-  private onAutoEnd?: () => void;
+  private onAutoEnd?: (finalResults: FinalResults) => void;
 
   constructor(sessionId: string, config: TConfig) {
     this.sessionId = sessionId;
@@ -43,7 +45,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     this.broadcastCallback = cb;
   }
 
-  setOnAutoEnd(cb: () => void) {
+  setOnAutoEnd(cb: (finalResults: FinalResults) => void) {
     this.onAutoEnd = cb;
   }
 
@@ -58,7 +60,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   async start(): Promise<GameState> {
     this.totalRounds = this.getTotalRounds();
     this.currentRound = 0;
-    this.status = SessionStatus.ACTIVE;
+    this.status = SessionStatus.LIVE;
     this.log.info({ totalRounds: this.totalRounds }, 'Game started');
     return this.getState();
   }
@@ -92,7 +94,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     this.participantIds.add(userId);
     await this.processAnswer(userId, answer, questionId);
     // Set TTL on vote key after votes are written
-    await redis.expire(this.voteKey(questionId), 3600);
+    await redis.expire(this.voteKey(questionId), REDIS_VOTE_TTL_SEC);
     await this.scheduleBroadcast(questionId);
   }
 
@@ -106,7 +108,12 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
 
   async end(): Promise<FinalResults> {
     this.clearRoundTimer();
-    this.status = SessionStatus.COMPLETED;
+    // Finalize the current round if it hasn't been ended yet
+    if (this.currentRound > 0 && this.roundResults.length < this.currentRound) {
+      const results = await this.computeRoundResults(this.currentRound);
+      this.roundResults.push(results);
+    }
+    this.status = SessionStatus.ENDED;
     this.log.info({ participants: this.participantIds.size }, 'Game ended');
     return this.computeFinalResults();
   }
@@ -151,7 +158,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     } else {
       const finalResults = await this.end();
       this.broadcastCallback?.(this.sessionId, 'game:ended', finalResults);
-      this.onAutoEnd?.();
+      this.onAutoEnd?.(finalResults);
     }
   }
 
@@ -162,7 +169,7 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     let currentRound: RoundData | null = null;
     let votes: VoteAggregation | null = null;
 
-    if (this.currentRound > 0 && this.status === SessionStatus.ACTIVE) {
+    if (this.currentRound > 0 && this.status === SessionStatus.LIVE) {
       currentRound = this.getRoundData(this.currentRound);
       if (this.roundEndsAt) {
         currentRound.endsAt = this.roundEndsAt;
@@ -174,12 +181,18 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
       votes = { questionId, distribution, totalVotes };
     }
 
+    let finalResults: FinalResults | null = null;
+    if (this.status === SessionStatus.ENDED) {
+      finalResults = await this.computeFinalResults();
+    }
+
     return {
       sessionId,
       gameState,
       currentRound,
       votes,
       participantCount: this.participantIds.size,
+      finalResults,
     };
   }
 
@@ -204,8 +217,23 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     const added = await redis.sadd(this.dedupeKey(), userId);
     if (added === 0) return true;
     // Expire dedupe set after 1 hour
-    await redis.expire(this.dedupeKey(), 3600);
+    await redis.expire(this.dedupeKey(), REDIS_VOTE_TTL_SEC);
     return false;
+  }
+
+  // --- Vote helpers ---
+  protected async recordVote(userId: string, questionId: string, bucket: string): Promise<boolean> {
+    const isDupe = await this.isDuplicate(userId);
+    if (isDupe) return false;
+    const key = this.voteKey(questionId);
+    await redis.hincrby(key, bucket, 1);
+    await redis.expire(key, REDIS_VOTE_TTL_SEC);
+    return true;
+  }
+
+  protected async getBinaryDistribution(questionId: string): Promise<[number, number]> {
+    const values = await redis.hgetall(this.voteKey(questionId));
+    return [parseInt(values['0'] || '0', 10), parseInt(values['1'] || '0', 10)];
   }
 
   // --- Throttled broadcast ---
@@ -224,6 +252,10 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
         this.broadcastTimer = undefined;
       }, this.broadcastIntervalMs);
     }
+  }
+
+  protected scheduleBroadcastRaw(event: string, data: unknown) {
+    this.broadcastCallback?.(this.sessionId, event, data);
   }
 
   protected async getDistribution(questionId: string): Promise<number[]> {

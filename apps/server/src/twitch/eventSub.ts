@@ -1,8 +1,12 @@
+import * as Sentry from '@sentry/node';
 import WebSocket from 'ws';
 import { parseChatCommand } from './chatParser.js';
 import { createEventSubSubscription } from './api.js';
 import { voteService } from '../services/VoteService.js';
 import { ResponseSource } from '@twitch-hub/shared-types';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'eventsub' });
 
 interface EventSubMessage {
   metadata: {
@@ -45,7 +49,7 @@ export class EventSubClient {
     this.ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
 
     this.ws.on('open', () => {
-      console.log('EventSub WebSocket connected');
+      log.info('EventSub WebSocket connected');
     });
 
     this.ws.on('message', (data) => {
@@ -54,14 +58,15 @@ export class EventSubClient {
     });
 
     this.ws.on('close', (code, reason) => {
-      console.log(`EventSub WebSocket closed: ${code} ${reason}`);
+      log.warn({ code, reason: reason.toString() }, 'EventSub WebSocket closed');
       this.clearKeepalive();
       // Reconnect after a delay
       setTimeout(() => this.connect(), 5000);
     });
 
     this.ws.on('error', (err) => {
-      console.error('EventSub WebSocket error:', err.message);
+      log.error({ err }, 'EventSub WebSocket error');
+      Sentry.captureException(err, { tags: { module: 'eventsub' } });
     });
   }
 
@@ -87,7 +92,7 @@ export class EventSubClient {
     this.keepaliveTimeoutMs = (message.payload.session!.keepalive_timeout_seconds + 5) * 1000;
     this.resetKeepalive();
 
-    console.log(`EventSub session established: ${this.twitchSessionId}`);
+    log.info({ twitchSessionId: this.twitchSessionId }, 'EventSub session established');
   }
 
   async subscribeToChat(broadcasterId: string) {
@@ -106,7 +111,7 @@ export class EventSubClient {
       this.accessToken,
     );
 
-    console.log(`Subscribed to chat for broadcaster: ${broadcasterId}`);
+    log.info({ broadcasterId }, 'Subscribed to chat');
   }
 
   registerSession(channelId: string, gameSessionId: string) {
@@ -150,7 +155,14 @@ export class EventSubClient {
           source: ResponseSource.CHAT,
         });
       } catch (err) {
-        console.error(`Error processing chat command from ${event.chatter_user_login}:`, err);
+        log.error(
+          { err, chatter: event.chatter_user_login, sessionId },
+          'Error processing chat command',
+        );
+        Sentry.captureException(err, {
+          tags: { module: 'eventsub', handler: 'notification' },
+          extra: { chatter: event.chatter_user_login, sessionId },
+        });
       }
     }
   }
@@ -158,12 +170,12 @@ export class EventSubClient {
   private onReconnect(message: EventSubMessage) {
     const reconnectUrl = message.payload.session?.reconnect_url;
     if (reconnectUrl) {
-      console.log('EventSub reconnecting to:', reconnectUrl);
+      log.info({ reconnectUrl }, 'EventSub reconnecting');
       const oldWs = this.ws;
       this.ws = new WebSocket(reconnectUrl);
 
       this.ws.on('open', () => {
-        console.log('EventSub reconnected');
+        log.info('EventSub reconnected');
         oldWs?.close();
       });
 
@@ -177,7 +189,7 @@ export class EventSubClient {
   private resetKeepalive() {
     this.clearKeepalive();
     this.keepaliveTimer = setTimeout(() => {
-      console.warn('EventSub keepalive timeout, reconnecting...');
+      log.warn('EventSub keepalive timeout, reconnecting');
       this.ws?.close();
     }, this.keepaliveTimeoutMs);
   }

@@ -1,5 +1,8 @@
 import Redis from 'ioredis';
 import { config } from '../config.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'redis' });
 
 export const redis = new Redis(config.redisUrl, {
   maxRetriesPerRequest: 3,
@@ -7,15 +10,15 @@ export const redis = new Redis(config.redisUrl, {
   retryStrategy(times) {
     // Cap backoff at 30 seconds
     const delay = Math.min(times * 500, 30_000);
-    console.log(`Redis reconnecting in ${delay}ms (attempt ${times})`);
+    log.warn({ attempt: times, delay }, 'Redis reconnecting');
     return delay;
   },
 });
 
 redis.on('error', (err) => {
-  console.error('Redis connection error:', err.message);
+  log.error({ err }, 'Redis connection error');
 });
 
 redis.on('connect', () => {
-  console.log('Connected to Redis');
+  log.info('Connected to Redis');
 });

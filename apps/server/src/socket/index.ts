@@ -1,25 +1,18 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/shared-types';
-import { socketAuthMiddleware } from './middleware.js';
+import { socketAuthMiddleware, optionalSocketAuthMiddleware } from './middleware.js';
 import { registerGameHandlers } from './handlers/gameHandler.js';
 import { registerVoteHandlers } from './handlers/voteHandler.js';
 import { config } from '../config.js';
-import { prisma } from '../db/client.js';
+import { logger } from '../logger.js';
+import { createSessionJoinHandler, registerSocketLifecycleHandlers } from './helpers.js';
+import { trackUser, untrackUser } from './sessionUsers.js';
 
 export type AppSocket =
   ReturnType<typeof createSocketServer> extends Server<ClientToServerEvents, ServerToClientEvents>
     ? Parameters<Parameters<Server<ClientToServerEvents, ServerToClientEvents>['on']>[1]>[0]
     : never;
-
-async function validateSession(sessionId: string): Promise<boolean> {
-  if (!sessionId || typeof sessionId !== 'string') return false;
-  const session = await prisma.gameSession.findUnique({
-    where: { id: sessionId },
-    select: { id: true },
-  });
-  return !!session;
-}
 
 export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
@@ -29,6 +22,10 @@ export function createSocketServer(httpServer: HttpServer) {
     },
   });
 
+  const dashboardLog = logger.child({ module: 'socket', namespace: 'dashboard' });
+  const playLog = logger.child({ module: 'socket', namespace: 'play' });
+  const overlayLog = logger.child({ module: 'socket', namespace: 'overlay' });
+
   // Namespaces
   const dashboard = io.of('/dashboard');
   const play = io.of('/play');
@@ -37,68 +34,51 @@ export function createSocketServer(httpServer: HttpServer) {
   // Auth middleware for dashboard (requires login)
   dashboard.use(socketAuthMiddleware);
 
-  // Play and overlay are public (viewers don't need auth)
-  play.use((_socket, next) => next());
+  // Play namespace: optional auth (attach userId if token provided)
+  play.use(optionalSocketAuthMiddleware);
+  // Overlay is fully public
   overlay.use((_socket, next) => next());
 
   // Register handlers
   dashboard.on('connection', (socket) => {
-    console.log(`Dashboard client connected: ${socket.id}`);
+    dashboardLog.debug({ socketId: socket.id }, 'Dashboard client connected');
     registerGameHandlers(socket, io);
     registerVoteHandlers(socket, io);
 
-    socket.on('error', (err) => {
-      console.error(`Dashboard socket error [${socket.id}]:`, err);
-    });
-
-    socket.on('disconnect', () => {
-      console.log(`Dashboard client disconnected: ${socket.id}`);
-    });
+    registerSocketLifecycleHandlers(socket, dashboardLog, 'Dashboard');
   });
 
   play.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    playLog.debug(
+      { socketId: socket.id, userId: socket.data.userId ?? 'anonymous' },
+      'Player connected',
+    );
     registerVoteHandlers(socket, io);
 
+    const playJoinHandler = createSessionJoinHandler(playLog);
     socket.on('session:join', async (sessionId) => {
-      const exists = await validateSession(sessionId);
-      if (!exists) {
-        socket.emit('error', 'Session not found');
-        return;
-      }
-      socket.join(sessionId);
-      console.log(`Player ${socket.id} joined session ${sessionId}`);
-    });
-
-    socket.on('error', (err) => {
-      console.error(`Play socket error [${socket.id}]:`, err);
+      await playJoinHandler(socket, sessionId);
+      const users = await trackUser(sessionId, socket.id, socket.data.userId);
+      dashboard.to(sessionId).emit('session:users', users);
     });
 
     socket.on('disconnect', () => {
-      console.log(`Player disconnected: ${socket.id}`);
+      const result = untrackUser(socket.id);
+      if (result) {
+        dashboard.to(result.sessionId).emit('session:users', result.users);
+      }
+      playLog.debug({ socketId: socket.id }, 'Play client disconnected');
     });
+
+    registerSocketLifecycleHandlers(socket, playLog, 'Play');
   });
 
   overlay.on('connection', (socket) => {
-    console.log(`Overlay connected: ${socket.id}`);
+    overlayLog.debug({ socketId: socket.id }, 'Overlay connected');
 
-    socket.on('session:join', async (sessionId) => {
-      const exists = await validateSession(sessionId);
-      if (!exists) {
-        socket.emit('error', 'Session not found');
-        return;
-      }
-      socket.join(sessionId);
-      console.log(`Overlay ${socket.id} joined session ${sessionId}`);
-    });
-
-    socket.on('error', (err) => {
-      console.error(`Overlay socket error [${socket.id}]:`, err);
-    });
-
-    socket.on('disconnect', () => {
-      console.log(`Overlay disconnected: ${socket.id}`);
-    });
+    const overlayJoinHandler = createSessionJoinHandler(overlayLog);
+    socket.on('session:join', (sessionId) => overlayJoinHandler(socket, sessionId));
+    registerSocketLifecycleHandlers(socket, overlayLog, 'Overlay');
   });
 
   return io;

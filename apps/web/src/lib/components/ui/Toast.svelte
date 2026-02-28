@@ -14,7 +14,7 @@
 </script>
 
 <div
-  class="animate-slide-down flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg {variantClasses[
+  class="animate-slide-up flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg {variantClasses[
     toast.variant
   ]}"
   role="alert"

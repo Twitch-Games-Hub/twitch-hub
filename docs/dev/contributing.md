@@ -14,7 +14,7 @@ docs/short-description
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat: add bracket game overlay animation
+feat: add blind test leaderboard animation
 fix: prevent duplicate votes on reconnect
 chore: update dependencies
 docs: add overlay setup guide

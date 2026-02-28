@@ -8,3 +8,7 @@ export { default as XIcon } from './XIcon.svelte';
 export { default as LoaderIcon } from './LoaderIcon.svelte';
 export { default as ArrowLeftIcon } from './ArrowLeftIcon.svelte';
 export { default as MenuIcon } from './MenuIcon.svelte';
+export { default as EditIcon } from './EditIcon.svelte';
+export { default as ThumbsUpIcon } from './ThumbsUpIcon.svelte';
+export { default as ThumbsDownIcon } from './ThumbsDownIcon.svelte';
+export { default as GamepadIcon } from './GamepadIcon.svelte';

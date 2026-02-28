@@ -4,7 +4,9 @@ import type {
   RoundResults,
   FinalResults,
   VoteAggregation,
+  MultiVoteAggregation,
   SessionSnapshot,
+  SessionUser,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
 
@@ -14,9 +16,12 @@ interface GameStoreState {
   roundResults: RoundResults | null;
   finalResults: FinalResults | null;
   votes: VoteAggregation | null;
+  multiVotes: MultiVoteAggregation | null;
+  connectedUsers: SessionUser[];
   participantCount: number;
   connected: boolean;
   error: string | null;
+  submittedQuestionIds: string[];
 }
 
 function createGameStore() {
@@ -26,14 +31,38 @@ function createGameStore() {
     roundResults: null,
     finalResults: null,
     votes: null,
+    multiVotes: null,
+    connectedUsers: [],
     participantCount: 0,
     connected: false,
     error: null,
+    submittedQuestionIds: [],
   });
 
   let socket: Socket | null = null;
 
+  const STORE_EVENTS = [
+    'connect',
+    'disconnect',
+    'game:state',
+    'game:round-start',
+    'game:round-end',
+    'game:ended',
+    'votes:update',
+    'multi-votes:update',
+    'participants:count',
+    'error',
+    'connect_error',
+    'session:users',
+    'session:rejoined',
+    'response:ack',
+  ];
+
   function bindSocket(s: Socket) {
+    if (socket === s) return;
+    if (socket) {
+      for (const ev of STORE_EVENTS) socket.removeAllListeners(ev);
+    }
     socket = s;
 
     s.on('connect', () => {
@@ -53,6 +82,8 @@ function createGameStore() {
       state.currentRound = round;
       state.roundResults = null;
       state.votes = null;
+      state.multiVotes = null;
+      state.submittedQuestionIds = [];
     });
 
     s.on('game:round-end', (results: RoundResults) => {
@@ -67,8 +98,16 @@ function createGameStore() {
       state.votes = agg;
     });
 
+    s.on('multi-votes:update', (agg: MultiVoteAggregation) => {
+      state.multiVotes = agg;
+    });
+
     s.on('participants:count', (count: number) => {
       state.participantCount = count;
+    });
+
+    s.on('session:users', (users: SessionUser[]) => {
+      state.connectedUsers = users;
     });
 
     s.on('error', (msg: string) => {
@@ -79,6 +118,22 @@ function createGameStore() {
       state.error = `Connection failed: ${err.message}`;
       state.connected = false;
     });
+
+    s.on('response:ack', (data: { questionId: string }) => {
+      if (!state.submittedQuestionIds.includes(data.questionId)) {
+        state.submittedQuestionIds = [...state.submittedQuestionIds, data.questionId];
+      }
+    });
+
+    s.on('session:rejoined', (snapshot: SessionSnapshot) => {
+      state.gameState = snapshot.gameState;
+      state.currentRound = snapshot.currentRound;
+      state.votes = snapshot.votes;
+      state.participantCount = snapshot.participantCount;
+      if (snapshot.finalResults) {
+        state.finalResults = snapshot.finalResults;
+      }
+    });
   }
 
   function reset() {
@@ -87,8 +142,11 @@ function createGameStore() {
     state.roundResults = null;
     state.finalResults = null;
     state.votes = null;
+    state.multiVotes = null;
+    state.connectedUsers = [];
     state.participantCount = 0;
     state.error = null;
+    state.submittedQuestionIds = [];
   }
 
   return {
@@ -107,6 +165,12 @@ function createGameStore() {
     get votes() {
       return state.votes;
     },
+    get multiVotes() {
+      return state.multiVotes;
+    },
+    get connectedUsers() {
+      return state.connectedUsers;
+    },
     get participantCount() {
       return state.participantCount;
     },
@@ -116,6 +180,12 @@ function createGameStore() {
     get error() {
       return state.error;
     },
+    get submittedQuestionIds() {
+      return state.submittedQuestionIds;
+    },
+    isQuestionSubmitted(questionId: string) {
+      return state.submittedQuestionIds.includes(questionId);
+    },
 
     bindSocket,
     reset,
@@ -124,13 +194,14 @@ function createGameStore() {
       state.gameState = snapshot.gameState;
       state.currentRound = snapshot.currentRound;
       state.votes = snapshot.votes;
+      state.multiVotes = null;
       state.participantCount = snapshot.participantCount;
       state.roundResults = null;
       state.finalResults = null;
     },
 
-    rejoinSession(gameId: string) {
-      socket?.emit('session:rejoin', { gameId });
+    rejoinSession(sessionId: string) {
+      socket?.emit('session:rejoin', { sessionId });
     },
 
     joinSession(sessionId: string) {

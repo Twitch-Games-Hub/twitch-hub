@@ -1,20 +1,20 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+import { SESSION_COOKIE_NAME } from '$lib/constants';
+import { SERVER_URL } from '$lib/server/config';
 
 export const GET: RequestHandler = async ({ cookies }) => {
-  const token = cookies.get('session');
+  const token = cookies.get(SESSION_COOKIE_NAME);
   if (!token) {
     error(401, 'Not authenticated');
   }
 
-  const serverUrl = env.PUBLIC_SERVER_URL || 'http://localhost:3001';
-  const res = await fetch(`${serverUrl}/api/auth/me`, {
+  const res = await fetch(`${SERVER_URL}/api/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
-    cookies.delete('session', { path: '/' });
+    cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
     error(401, 'Invalid session');
   }
 

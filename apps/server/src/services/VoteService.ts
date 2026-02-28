@@ -1,7 +1,10 @@
-import { redis } from '../db/redis.js';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../db/client.js';
 import { gameRegistry } from '../engine/GameRegistry.js';
+import { logger } from '../logger.js';
 import type { ResponseSource } from '@twitch-hub/shared-types';
+
+const log = logger.child({ module: 'vote-service' });
 
 interface VoteInput {
   sessionId: string;
@@ -21,7 +24,7 @@ export class VoteService {
     }
 
     const state = engine.getState();
-    if (state.status !== 'ACTIVE') {
+    if (state.status !== 'LIVE') {
       throw new Error('Session is not active');
     }
 
@@ -41,7 +44,7 @@ export class VoteService {
       questionId,
       answer,
       source,
-    }).catch((err) => console.error('Failed to persist response:', err));
+    }).catch((err) => log.error({ err, sessionId }, 'Failed to persist response'));
 
     return true;
   }
@@ -69,7 +72,7 @@ export class VoteService {
       });
     } catch (err: unknown) {
       // Unique constraint violation = duplicate vote, expected
-      if (err instanceof Error && 'code' in err && (err as { code: string }).code === 'P2002') {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         return;
       }
       throw err;

@@ -7,8 +7,6 @@
   const style = $derived(GAME_STATUS_STYLES[status]);
 </script>
 
-<span
-  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {style.classes}"
->
+<span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium {style.classes}">
   {style.label}
 </span>

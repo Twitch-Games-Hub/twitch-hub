@@ -4,7 +4,8 @@
   import { getOverlaySocket } from '$lib/socket';
   import { gameStore } from '$lib/stores/game.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
-  import SplitBar from '$lib/components/overlay/SplitBar.svelte';
+  import TugOfWar from '$lib/components/overlay/TugOfWar.svelte';
+  import { countsToPercents, extractBinaryPercents } from '$lib/utils/votes';
   import Leaderboard from '$lib/components/overlay/Leaderboard.svelte';
   import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
   import type { Socket } from 'socket.io-client';
@@ -57,10 +58,14 @@
       <!-- Live Visualization -->
       {#if gameStore.votes}
         <div class="animate-fade-in rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
-          {#if gameStore.votes.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
-            <SplitBar
-              percentA={gameStore.votes.distribution[0]}
-              percentB={gameStore.votes.distribution[1]}
+          {#if gameStore.votes.distribution.length === 2 && gameType === 'BALANCE'}
+            {@const [pA, pB] = countsToPercents(
+              gameStore.votes.distribution[0],
+              gameStore.votes.distribution[1],
+            )}
+            <TugOfWar
+              percentA={pA}
+              percentB={pB}
               labelA={gameStore.currentRound?.options?.[0] ?? 'A'}
               labelB={gameStore.currentRound?.options?.[1] ?? 'B'}
               totalVotes={gameStore.votes.totalVotes}
@@ -97,13 +102,14 @@
             }))}
             title="Leaderboard"
           />
-        {:else if gameStore.roundResults.distribution && gameStore.roundResults.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'BRACKET')}
-          <SplitBar
-            percentA={gameStore.roundResults.distribution[0]}
-            percentB={gameStore.roundResults.distribution[1]}
+        {:else if gameType === 'BALANCE' && extractBinaryPercents(gameStore.roundResults)}
+          {@const split = extractBinaryPercents(gameStore.roundResults)!}
+          <TugOfWar
+            percentA={split.percentA}
+            percentB={split.percentB}
             labelA="A"
             labelB="B"
-            totalVotes={gameStore.roundResults.totalResponses}
+            totalVotes={split.totalVotes}
           />
         {:else if gameStore.roundResults.distribution}
           <Histogram
@@ -126,7 +132,7 @@
         </p>
       </div>
     </div>
-  {:else if gameStore.gameState?.status === 'WAITING'}
+  {:else if gameStore.gameState?.status === 'LOBBY'}
     <div class="w-full max-w-md animate-fade-in">
       <div class="rounded-2xl bg-black/70 p-6 text-center backdrop-blur-sm">
         <div class="mx-auto mb-3 h-8 w-8 animate-pulse rounded-full bg-brand-600/40"></div>

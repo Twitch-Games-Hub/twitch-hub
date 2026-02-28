@@ -1,9 +1,6 @@
 export enum GameType {
   HOT_TAKE = 'HOT_TAKE',
-  BRACKET = 'BRACKET',
   BALANCE = 'BALANCE',
-  PERSONALITY = 'PERSONALITY',
-  TIER_LIST = 'TIER_LIST',
   BLIND_TEST = 'BLIND_TEST',
 }
 
@@ -14,10 +11,9 @@ export enum GameStatus {
 }
 
 export enum SessionStatus {
-  WAITING = 'WAITING',
-  ACTIVE = 'ACTIVE',
-  PAUSED = 'PAUSED',
-  COMPLETED = 'COMPLETED',
+  LOBBY = 'LOBBY',
+  LIVE = 'LIVE',
+  ENDED = 'ENDED',
 }
 
 export enum ResponseSource {
@@ -32,34 +28,14 @@ export interface HotTakeConfig {
   roundDurationSec: number;
 }
 
-export interface BracketConfig {
-  items: string[];
-  bracketSize: 8 | 16 | 32;
-}
-
 export interface BalanceConfig {
-  questions: { optionA: string; optionB: string }[];
-}
-
-export interface PersonalityConfig {
-  questions: { text: string; options: { label: string; weight: Record<string, number> }[] }[];
-  resultTypes: { id: string; title: string; description: string }[];
-}
-
-export interface TierListConfig {
-  items: string[];
-  tiers: string[];
+  questions: { optionA: string; optionB: string; imageUrlA?: string; imageUrlB?: string }[];
+  roundDurationSec?: number;
 }
 
 export interface BlindTestConfig {
-  rounds: { answer: string; hints: string[]; mediaSrc?: string }[];
+  rounds: { answer: string; hints: string[]; mediaSrc?: string; imageUrl?: string }[];
   answerWindowSec: number;
 }
 
-export type GameConfig =
-  | HotTakeConfig
-  | BracketConfig
-  | BalanceConfig
-  | PersonalityConfig
-  | TierListConfig
-  | BlindTestConfig;
+export type GameConfig = HotTakeConfig | BalanceConfig | BlindTestConfig;

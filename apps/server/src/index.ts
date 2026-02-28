@@ -1,10 +1,15 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { config, validateConfig } from './config.js';
+import { logger, httpLogger } from './logger.js';
 import { authRouter } from './auth.js';
 import { gamesRouter } from './routes/games.js';
+import { exploreRouter } from './routes/explore.js';
+import { profileRouter } from './routes/profile.js';
+import { sessionsRouter } from './routes/sessions.js';
 import { createSocketServer } from './socket/index.js';
 import { gameRegistry } from './engine/GameRegistry.js';
 import { redis } from './db/redis.js';
@@ -15,11 +20,13 @@ validateConfig();
 
 // Process-level error handlers
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  logger.error({ err: reason }, 'Unhandled rejection');
+  Sentry.captureException(reason);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
+  logger.fatal({ err }, 'Uncaught exception');
+  Sentry.captureException(err);
   process.exit(1);
 });
 
@@ -27,21 +34,8 @@ const app = express();
 app.use(cors({ origin: config.appUrl, credentials: true }));
 app.use(express.json());
 
-// Request logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    console.log(
-      JSON.stringify({
-        method: req.method,
-        path: req.path,
-        status: res.statusCode,
-        ms: Date.now() - start,
-      }),
-    );
-  });
-  next();
-});
+// Structured request logging via pino-http
+app.use(httpLogger);
 
 // Health check — verifies Redis and Postgres
 app.get('/health', async (_req, res) => {
@@ -49,7 +43,7 @@ app.get('/health', async (_req, res) => {
     await Promise.all([redis.ping(), prisma.$queryRaw`SELECT 1`]);
     res.json({ status: 'ok' });
   } catch (err) {
-    console.error('Health check failed:', err);
+    logger.warn({ err }, 'Health check failed');
     res.status(503).json({ status: 'degraded', error: 'Dependency check failed' });
   }
 });
@@ -66,10 +60,19 @@ app.use('/api', apiLimiter);
 // API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api/explore', exploreRouter);
+app.use('/api/profile', profileRouter);
+app.use('/api/sessions', sessionsRouter);
+
+// Sentry error handler (must be before custom error handler)
+Sentry.setupExpressErrorHandler(app);
 
 // Global error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  req.log.error(
+    { err, path: req.path, method: req.method, params: req.params, userId: req.userId },
+    'Unhandled error',
+  );
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -87,17 +90,17 @@ gameRegistry.setBroadcastCallback((sessionId, event, data) => {
 });
 
 // Connect Redis
-redis.connect().catch((err) => {
-  console.error('Failed to connect to Redis:', err.message);
+redis.connect().catch((err: Error) => {
+  logger.error({ err }, 'Failed to connect to Redis');
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
+  logger.info({ port: config.port }, 'Server started');
 });
 
 // Graceful shutdown
 async function shutdown(signal: string) {
-  console.log(`${signal} received, shutting down gracefully...`);
+  logger.info({ signal }, 'Shutting down gracefully');
 
   // Stop accepting new connections
   httpServer.close();
@@ -112,7 +115,10 @@ async function shutdown(signal: string) {
   await redis.quit();
   await prisma.$disconnect();
 
-  console.log('Shutdown complete');
+  // Flush Sentry events before exit
+  await Sentry.close(2000);
+
+  logger.info('Shutdown complete');
   process.exit(0);
 }
 

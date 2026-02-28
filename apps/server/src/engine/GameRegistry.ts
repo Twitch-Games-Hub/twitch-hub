@@ -1,10 +1,7 @@
-import { GameType } from '@twitch-hub/shared-types';
+import { GameType, type FinalResults } from '@twitch-hub/shared-types';
 import type { GameEngine } from './GameEngine.js';
 import { HotTakeGame } from './types/HotTakeGame.js';
-import { BracketGame } from './types/BracketGame.js';
 import { BalanceGame } from './types/BalanceGame.js';
-import { PersonalityGame } from './types/PersonalityGame.js';
-import { TierListGame } from './types/TierListGame.js';
 import { BlindTestGame } from './types/BlindTestGame.js';
 import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
@@ -18,19 +15,7 @@ const engineMap: Record<string, new (sessionId: string, config: never) => GameEn
     sessionId: string,
     config: never,
   ) => GameEngine,
-  [GameType.BRACKET]: BracketGame as unknown as new (
-    sessionId: string,
-    config: never,
-  ) => GameEngine,
   [GameType.BALANCE]: BalanceGame as unknown as new (
-    sessionId: string,
-    config: never,
-  ) => GameEngine,
-  [GameType.PERSONALITY]: PersonalityGame as unknown as new (
-    sessionId: string,
-    config: never,
-  ) => GameEngine,
-  [GameType.TIER_LIST]: TierListGame as unknown as new (
     sessionId: string,
     config: never,
   ) => GameEngine,
@@ -59,18 +44,18 @@ class GameRegistryClass {
     if (this.broadcastCallback) {
       engine.setBroadcastCallback(this.broadcastCallback);
     }
-    engine.setOnAutoEnd(() => this.handleAutoEnd(sessionId));
+    engine.setOnAutoEnd((finalResults) => this.handleAutoEnd(sessionId, finalResults));
     this.engines.set(sessionId, engine);
     this.sessionHosts.set(sessionId, hostId);
     log.info({ sessionId, gameType: game.type, hostId }, 'Session initialized');
     return engine;
   }
 
-  private async handleAutoEnd(sessionId: string) {
+  private async handleAutoEnd(sessionId: string, finalResults: FinalResults) {
     try {
       await prisma.gameSession.update({
         where: { id: sessionId },
-        data: { status: 'COMPLETED', endedAt: new Date() },
+        data: { status: 'ENDED', endedAt: new Date(), state: finalResults as object },
       });
       this.removeEngine(sessionId);
       log.info({ sessionId }, 'Auto-end: session completed');

@@ -52,9 +52,6 @@ export default defineConfig({
           items: [
             { text: 'Hot Take', link: '/games/hot-take' },
             { text: 'Balance', link: '/games/balance' },
-            { text: 'Bracket', link: '/games/bracket' },
-            { text: 'Personality', link: '/games/personality' },
-            { text: 'Tier List', link: '/games/tier-list' },
             { text: 'Blind Test', link: '/games/blind-test' },
           ],
         },

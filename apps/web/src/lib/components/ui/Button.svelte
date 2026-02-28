@@ -13,8 +13,8 @@
     onclick,
     children,
   }: {
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
-    size?: 'sm' | 'md' | 'lg';
+    variant?: 'primary' | 'secondary' | 'danger' | 'danger-outline' | 'ghost';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
     loading?: boolean;
     disabled?: boolean;
     href?: string;
@@ -25,17 +25,20 @@
   } = $props();
 
   const baseClasses =
-    'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:ring-offset-2 focus:ring-offset-surface-primary disabled:opacity-50 disabled:pointer-events-none';
+    'inline-flex items-center justify-center gap-2 font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:ring-offset-2 focus:ring-offset-surface-primary disabled:opacity-50 disabled:pointer-events-none';
 
   const variantClasses = {
     primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800',
     secondary:
       'bg-surface-elevated text-text-primary border border-border-default hover:bg-surface-tertiary active:bg-surface-secondary',
     danger: 'bg-danger-600 text-white hover:bg-danger-500 active:bg-danger-900',
+    'danger-outline':
+      'border border-danger-500/20 bg-danger-900/20 text-danger-500 hover:bg-danger-900/40',
     ghost: 'text-text-secondary hover:text-text-primary hover:bg-surface-tertiary',
   };
 
   const sizeClasses = {
+    xs: 'px-2 py-1.5 text-xs',
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-3 text-base',

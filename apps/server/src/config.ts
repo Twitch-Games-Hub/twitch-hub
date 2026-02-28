@@ -13,10 +13,13 @@ export const config = {
     redirectUri: process.env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
   },
   appUrl: process.env.PUBLIC_APP_URL || 'http://localhost:5173',
+  sentryDsn: process.env.SENTRY_DSN || '',
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// These console.error calls run at import-time before the pino logger initializes,
+// so they must remain as console.error + process.exit(1).
 export function validateConfig() {
   const required: { key: string; value: string }[] = [
     { key: 'JWT_SECRET', value: config.jwtSecret },

@@ -25,7 +25,7 @@ export interface RoundResults {
   round: number;
   questionId: string;
   distribution?: number[]; // histogram for HotTake (indices 0-9 for ratings 1-10)
-  percentages?: Record<string, number>; // for Balance/Bracket
+  percentages?: Record<string, number>; // for Balance
   totalResponses: number;
 }
 
@@ -41,6 +41,10 @@ export interface VoteAggregation {
   totalVotes: number;
 }
 
+export interface MultiVoteAggregation {
+  matchups: VoteAggregation[];
+}
+
 // --- Session Snapshot (for rejoin) ---
 
 export interface SessionSnapshot {
@@ -49,6 +53,15 @@ export interface SessionSnapshot {
   currentRound: RoundData | null;
   votes: VoteAggregation | null;
   participantCount: number;
+  finalResults?: FinalResults | null;
+}
+
+// --- Session Users ---
+
+export interface SessionUser {
+  socketId: string;
+  displayName: string | null;
+  profileImageUrl?: string | null;
 }
 
 // --- Socket.IO Event Contracts ---
@@ -60,7 +73,7 @@ export interface ClientToServerEvents {
   'game:end': (sessionId: string) => void;
   'response:submit': (data: { sessionId: string; questionId: string; answer: unknown }) => void;
   'session:join': (sessionId: string) => void;
-  'session:rejoin': (data: { gameId: string }) => void;
+  'session:rejoin': (data: { sessionId: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -69,7 +82,10 @@ export interface ServerToClientEvents {
   'game:round-end': (results: RoundResults) => void;
   'game:ended': (finalResults: FinalResults) => void;
   'votes:update': (aggregation: VoteAggregation) => void;
+  'multi-votes:update': (aggregation: MultiVoteAggregation) => void;
   'participants:count': (count: number) => void;
+  'session:users': (users: SessionUser[]) => void;
+  'response:ack': (data: { questionId: string }) => void;
   error: (message: string) => void;
   'session:created': (data: { sessionId: string }) => void;
   'session:rejoined': (snapshot: SessionSnapshot) => void;

@@ -1,6 +1,10 @@
 import type { Socket, Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/shared-types';
+import * as Sentry from '@sentry/node';
 import { gameRegistry } from '../../engine/GameRegistry.js';
+import { logger } from '../../logger.js';
+
+const log = logger.child({ module: 'vote' });
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -23,11 +27,18 @@ export function registerVoteHandlers(socket: AppSocket, _io: AppServer) {
         return;
       }
 
-      const userId = socket.data.userId || `anon-${socket.id}`;
+      const userId =
+        socket.data.userId ||
+        (socket.data.anonId ? `anon-${socket.data.anonId}` : `anon-${socket.id}`);
       await engine.onAnswer(userId, answer, questionId);
+      socket.emit('response:ack', { questionId });
     } catch (err) {
       socket.emit('error', 'Failed to submit response');
-      console.error('response:submit error:', err);
+      log.error({ err, sessionId, socketId: socket.id }, 'response:submit error');
+      Sentry.captureException(err, {
+        tags: { handler: 'response:submit' },
+        extra: { sessionId, socketId: socket.id },
+      });
     }
   });
 }

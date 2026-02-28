@@ -2,10 +2,11 @@
   interface Props {
     disabled: boolean;
     timeRemaining: number;
+    imageUrl?: string | null;
     onsubmit: (guess: string) => void;
   }
 
-  let { disabled, timeRemaining, onsubmit } = $props();
+  let { disabled, timeRemaining, imageUrl, onsubmit }: Props = $props();
 
   let inputValue = $state('');
 
@@ -23,17 +24,31 @@
   }
 
   function getTimerColor() {
-    return timeRemaining < 5 ? 'text-red-500' : 'text-purple-400';
+    return timeRemaining < 5 ? 'text-danger-500' : 'text-brand-400';
   }
 
   function getTimerBgColor() {
-    return timeRemaining < 5 ? 'bg-red-900' : 'bg-gray-800';
+    return timeRemaining < 5 ? 'bg-danger-900' : 'bg-surface-secondary';
   }
 </script>
 
 <div class="space-y-4">
+  {#if imageUrl}
+    <div class="flex justify-center">
+      <img
+        src={imageUrl}
+        alt="Image clue"
+        loading="lazy"
+        class="max-h-48 w-auto mx-auto rounded-lg"
+        onerror={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    </div>
+  {/if}
+
   <div class="text-center">
-    <div class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+    <div class="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2">
       Time Remaining
     </div>
     <div class={`text-5xl font-bold font-mono ${getTimerColor()} transition-colors duration-200`}>
@@ -49,27 +64,21 @@
         onkeydown={handleKeyDown}
         {disabled}
         placeholder="Enter your guess..."
-        class="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2
-				       focus:ring-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed
-				       placeholder-gray-500"
+        class="flex-1 bg-surface-tertiary text-text-primary px-4 py-3 rounded-lg focus:outline-none focus:ring-2
+				       focus:ring-brand-500 disabled:bg-surface-elevated disabled:cursor-not-allowed
+				       placeholder-text-muted"
       />
       <button
         onclick={handleSubmit}
         disabled={disabled || !inputValue.trim()}
-        class="bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed
-				       text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200
-				       border-2 border-purple-500 hover:border-purple-400 disabled:border-gray-500"
+        class="bg-brand-600 hover:bg-brand-500 disabled:bg-surface-elevated disabled:cursor-not-allowed
+				       text-text-primary px-6 py-3 rounded-lg font-semibold transition-colors duration-200
+				       border-2 border-brand-500 hover:border-brand-400 disabled:border-border-default"
       >
         Submit
       </button>
     </div>
   </div>
 
-  <div class="text-xs text-gray-400 text-center">Press Enter or click Submit to guess</div>
+  <div class="text-xs text-text-muted text-center">Press Enter or click Submit to guess</div>
 </div>
-
-<style lang="postcss">
-  :global(html) {
-    color-scheme: dark;
-  }
-</style>

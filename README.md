@@ -38,7 +38,7 @@ twitch-hub/
 │   │   ├── src/lib/stores/     # Svelte 5 rune stores
 │   │   └── src/routes/         # Pages (dashboard, play, overlay)
 │   └── server/                 # Express + Socket.IO backend
-│       ├── src/engine/         # Game engine (abstract base + 6 types)
+│       ├── src/engine/         # Game engine (abstract base + 3 types)
 │       ├── src/socket/         # Socket.IO namespaces & handlers
 │       ├── src/twitch/         # Twitch EventSub + chat parser
 │       └── prisma/             # Database schema & migrations
@@ -49,14 +49,11 @@ twitch-hub/
 
 ## Game Types
 
-| Game            | Description                                  | Chat Command          |
-| --------------- | -------------------------------------------- | --------------------- |
-| **Hot Take**    | Rate statements 1-10, see live histogram     | `!rate N`             |
-| **Balance**     | A/B choice with animated split bar           | `!vote A` / `!vote B` |
-| **Bracket**     | Tournament bracket with progressive matchups | `!vote A` / `!vote B` |
-| **Personality** | Multi-question quiz with personality results | Web only              |
-| **Tier List**   | Collaborative tier placement                 | `!tier S item`        |
-| **Blind Test**  | Timed guessing with leaderboard              | `!answer text`        |
+| Game           | Description                              | Chat Command          |
+| -------------- | ---------------------------------------- | --------------------- |
+| **Hot Take**   | Rate statements 1-10, see live histogram | `!rate N`             |
+| **Balance**    | A/B choice with animated tug-of-war bar  | `!vote A` / `!vote B` |
+| **Blind Test** | Timed guessing with leaderboard          | `!answer text`        |
 
 ## Scripts
 

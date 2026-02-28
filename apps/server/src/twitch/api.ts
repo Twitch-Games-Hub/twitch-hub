@@ -15,22 +15,6 @@ function getHeaders(tokens: TwitchTokens) {
   };
 }
 
-export async function getAppAccessToken(): Promise<string> {
-  const res = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: config.twitch.clientId,
-      client_secret: config.twitch.clientSecret,
-      grant_type: 'client_credentials',
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Failed to get app access token: ${res.status}`);
-  const data = await res.json();
-  return data.access_token;
-}
-
 export async function validateToken(accessToken: string): Promise<boolean> {
   const res = await fetch('https://id.twitch.tv/oauth2/validate', {
     headers: { Authorization: `OAuth ${accessToken}` },
@@ -85,12 +69,68 @@ export async function createEventSubSubscription(
   }
 }
 
-export async function getUserByLogin(login: string, accessToken: string) {
-  const res = await fetch(`${HELIX_BASE}/users?login=${login}`, {
+export async function getUserById(userId: string, accessToken: string) {
+  const res = await fetch(`${HELIX_BASE}/users?id=${userId}`, {
     headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
   });
-
-  if (!res.ok) throw new Error(`Failed to get user: ${res.status}`);
+  if (!res.ok) return null;
   const data = await res.json();
   return data.data[0] || null;
+}
+
+export async function getChannel(broadcasterId: string, accessToken: string) {
+  const res = await fetch(`${HELIX_BASE}/channels?broadcaster_id=${broadcasterId}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.data[0] || null;
+}
+
+export async function getStream(userId: string, accessToken: string) {
+  const res = await fetch(`${HELIX_BASE}/streams?user_id=${userId}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.data[0] || null;
+}
+
+export async function getFollowedChannels(
+  userId: string,
+  accessToken: string,
+  first = 20,
+  after?: string,
+) {
+  const params = new URLSearchParams({ user_id: userId, first: String(first) });
+  if (after) params.set('after', after);
+  const res = await fetch(`${HELIX_BASE}/channels/followed?${params}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function getFollowedStreams(userId: string, accessToken: string, first = 20) {
+  const params = new URLSearchParams({ user_id: userId, first: String(first) });
+  const res = await fetch(`${HELIX_BASE}/streams/followed?${params}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function getFollowers(
+  broadcasterId: string,
+  accessToken: string,
+  first = 20,
+  after?: string,
+) {
+  const params = new URLSearchParams({ broadcaster_id: broadcasterId, first: String(first) });
+  if (after) params.set('after', after);
+  const res = await fetch(`${HELIX_BASE}/channels/followers?${params}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  return res.json();
 }

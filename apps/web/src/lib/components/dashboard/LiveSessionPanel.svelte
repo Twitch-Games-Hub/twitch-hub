@@ -1,11 +1,14 @@
 <script lang="ts">
   import { gameStore } from '$lib/stores/game.svelte';
-  import type { ApiGame } from '@twitch-hub/shared-types';
+  import type { ApiGameBase } from '@twitch-hub/shared-types';
   import SessionStatusBar from './SessionStatusBar.svelte';
   import SessionShareLinks from './SessionShareLinks.svelte';
   import SessionControls from './SessionControls.svelte';
+  import ConnectedUsersTable from './ConnectedUsersTable.svelte';
+  import SessionResults from './SessionResults.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
-  import SplitBar from '$lib/components/overlay/SplitBar.svelte';
+  import TugOfWar from '$lib/components/overlay/TugOfWar.svelte';
+  import { countsToPercents } from '$lib/utils/votes';
 
   let {
     game,
@@ -15,7 +18,7 @@
     onNextRound,
     onEndGame,
   }: {
-    game: ApiGame;
+    game: ApiGameBase;
     sessionId: string;
     appUrl: string;
     onStartGame: () => void;
@@ -24,17 +27,11 @@
   } = $props();
 
   const phase = $derived<'lobby' | 'live' | 'results'>(
-    gameStore.finalResults
-      ? 'results'
-      : gameStore.gameState?.status === 'ACTIVE'
-        ? 'live'
-        : 'lobby',
+    gameStore.finalResults ? 'results' : gameStore.gameState?.status === 'LIVE' ? 'live' : 'lobby',
   );
 
-  const isSplitBar = $derived(
-    gameStore.votes &&
-      gameStore.votes.distribution.length === 2 &&
-      (game.type === 'BALANCE' || game.type === 'BRACKET'),
+  const isBinaryVote = $derived(
+    gameStore.votes && gameStore.votes.distribution.length === 2 && game.type === 'BALANCE',
   );
 </script>
 
@@ -45,6 +42,8 @@
   {/if}
 
   <div class="space-y-4 p-4">
+    <SessionShareLinks {sessionId} {appUrl} />
+
     {#if phase === 'lobby'}
       <!-- Lobby Phase -->
       <div class="py-4 text-center">
@@ -61,7 +60,7 @@
         </p>
       </div>
 
-      <SessionShareLinks {sessionId} {appUrl} />
+      <ConnectedUsersTable users={gameStore.connectedUsers} />
 
       <SessionControls {onStartGame} {onNextRound} {onEndGame} />
     {:else if phase === 'live'}
@@ -71,13 +70,19 @@
           <p class="mb-2 text-xs text-text-muted">
             Live Distribution ({gameStore.votes.totalVotes} votes)
           </p>
-          {#if isSplitBar}
-            <SplitBar
-              percentA={gameStore.votes.distribution[0]}
-              percentB={gameStore.votes.distribution[1]}
+          {#if isBinaryVote}
+            {@const [pA, pB] = countsToPercents(
+              gameStore.votes.distribution[0],
+              gameStore.votes.distribution[1],
+            )}
+            <TugOfWar
+              percentA={pA}
+              percentB={pB}
               labelA={gameStore.currentRound?.options?.[0] ?? 'A'}
               labelB={gameStore.currentRound?.options?.[1] ?? 'B'}
               totalVotes={gameStore.votes.totalVotes}
+              imageA={gameStore.currentRound?.optionImages?.[0]}
+              imageB={gameStore.currentRound?.optionImages?.[1]}
             />
           {:else}
             <Histogram
@@ -90,15 +95,12 @@
 
       <SessionControls {onStartGame} {onNextRound} {onEndGame} />
 
-      <SessionShareLinks {sessionId} {appUrl} />
+      <ConnectedUsersTable users={gameStore.connectedUsers} />
     {:else}
       <!-- Results Phase -->
-      <div class="rounded-lg border border-success-500/20 bg-success-900/20 p-6 text-center">
-        <h3 class="text-lg font-semibold text-success-500">Game Complete</h3>
-        <p class="mt-1 text-sm text-text-secondary">
-          Total participants: {gameStore.finalResults?.totalParticipants ?? 0}
-        </p>
-      </div>
+      {#if gameStore.finalResults}
+        <SessionResults finalResults={gameStore.finalResults} {game} />
+      {/if}
     {/if}
   </div>
 </div>

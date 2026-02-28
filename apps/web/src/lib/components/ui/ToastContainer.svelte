@@ -5,7 +5,7 @@
 
 {#if toastStore.toasts.length > 0}
   <div
-    class="fixed right-4 top-4 z-[100] flex flex-col gap-2"
+    class="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2 items-center"
     aria-live="polite"
     aria-label="Notifications"
   >

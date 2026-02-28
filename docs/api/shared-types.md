@@ -9,10 +9,7 @@ The `@twitch-hub/shared-types` package defines all TypeScript types shared betwe
 ```ts
 enum GameType {
   HOT_TAKE = 'HOT_TAKE',
-  BRACKET = 'BRACKET',
   BALANCE = 'BALANCE',
-  PERSONALITY = 'PERSONALITY',
-  TIER_LIST = 'TIER_LIST',
   BLIND_TEST = 'BLIND_TEST',
 }
 ```
@@ -49,14 +46,11 @@ enum ResponseSource {
 
 ## Game Config Types
 
-| Type                | Key Fields                                                                                         |
-| ------------------- | -------------------------------------------------------------------------------------------------- |
-| `HotTakeConfig`     | `statements: string[]`, `roundDurationSec: number`                                                 |
-| `BalanceConfig`     | `questions: { optionA, optionB }[]`                                                                |
-| `BracketConfig`     | `items: string[]`, `bracketSize: 8 \| 16 \| 32`                                                    |
-| `PersonalityConfig` | `questions: { text, options: { label, weight }[] }[]`, `resultTypes: { id, title, description }[]` |
-| `TierListConfig`    | `items: string[]`, `tiers: string[]`                                                               |
-| `BlindTestConfig`   | `rounds: { answer, hints, mediaSrc? }[]`, `answerWindowSec: number`                                |
+| Type              | Key Fields                                                          |
+| ----------------- | ------------------------------------------------------------------- |
+| `HotTakeConfig`   | `statements: string[]`, `roundDurationSec: number`                  |
+| `BalanceConfig`   | `questions: { optionA, optionB }[]`                                 |
+| `BlindTestConfig` | `rounds: { answer, hints, mediaSrc? }[]`, `answerWindowSec: number` |
 
 ## API Types
 

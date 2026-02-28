@@ -32,7 +32,7 @@ describe('parseChatCommand', () => {
     });
   });
 
-  describe('!vote command (Balance/Bracket)', () => {
+  describe('!vote command (Balance)', () => {
     it('parses !vote A', () => {
       const result = parseChatCommand('!vote A');
       expect(result).toEqual({ type: 'vote', value: 'A', raw: '!vote A' });
@@ -82,41 +82,6 @@ describe('parseChatCommand', () => {
 
     it('rejects empty answer', () => {
       expect(parseChatCommand('!answer')).toBeNull();
-    });
-  });
-
-  describe('!tier command (TierList)', () => {
-    it('parses valid tier placements', () => {
-      const result = parseChatCommand('!tier S Minecraft');
-      expect(result).toEqual({
-        type: 'tier',
-        value: JSON.stringify({ tier: 'S', item: 'Minecraft' }),
-        raw: '!tier S Minecraft',
-      });
-    });
-
-    it('accepts all valid tiers (S, A, B, C, D, F)', () => {
-      for (const tier of ['S', 'A', 'B', 'C', 'D', 'F']) {
-        const result = parseChatCommand(`!tier ${tier} TestItem`);
-        expect(result).not.toBeNull();
-        const parsed = JSON.parse(result!.value as string);
-        expect(parsed.tier).toBe(tier);
-      }
-    });
-
-    it('normalizes lowercase tier to uppercase', () => {
-      const result = parseChatCommand('!tier s Minecraft');
-      const parsed = JSON.parse(result!.value as string);
-      expect(parsed.tier).toBe('S');
-    });
-
-    it('rejects invalid tiers', () => {
-      expect(parseChatCommand('!tier X Item')).toBeNull();
-      expect(parseChatCommand('!tier')).toBeNull();
-    });
-
-    it('rejects tier without item name', () => {
-      expect(parseChatCommand('!tier S')).toBeNull();
     });
   });
 

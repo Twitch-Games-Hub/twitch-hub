@@ -1,9 +1,11 @@
 import type { Socket, Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/shared-types';
 import { SessionStatus } from '@twitch-hub/shared-types';
+import * as Sentry from '@sentry/node';
 import { gameRegistry } from '../../engine/GameRegistry.js';
 import { prisma } from '../../db/client.js';
 import { logger } from '../../logger.js';
+import { requireHost } from '../helpers.js';
 
 const log = logger.child({ module: 'game' });
 
@@ -24,7 +26,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
         where: {
           gameId,
           hostId: socket.data.userId,
-          status: { in: ['WAITING', 'ACTIVE'] },
+          status: { in: ['LOBBY', 'LIVE'] },
         },
       });
       if (existing) {
@@ -50,73 +52,50 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
     } catch (err) {
       socket.emit('error', 'Failed to create session');
       log.error({ err, gameId, userId: socket.data.userId }, 'game:create-session error');
+      Sentry.captureException(err, {
+        tags: { handler: 'game:create-session' },
+        extra: { gameId, userId: socket.data.userId },
+      });
     }
   });
 
-  socket.on('game:start', async (sessionId) => {
-    try {
-      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
-        socket.emit('error', 'Not authorized');
-        return;
-      }
-
-      const engine = gameRegistry.getEngine(sessionId);
-      if (!engine) {
-        socket.emit('error', 'Session not found');
-        return;
-      }
+  socket.on('game:start', (sessionId) =>
+    requireHost(async (socket, sessionId) => {
+      const engine = gameRegistry.getEngine(sessionId)!;
 
       const state = await engine.start();
 
       await prisma.gameSession.update({
         where: { id: sessionId },
-        data: { status: 'ACTIVE', startedAt: new Date() },
+        data: { status: 'LIVE', startedAt: new Date() },
       });
 
-      // Broadcast to all namespaces
       broadcastToSession(io, sessionId, 'game:state', state);
 
-      // Start first round
       const roundData = await engine.startRound();
       broadcastToSession(io, sessionId, 'game:round-start', roundData);
 
-      // Persist current round for recovery
       await prisma.gameSession.update({
         where: { id: sessionId },
         data: { currentRound: engine.getState().currentRound },
       });
 
       log.info({ sessionId, userId: socket.data.userId }, 'Game started');
-    } catch (err) {
-      socket.emit('error', 'Failed to start game');
-      log.error({ err, sessionId, userId: socket.data.userId }, 'game:start error');
-    }
-  });
+    }, 'game:start')(socket, sessionId),
+  );
 
-  socket.on('game:next-round', async (sessionId) => {
-    try {
-      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
-        socket.emit('error', 'Not authorized');
-        return;
-      }
+  socket.on('game:next-round', (sessionId) =>
+    requireHost(async (socket, sessionId) => {
+      const engine = gameRegistry.getEngine(sessionId)!;
 
-      const engine = gameRegistry.getEngine(sessionId);
-      if (!engine) {
-        socket.emit('error', 'Session not found');
-        return;
-      }
-
-      // End current round
       const results = await engine.endRound();
       broadcastToSession(io, sessionId, 'game:round-end', results);
 
-      // Start next round
       const roundData = await engine.startRound();
       if (roundData) {
         broadcastToSession(io, sessionId, 'game:round-start', roundData);
         broadcastToSession(io, sessionId, 'game:state', engine.getState());
 
-        // Persist current round for recovery
         await prisma.gameSession.update({
           where: { id: sessionId },
           data: { currentRound: engine.getState().currentRound },
@@ -124,50 +103,35 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       }
 
       log.info({ sessionId, userId: socket.data.userId }, 'Round advanced');
-    } catch (err) {
-      socket.emit('error', 'Failed to advance round');
-      log.error({ err, sessionId, userId: socket.data.userId }, 'game:next-round error');
-    }
-  });
+    }, 'game:next-round')(socket, sessionId),
+  );
 
-  socket.on('game:end', async (sessionId) => {
-    try {
-      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
-        socket.emit('error', 'Not authorized');
-        return;
-      }
-
-      const engine = gameRegistry.getEngine(sessionId);
-      if (!engine) {
-        socket.emit('error', 'Session not found');
-        return;
-      }
+  socket.on('game:end', (sessionId) =>
+    requireHost(async (socket, sessionId) => {
+      const engine = gameRegistry.getEngine(sessionId)!;
 
       const finalResults = await engine.end();
 
       await prisma.gameSession.update({
         where: { id: sessionId },
-        data: { status: 'COMPLETED', endedAt: new Date() },
+        data: { status: 'ENDED', endedAt: new Date(), state: finalResults as object },
       });
 
       broadcastToSession(io, sessionId, 'game:ended', finalResults);
       gameRegistry.removeEngine(sessionId);
 
       log.info({ sessionId, userId: socket.data.userId }, 'Game ended');
-    } catch (err) {
-      socket.emit('error', 'Failed to end game');
-      log.error({ err, sessionId, userId: socket.data.userId }, 'game:end error');
-    }
-  });
+    }, 'game:end')(socket, sessionId),
+  );
 
-  socket.on('session:rejoin', async ({ gameId }) => {
+  socket.on('session:rejoin', async ({ sessionId }) => {
     try {
-      // Find active session for this game + host
+      // Find session by PK + host ownership
       const session = await prisma.gameSession.findFirst({
         where: {
-          gameId,
+          id: sessionId,
           hostId: socket.data.userId,
-          status: { in: ['WAITING', 'ACTIVE'] },
+          status: { in: ['LOBBY', 'LIVE'] },
         },
         include: { game: true },
       });
@@ -183,18 +147,22 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       let engine = gameRegistry.getEngine(session.id);
       if (!engine) {
         engine = await gameRegistry.initSession(session.id, session.game, socket.data.userId);
-        if (session.status === 'ACTIVE') {
-          engine.restoreState(session.currentRound, SessionStatus.ACTIVE);
+        if (session.status === 'LIVE') {
+          engine.restoreState(session.currentRound, SessionStatus.LIVE);
         }
       }
 
       const snapshot = await engine.getSnapshot(session.id);
       socket.emit('session:rejoined', snapshot);
 
-      log.info({ sessionId: session.id, gameId, userId: socket.data.userId }, 'Session rejoined');
+      log.info({ sessionId, userId: socket.data.userId }, 'Session rejoined');
     } catch (err) {
       socket.emit('error', 'Failed to rejoin session');
-      log.error({ err, gameId, userId: socket.data.userId }, 'session:rejoin error');
+      log.error({ err, sessionId, userId: socket.data.userId }, 'session:rejoin error');
+      Sentry.captureException(err, {
+        tags: { handler: 'session:rejoin' },
+        extra: { sessionId, userId: socket.data.userId },
+      });
     }
   });
 }
