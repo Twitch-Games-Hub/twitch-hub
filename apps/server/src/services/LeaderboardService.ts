@@ -10,7 +10,12 @@ export class LeaderboardService {
   }
 
   async getTopScores(sessionId: string, count = 10): Promise<{ userId: string; score: number }[]> {
-    const results = await redis.zrevrange(this.leaderboardKey(sessionId), 0, count - 1, 'WITHSCORES');
+    const results = await redis.zrevrange(
+      this.leaderboardKey(sessionId),
+      0,
+      count - 1,
+      'WITHSCORES',
+    );
     const entries: { userId: string; score: number }[] = [];
     for (let i = 0; i < results.length; i += 2) {
       entries.push({ userId: results[i], score: parseFloat(results[i + 1]) });

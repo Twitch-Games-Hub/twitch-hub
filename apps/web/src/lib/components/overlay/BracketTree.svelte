@@ -1,5 +1,10 @@
 <script lang="ts">
-  let { items = [], currentMatchup = null, results = [], totalRounds = 0 }: {
+  let {
+    items = [],
+    currentMatchup = null,
+    results = [],
+    totalRounds = 0,
+  }: {
     items: string[];
     currentMatchup: [string, string] | null;
     results: { winner: string; round: number }[];
@@ -64,7 +69,9 @@
           >
             <div class="flex items-center gap-2">
               <span
-                class="flex-1 rounded px-2 py-1 text-sm font-semibold drop-shadow-lg {isWinner(match.left)
+                class="flex-1 rounded px-2 py-1 text-sm font-semibold drop-shadow-lg {isWinner(
+                  match.left,
+                )
                   ? 'bg-green-700 text-green-100'
                   : 'bg-gray-700/50 text-white'}"
               >
@@ -72,7 +79,9 @@
               </span>
               <span class="text-xs font-bold text-gray-500">vs</span>
               <span
-                class="flex-1 rounded px-2 py-1 text-sm font-semibold drop-shadow-lg {isWinner(match.right)
+                class="flex-1 rounded px-2 py-1 text-sm font-semibold drop-shadow-lg {isWinner(
+                  match.right,
+                )
                   ? 'bg-green-700 text-green-100'
                   : 'bg-gray-700/50 text-white'}"
               >
@@ -86,8 +95,6 @@
   {/each}
 
   {#if items.length === 0}
-    <div class="py-12 text-center text-sm italic text-gray-500">
-      Waiting for bracket data...
-    </div>
+    <div class="py-12 text-center text-sm italic text-gray-500">Waiting for bracket data...</div>
   {/if}
 </div>

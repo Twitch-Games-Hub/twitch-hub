@@ -13,7 +13,9 @@
     "db:push": "prisma db push",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "format": "prettier --write 'src/**/*.ts'"
+    "format": "prettier --write 'src/**/*.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
@@ -34,6 +36,7 @@
     "@types/ws": "^8.5.13",
     "prisma": "^6.5.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
   }
 }

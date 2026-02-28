@@ -10,12 +10,30 @@ import { BlindTestGame } from './types/BlindTestGame.js';
 type GameRecord = { id: string; type: string; config: unknown };
 
 const engineMap: Record<string, new (sessionId: string, config: never) => GameEngine> = {
-  [GameType.HOT_TAKE]: HotTakeGame as unknown as new (sessionId: string, config: never) => GameEngine,
-  [GameType.BRACKET]: BracketGame as unknown as new (sessionId: string, config: never) => GameEngine,
-  [GameType.BALANCE]: BalanceGame as unknown as new (sessionId: string, config: never) => GameEngine,
-  [GameType.PERSONALITY]: PersonalityGame as unknown as new (sessionId: string, config: never) => GameEngine,
-  [GameType.TIER_LIST]: TierListGame as unknown as new (sessionId: string, config: never) => GameEngine,
-  [GameType.BLIND_TEST]: BlindTestGame as unknown as new (sessionId: string, config: never) => GameEngine,
+  [GameType.HOT_TAKE]: HotTakeGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.BRACKET]: BracketGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.BALANCE]: BalanceGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.PERSONALITY]: PersonalityGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.TIER_LIST]: TierListGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.BLIND_TEST]: BlindTestGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
 };
 
 class GameRegistryClass {

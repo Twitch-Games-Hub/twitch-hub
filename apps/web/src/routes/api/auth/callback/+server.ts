@@ -44,7 +44,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     error(500, 'Failed to fetch Twitch user');
   }
 
-  const { data: [twitchUser] } = await userRes.json();
+  const {
+    data: [twitchUser],
+  } = await userRes.json();
 
   // Upsert user via real-time server API
   const serverUrl = env.PUBLIC_SERVER_URL || 'http://localhost:3001';

@@ -59,5 +59,18 @@ export default tseslint.config(
         parser: tseslint.parser,
       },
     },
+    rules: {
+      'svelte/require-each-key': 'warn',
+      'svelte/no-navigation-without-resolve': 'warn',
+    },
+  },
+  {
+    files: ['**/*.svelte.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+    },
+    rules: {
+      'prefer-const': 'off',
+    },
   },
 );

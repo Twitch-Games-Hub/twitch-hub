@@ -40,11 +40,9 @@ authRouter.post('/upsert', async (req: Request, res: Response) => {
     },
   });
 
-  const token = jwt.sign(
-    { userId: user.id, twitchId: user.twitchId },
-    config.jwtSecret,
-    { expiresIn: '7d' },
-  );
+  const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
+    expiresIn: '7d',
+  });
 
   res.json({ token, user: sanitizeUser(user) });
 });
@@ -70,7 +68,14 @@ authRouter.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-function sanitizeUser(user: { id: string; twitchId: string; twitchLogin: string; displayName: string; profileImageUrl: string | null; role: string }) {
+function sanitizeUser(user: {
+  id: string;
+  twitchId: string;
+  twitchLogin: string;
+  displayName: string;
+  profileImageUrl: string | null;
+  role: string;
+}) {
   return {
     id: user.id,
     twitchId: user.twitchId,

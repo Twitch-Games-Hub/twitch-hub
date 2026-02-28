@@ -111,7 +111,13 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 }
 
 function broadcastToSession(io: AppServer, sessionId: string, event: string, data: unknown) {
-  io.of('/dashboard').to(sessionId).emit(event as keyof ServerToClientEvents, data as never);
-  io.of('/play').to(sessionId).emit(event as keyof ServerToClientEvents, data as never);
-  io.of('/overlay').to(sessionId).emit(event as keyof ServerToClientEvents, data as never);
+  io.of('/dashboard')
+    .to(sessionId)
+    .emit(event as keyof ServerToClientEvents, data as never);
+  io.of('/play')
+    .to(sessionId)
+    .emit(event as keyof ServerToClientEvents, data as never);
+  io.of('/overlay')
+    .to(sessionId)
+    .emit(event as keyof ServerToClientEvents, data as never);
 }

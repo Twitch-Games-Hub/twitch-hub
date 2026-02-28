@@ -1,8 +1,16 @@
-import { GameType, type TierListConfig, type RoundData, type RoundResults, type FinalResults } from '@twitch-hub/shared-types';
+import {
+  GameType,
+  type TierListConfig,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+} from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
 
 export class TierListGame extends GameEngine<TierListConfig, Record<string, string>> {
-  getGameType() { return GameType.TIER_LIST; }
+  getGameType() {
+    return GameType.TIER_LIST;
+  }
 
   getTotalRounds(): number {
     return 1; // Single round for tier list submission
@@ -17,7 +25,11 @@ export class TierListGame extends GameEngine<TierListConfig, Record<string, stri
     };
   }
 
-  async processAnswer(userId: string, answer: Record<string, string>, questionId: string): Promise<void> {
+  async processAnswer(
+    userId: string,
+    answer: Record<string, string>,
+    questionId: string,
+  ): Promise<void> {
     const isDupe = await this.isDuplicate(userId);
     if (isDupe) return;
     const { redis } = await import('../../db/redis.js');
@@ -32,6 +44,10 @@ export class TierListGame extends GameEngine<TierListConfig, Record<string, stri
   }
 
   async computeFinalResults(): Promise<FinalResults> {
-    return { sessionId: this.sessionId, rounds: this.roundResults, totalParticipants: this.participantIds.size };
+    return {
+      sessionId: this.sessionId,
+      rounds: this.roundResults,
+      totalParticipants: this.participantIds.size,
+    };
   }
 }

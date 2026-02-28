@@ -47,11 +47,7 @@ export interface ClientToServerEvents {
   'game:start': (sessionId: string) => void;
   'game:next-round': (sessionId: string) => void;
   'game:end': (sessionId: string) => void;
-  'response:submit': (data: {
-    sessionId: string;
-    questionId: string;
-    answer: unknown;
-  }) => void;
+  'response:submit': (data: { sessionId: string; questionId: string; answer: unknown }) => void;
   'session:join': (sessionId: string) => void;
 }
 
@@ -62,6 +58,6 @@ export interface ServerToClientEvents {
   'game:ended': (finalResults: FinalResults) => void;
   'votes:update': (aggregation: VoteAggregation) => void;
   'participants:count': (count: number) => void;
-  'error': (message: string) => void;
+  error: (message: string) => void;
   'session:created': (data: { sessionId: string }) => void;
 }

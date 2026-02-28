@@ -1,9 +1,17 @@
-import { GameType, type BalanceConfig, type RoundData, type RoundResults, type FinalResults } from '@twitch-hub/shared-types';
+import {
+  GameType,
+  type BalanceConfig,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+} from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
 import { redis } from '../../db/redis.js';
 
 export class BalanceGame extends GameEngine<BalanceConfig, string> {
-  getGameType() { return GameType.BALANCE; }
+  getGameType() {
+    return GameType.BALANCE;
+  }
 
   getTotalRounds(): number {
     return this.config.questions.length;
@@ -22,7 +30,10 @@ export class BalanceGame extends GameEngine<BalanceConfig, string> {
   async processAnswer(userId: string, answer: string, questionId: string): Promise<void> {
     const isDupe = await this.isDuplicate(userId);
     if (isDupe) return;
-    const bucket = answer === 'A' || answer === this.config.questions[this.currentRound - 1]?.optionA ? '0' : '1';
+    const bucket =
+      answer === 'A' || answer === this.config.questions[this.currentRound - 1]?.optionA
+        ? '0'
+        : '1';
     await redis.hincrby(this.voteKey(questionId), bucket, 1);
     await redis.expire(this.voteKey(questionId), 3600);
   }
@@ -42,7 +53,11 @@ export class BalanceGame extends GameEngine<BalanceConfig, string> {
   }
 
   async computeFinalResults(): Promise<FinalResults> {
-    return { sessionId: this.sessionId, rounds: this.roundResults, totalParticipants: this.participantIds.size };
+    return {
+      sessionId: this.sessionId,
+      rounds: this.roundResults,
+      totalParticipants: this.participantIds.size,
+    };
   }
 
   protected async getDistribution(questionId: string): Promise<number[]> {

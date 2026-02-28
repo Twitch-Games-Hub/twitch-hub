@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
   import { getOverlaySocket } from '$lib/socket';
-  import { gameStore } from '$lib/stores/game';
+  import { gameStore } from '$lib/stores/game.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
   import type { Socket } from 'socket.io-client';
 
@@ -24,7 +24,8 @@
 <svelte:head>
   <title>Overlay</title>
   <style>
-    html, body {
+    html,
+    body {
       background: transparent !important;
       overflow: hidden;
     }
@@ -37,7 +38,7 @@
       <!-- Current Statement -->
       <div class="mb-4 text-center">
         <div class="inline-block rounded-2xl bg-black/70 px-8 py-4 backdrop-blur-sm">
-          <p class="text-sm font-medium text-purple-400">
+          <p class="text-sm font-medium tabular-nums text-brand-400">
             Round {gameStore.gameState?.currentRound}/{gameStore.gameState?.totalRounds}
           </p>
           <h2 class="mt-1 text-2xl font-bold text-white">{gameStore.currentRound.prompt}</h2>
@@ -46,7 +47,7 @@
 
       <!-- Histogram -->
       {#if gameStore.votes}
-        <div class="rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
+        <div class="animate-fade-in rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
           <Histogram
             distribution={gameStore.votes.distribution}
             totalVotes={gameStore.votes.totalVotes}
@@ -55,16 +56,18 @@
       {/if}
 
       <!-- Participant Count -->
-      <div class="mt-3 text-center">
-        <span class="rounded-full bg-purple-600/80 px-4 py-1 text-sm font-medium text-white backdrop-blur-sm">
+      <div class="mt-3 text-center" role="status" aria-live="polite">
+        <span
+          class="rounded-full bg-brand-600/80 px-4 py-1 text-sm font-medium tabular-nums text-white backdrop-blur-sm"
+        >
           {gameStore.participantCount} participants
         </span>
       </div>
     </div>
   {:else if gameStore.roundResults}
-    <div class="w-full max-w-2xl">
+    <div class="w-full max-w-2xl animate-fade-in">
       <div class="rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
-        <h3 class="mb-4 text-center text-xl font-bold text-purple-400">Round Results</h3>
+        <h3 class="mb-4 text-center text-xl font-bold text-brand-400">Round Results</h3>
         {#if gameStore.roundResults.distribution}
           <Histogram
             distribution={gameStore.roundResults.distribution}
@@ -74,19 +77,26 @@
       </div>
     </div>
   {:else if gameStore.finalResults}
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md animate-fade-in">
       <div class="rounded-2xl bg-black/70 p-8 text-center backdrop-blur-sm">
-        <h2 class="text-3xl font-bold text-purple-400">Game Over!</h2>
-        <p class="mt-2 text-lg text-gray-300">
+        <h2
+          class="bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-3xl font-bold text-transparent"
+        >
+          Game Over!
+        </h2>
+        <p class="mt-2 text-lg tabular-nums text-text-secondary">
           {gameStore.finalResults.totalParticipants} participants
         </p>
       </div>
     </div>
   {:else if gameStore.gameState?.status === 'WAITING'}
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md animate-fade-in">
       <div class="rounded-2xl bg-black/70 p-6 text-center backdrop-blur-sm">
+        <div class="mx-auto mb-3 h-8 w-8 animate-pulse rounded-full bg-brand-600/40"></div>
         <h2 class="text-2xl font-bold text-white">Starting Soon...</h2>
-        <p class="mt-2 text-gray-400">{gameStore.participantCount} waiting</p>
+        <p class="mt-2 tabular-nums text-text-muted" role="status" aria-live="polite">
+          {gameStore.participantCount} waiting
+        </p>
       </div>
     </div>
   {/if}
@@ -95,20 +105,5 @@
 <style>
   .overlay-container {
     font-family: 'Inter', system-ui, sans-serif;
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.4s ease-out;
   }
 </style>

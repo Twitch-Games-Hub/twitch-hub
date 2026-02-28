@@ -1,8 +1,16 @@
-import { GameType, type PersonalityConfig, type RoundData, type RoundResults, type FinalResults } from '@twitch-hub/shared-types';
+import {
+  GameType,
+  type PersonalityConfig,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+} from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
 
 export class PersonalityGame extends GameEngine<PersonalityConfig, number> {
-  getGameType() { return GameType.PERSONALITY; }
+  getGameType() {
+    return GameType.PERSONALITY;
+  }
 
   getTotalRounds(): number {
     return this.config.questions.length;
@@ -14,7 +22,7 @@ export class PersonalityGame extends GameEngine<PersonalityConfig, number> {
       round,
       questionId: `personality-${round - 1}`,
       prompt: q.text,
-      options: q.options.map(o => o.label),
+      options: q.options.map((o) => o.label),
     };
   }
 
@@ -30,6 +38,10 @@ export class PersonalityGame extends GameEngine<PersonalityConfig, number> {
   }
 
   async computeFinalResults(): Promise<FinalResults> {
-    return { sessionId: this.sessionId, rounds: this.roundResults, totalParticipants: this.participantIds.size };
+    return {
+      sessionId: this.sessionId,
+      rounds: this.roundResults,
+      totalParticipants: this.participantIds.size,
+    };
   }
 }

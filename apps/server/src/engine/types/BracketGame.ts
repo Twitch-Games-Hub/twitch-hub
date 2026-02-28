@@ -1,11 +1,19 @@
-import { GameType, type BracketConfig, type RoundData, type RoundResults, type FinalResults } from '@twitch-hub/shared-types';
+import {
+  GameType,
+  type BracketConfig,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+} from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
 
 export class BracketGame extends GameEngine<BracketConfig, string> {
   private matchups: [string, string][] = [];
   private currentMatchupIndex = 0;
 
-  getGameType() { return GameType.BRACKET; }
+  getGameType() {
+    return GameType.BRACKET;
+  }
 
   getTotalRounds(): number {
     return Math.ceil(Math.log2(this.config.bracketSize));
@@ -16,7 +24,9 @@ export class BracketGame extends GameEngine<BracketConfig, string> {
       round,
       questionId: `matchup-${this.currentMatchupIndex}`,
       prompt: `${this.matchups[this.currentMatchupIndex]?.[0]} vs ${this.matchups[this.currentMatchupIndex]?.[1]}`,
-      options: this.matchups[this.currentMatchupIndex] ? [...this.matchups[this.currentMatchupIndex]] : [],
+      options: this.matchups[this.currentMatchupIndex]
+        ? [...this.matchups[this.currentMatchupIndex]]
+        : [],
     };
   }
 
@@ -33,6 +43,10 @@ export class BracketGame extends GameEngine<BracketConfig, string> {
   }
 
   async computeFinalResults(): Promise<FinalResults> {
-    return { sessionId: this.sessionId, rounds: this.roundResults, totalParticipants: this.participantIds.size };
+    return {
+      sessionId: this.sessionId,
+      rounds: this.roundResults,
+      totalParticipants: this.participantIds.size,
+    };
   }
 }

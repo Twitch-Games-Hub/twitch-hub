@@ -1,8 +1,16 @@
-import { GameType, type BlindTestConfig, type RoundData, type RoundResults, type FinalResults } from '@twitch-hub/shared-types';
+import {
+  GameType,
+  type BlindTestConfig,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+} from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
 
 export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
-  getGameType() { return GameType.BLIND_TEST; }
+  getGameType() {
+    return GameType.BLIND_TEST;
+  }
 
   getTotalRounds(): number {
     return this.config.rounds.length;
@@ -35,6 +43,10 @@ export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
   }
 
   async computeFinalResults(): Promise<FinalResults> {
-    return { sessionId: this.sessionId, rounds: this.roundResults, totalParticipants: this.participantIds.size };
+    return {
+      sessionId: this.sessionId,
+      rounds: this.roundResults,
+      totalParticipants: this.participantIds.size,
+    };
   }
 }

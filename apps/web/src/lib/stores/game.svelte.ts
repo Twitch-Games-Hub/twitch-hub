@@ -86,14 +86,30 @@ function createGameStore() {
   }
 
   return {
-    get gameState() { return state.gameState; },
-    get currentRound() { return state.currentRound; },
-    get roundResults() { return state.roundResults; },
-    get finalResults() { return state.finalResults; },
-    get votes() { return state.votes; },
-    get participantCount() { return state.participantCount; },
-    get connected() { return state.connected; },
-    get error() { return state.error; },
+    get gameState() {
+      return state.gameState;
+    },
+    get currentRound() {
+      return state.currentRound;
+    },
+    get roundResults() {
+      return state.roundResults;
+    },
+    get finalResults() {
+      return state.finalResults;
+    },
+    get votes() {
+      return state.votes;
+    },
+    get participantCount() {
+      return state.participantCount;
+    },
+    get connected() {
+      return state.connected;
+    },
+    get error() {
+      return state.error;
+    },
 
     bindSocket,
     reset,

@@ -41,7 +41,7 @@ export class VoteService {
       questionId,
       answer,
       source,
-    }).catch(err => console.error('Failed to persist response:', err));
+    }).catch((err) => console.error('Failed to persist response:', err));
 
     return true;
   }

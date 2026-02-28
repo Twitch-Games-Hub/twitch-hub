@@ -1,41 +1,48 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiGet, apiDelete } from '$lib/api';
-  import type { ApiGame } from '@twitch-hub/shared-types';
+  import type { ApiGame, GameType } from '@twitch-hub/shared-types';
+  import { GAME_TYPE_META } from '$lib/constants';
+  import { toastStore } from '$lib/stores/toast.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import Card from '$lib/components/ui/Card.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
+  import Skeleton from '$lib/components/ui/Skeleton.svelte';
+  import EmptyState from '$lib/components/ui/EmptyState.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import { PlusIcon, TrashIcon } from '$lib/components/ui/icons';
 
   let games = $state<ApiGame[]>([]);
   let loading = $state(true);
+  let deleteTarget = $state<string | null>(null);
+  let confirmOpen = $state(false);
 
   onMount(async () => {
     try {
       games = await apiGet<ApiGame[]>('/api/games');
     } catch (err) {
-      console.error('Failed to load games:', err);
+      toastStore.add('Failed to load games', 'error');
     } finally {
       loading = false;
     }
   });
 
-  async function deleteGame(id: string) {
-    if (!confirm('Delete this game?')) return;
-    await apiDelete(`/api/games/${id}`);
-    games = games.filter(g => g.id !== id);
+  function promptDelete(id: string) {
+    deleteTarget = id;
+    confirmOpen = true;
   }
 
-  const gameTypeLabels: Record<string, string> = {
-    HOT_TAKE: 'Hot Take Meter',
-    BRACKET: 'World Cup Bracket',
-    BALANCE: 'Balance Game',
-    PERSONALITY: 'Personality Quiz',
-    TIER_LIST: 'Tier List',
-    BLIND_TEST: 'Blind Test',
-  };
-
-  const statusColors: Record<string, string> = {
-    DRAFT: 'bg-yellow-900 text-yellow-300',
-    READY: 'bg-green-900 text-green-300',
-    ARCHIVED: 'bg-gray-700 text-gray-400',
-  };
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await apiDelete(`/api/games/${deleteTarget}`);
+      games = games.filter((g) => g.id !== deleteTarget);
+      toastStore.add('Game deleted', 'success');
+    } catch {
+      toastStore.add('Failed to delete game', 'error');
+    }
+  }
 </script>
 
 <svelte:head>
@@ -43,56 +50,66 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl px-4 py-8">
-  <div class="mb-8 flex items-center justify-between">
-    <h1 class="text-3xl font-bold">Your Games</h1>
-    <a
-      href="/dashboard/games/new"
-      class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-    >
-      + New Game
-    </a>
-  </div>
+  <PageHeader title="Your Games">
+    {#snippet action()}
+      <Button href="/dashboard/games/new">
+        <PlusIcon size={16} />
+        New Game
+      </Button>
+    {/snippet}
+  </PageHeader>
 
   {#if loading}
-    <p class="text-gray-400">Loading...</p>
-  {:else if games.length === 0}
-    <div class="rounded-xl border border-gray-800 bg-gray-900 p-12 text-center">
-      <h2 class="mb-2 text-xl font-semibold text-gray-300">No games yet</h2>
-      <p class="mb-6 text-gray-500">Create your first interactive game for your stream.</p>
-      <a
-        href="/dashboard/games/new"
-        class="rounded-lg bg-purple-600 px-6 py-2 font-medium text-white hover:bg-purple-700"
-      >
-        Create Game
-      </a>
+    <div class="space-y-4">
+      {#each [1, 2, 3] as _}
+        <Skeleton height="5rem" rounded="rounded-xl" />
+      {/each}
     </div>
+  {:else if games.length === 0}
+    <EmptyState
+      title="No games yet"
+      description="Create your first interactive game for your stream."
+    >
+      {#snippet action()}
+        <Button href="/dashboard/games/new">
+          <PlusIcon size={16} />
+          Create Game
+        </Button>
+      {/snippet}
+    </EmptyState>
   {:else}
     <div class="grid gap-4">
       {#each games as game}
-        <div class="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900 p-4">
+        <Card
+          padding="md"
+          class="animate-fade-in flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
-            <div class="flex items-center gap-3">
-              <h3 class="text-lg font-semibold">{game.title}</h3>
-              <span class="rounded px-2 py-0.5 text-xs font-medium {statusColors[game.status]}">{game.status}</span>
+            <div class="flex flex-wrap items-center gap-3">
+              <h3 class="text-lg font-semibold text-text-primary">{game.title}</h3>
+              <StatusBadge status={game.status} />
             </div>
-            <p class="text-sm text-gray-400">{gameTypeLabels[game.type] || game.type}</p>
+            <p class="text-sm text-text-secondary">
+              {GAME_TYPE_META[game.type as GameType]?.label || game.type}
+            </p>
           </div>
           <div class="flex items-center gap-2">
-            <a
-              href="/dashboard/games/{game.id}"
-              class="rounded bg-gray-800 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700"
-            >
-              Manage
-            </a>
-            <button
-              onclick={() => deleteGame(game.id)}
-              class="rounded bg-red-900/50 px-3 py-1.5 text-sm text-red-400 hover:bg-red-900"
-            >
+            <Button href="/dashboard/games/{game.id}" variant="secondary" size="sm">Manage</Button>
+            <Button variant="danger" size="sm" onclick={() => promptDelete(game.id)}>
+              <TrashIcon size={14} />
               Delete
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       {/each}
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={confirmOpen}
+  title="Delete Game"
+  message="Are you sure you want to delete this game? This action cannot be undone."
+  confirmLabel="Delete"
+  onconfirm={confirmDelete}
+/>

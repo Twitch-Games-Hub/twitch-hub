@@ -1,4 +1,11 @@
-import { SessionStatus, type GameState, type RoundData, type RoundResults, type FinalResults, type VoteAggregation } from '@twitch-hub/shared-types';
+import {
+  SessionStatus,
+  type GameState,
+  type RoundData,
+  type RoundResults,
+  type FinalResults,
+  type VoteAggregation,
+} from '@twitch-hub/shared-types';
 import { redis } from '../db/redis.js';
 
 export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {

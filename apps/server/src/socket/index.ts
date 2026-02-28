@@ -6,7 +6,10 @@ import { registerGameHandlers } from './handlers/gameHandler.js';
 import { registerVoteHandlers } from './handlers/voteHandler.js';
 import { config } from '../config.js';
 
-export type AppSocket = ReturnType<typeof createSocketServer> extends Server<ClientToServerEvents, ServerToClientEvents> ? Parameters<Parameters<Server<ClientToServerEvents, ServerToClientEvents>['on']>[1]>[0] : never;
+export type AppSocket =
+  ReturnType<typeof createSocketServer> extends Server<ClientToServerEvents, ServerToClientEvents>
+    ? Parameters<Parameters<Server<ClientToServerEvents, ServerToClientEvents>['on']>[1]>[0]
+    : never;
 
 export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {

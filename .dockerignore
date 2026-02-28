@@ -1,0 +1,14 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+dist
+build
+.svelte-kit
+.turbo
+.husky
+.github
+docs
+*.log
+.DS_Store
