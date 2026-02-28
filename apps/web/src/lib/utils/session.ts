@@ -15,15 +15,29 @@ export async function createGameSession(gameId: string): Promise<string> {
   const raw = socket as any;
 
   return new Promise<string>((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      socket.off('session:created', onCreated);
+      raw.off('error', onError);
+    };
+
     const timeout = setTimeout(() => {
-      socket.off('session:created');
-      reject(new Error('Timeout'));
+      cleanup();
+      reject(new Error('Timeout waiting for session creation'));
     }, 10_000);
 
-    socket.once('session:created', (data: { sessionId: string }) => {
-      clearTimeout(timeout);
+    const onCreated = (data: { sessionId: string }) => {
+      cleanup();
       resolve(data.sessionId);
-    });
+    };
+
+    const onError = (msg: string) => {
+      cleanup();
+      reject(new Error(msg));
+    };
+
+    socket.once('session:created', onCreated);
+    raw.once('error', onError);
 
     const emit = () => raw.emit('game:create-session', gameId);
     if (socket.connected) {

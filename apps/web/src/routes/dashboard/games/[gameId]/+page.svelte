@@ -53,8 +53,8 @@
     try {
       const sessionId = await createGameSession(gameId);
       goto(`/dashboard/sessions/${sessionId}`);
-    } catch {
-      toastStore.add('Failed to create session', 'error');
+    } catch (err) {
+      toastStore.add(err instanceof Error ? err.message : 'Failed to create session', 'error');
     } finally {
       creatingSession = false;
     }
