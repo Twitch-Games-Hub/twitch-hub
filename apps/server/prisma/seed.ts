@@ -95,6 +95,30 @@ async function main() {
         roundDurationSec: 30,
       },
     },
+    {
+      ownerId: user.id,
+      type: 'HOT_TAKE' as const,
+      title: 'Hot Take Meter: Film di Aldo, Giovanni e Giacomo',
+      description:
+        "Dieci opinioni taglienti sulla filmografia di Aldo, Giovanni e Giacomo. Quanto sei d'accordo da 1 a 10?",
+      coverImageUrl: 'https://pad.mymovies.it/filmclub/2022/07/011/locandina.jpg',
+      status: 'READY' as const,
+      config: {
+        statements: [
+          '"Tre uomini e una gamba" e\' il loro miglior film in assoluto',
+          '"Chiedimi se sono felice" e\' sopravvalutato',
+          "I film dopo il 2010 non sono all'altezza dei classici",
+          '"La leggenda di Al, John e Jack" e\' sottovalutato',
+          'La scena del "tavolino" e\' la piu\' divertente del cinema italiano',
+          "\"Cosi' e' la vita\" e' piu' profondo di quanto sembri",
+          "Aldo e' il piu' divertente dei tre",
+          '"Il cosmo sul como\'" e\' il loro peggior film',
+          '"La banda dei Babbi Natale" e\' il miglior film di Natale italiano',
+          '"Odio l\'estate" dimostra che il trio funziona ancora',
+        ],
+        roundDurationSec: 30,
+      },
+    },
 
     // ── BALANCE games ───────────────────────────────────────
     {
