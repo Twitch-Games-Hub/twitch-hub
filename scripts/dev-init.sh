@@ -10,6 +10,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+TMUX_SESSION="twitch-hub"
+
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 fail()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
@@ -20,11 +22,11 @@ usage() {
   echo "Usage: $0 [command]"
   echo ""
   echo "Commands:"
-  echo "  init      Full setup and start dev server (default)"
+  echo "  init      Full setup and launch tmux dev session (default)"
   echo "  reset     Nuke Docker volumes + node_modules, then full init"
-  echo "  restart   Restart Docker containers + dev server (skip install)"
-  echo "  stop      Stop Docker containers"
-  echo "  stripe    Start Stripe webhook listener (requires stripe CLI)"
+  echo "  restart   Restart Docker containers + tmux dev session (skip install)"
+  echo "  stop      Kill tmux session and stop Docker containers"
+  echo "  stripe    Start Stripe webhook listener (standalone, no tmux)"
   exit 0
 }
 
@@ -53,6 +55,11 @@ check_prereqs() {
     fail "Docker is not installed"
   fi
   info "Docker $(docker --version | awk '{print $3}' | tr -d ',')"
+
+  if ! command -v tmux &>/dev/null; then
+    fail "tmux is not installed (run: sudo apt install tmux)"
+  fi
+  info "tmux $(tmux -V | awk '{print $2}')"
 }
 
 # ── Docker helpers ────────────────────────────────────────────────────
@@ -105,22 +112,74 @@ setup_db() {
   echo ""
   echo "Setting up database..."
   cd apps/server
-  npx prisma migrate deploy
+  bunx prisma migrate deploy
   info "Migrations applied"
-  npx prisma generate
+  bunx prisma generate
   info "Prisma client generated"
   cd "$ROOT_DIR"
 }
 
-# ── Start dev server ─────────────────────────────────────────────────
+# ── Stripe availability check ────────────────────────────────────────
 
-start_dev() {
+stripe_available() {
+  command -v stripe &>/dev/null || return 1
+  [[ -f apps/server/.env ]] || return 1
+  local key
+  key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2- || true)
+  [[ -n "$key" && "$key" != "sk_test_..." ]] || return 1
+  return 0
+}
+
+# ── tmux session management ──────────────────────────────────────────
+
+start_tmux_session() {
   echo ""
-  echo -e "${GREEN}Starting dev environment...${NC}"
+  echo -e "${GREEN}Launching tmux dev session...${NC}"
   echo "  Web:    http://localhost:5173"
   echo "  Server: http://localhost:3001"
   echo ""
-  exec bun dev
+
+  # Kill any existing session
+  tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
+
+  # Create detached session — top pane runs bun dev
+  tmux new-session -d -s "$TMUX_SESSION" -c "$ROOT_DIR" "bun dev"
+
+  # Split bottom pane (35% height) for docker compose logs
+  tmux split-window -t "$TMUX_SESSION" -v -l 35% -c "$ROOT_DIR" \
+    "docker compose -f docker-compose.dev.yml logs -f"
+
+  # Split bottom pane vertically (50/50) for stripe or placeholder
+  if stripe_available; then
+    local key
+    key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2-)
+    tmux split-window -t "$TMUX_SESSION" -h -l 50% -c "$ROOT_DIR" \
+      "stripe listen --forward-to localhost:3001/api/billing/webhook --api-key '$key'"
+  else
+    tmux split-window -t "$TMUX_SESSION" -h -l 50% -c "$ROOT_DIR" \
+      "echo -e '${YELLOW}Stripe listener not started${NC}'; echo 'Install stripe CLI and set STRIPE_SECRET_KEY in apps/server/.env'; echo ''; echo 'To start manually: ./scripts/dev-init.sh stripe'; echo ''; exec bash"
+  fi
+
+  # Select the top pane (bun dev)
+  tmux select-pane -t "$TMUX_SESSION:0.0"
+
+  info "tmux session '$TMUX_SESSION' created (3 panes)"
+
+  # Attach — handle nested tmux
+  if [[ -n "${TMUX:-}" ]]; then
+    exec tmux switch-client -t "$TMUX_SESSION"
+  else
+    exec tmux attach-session -t "$TMUX_SESSION"
+  fi
+}
+
+kill_tmux_session() {
+  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    tmux kill-session -t "$TMUX_SESSION"
+    info "tmux session '$TMUX_SESSION' killed"
+  else
+    info "No tmux session '$TMUX_SESSION' running"
+  fi
 }
 
 # ── Commands ──────────────────────────────────────────────────────────
@@ -131,7 +190,7 @@ cmd_init() {
   check_env
   install_deps
   setup_db
-  start_dev
+  start_tmux_session
 }
 
 cmd_reset() {
@@ -147,7 +206,7 @@ cmd_reset() {
   check_env
   install_deps
   setup_db
-  start_dev
+  start_tmux_session
 }
 
 cmd_restart() {
@@ -155,10 +214,11 @@ cmd_restart() {
   docker_up
   check_env
   setup_db
-  start_dev
+  start_tmux_session
 }
 
 cmd_stop() {
+  kill_tmux_session
   docker_down
 }
 

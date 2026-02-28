@@ -7,31 +7,54 @@
 | Node.js | >= 22                  |
 | Bun     | >= 1.x                 |
 | Docker  | For PostgreSQL + Redis |
+| tmux    | Terminal multiplexer   |
 
-## Setup
+## Quick Start
+
+The `dev-init.sh` script handles everything — Docker, dependencies, database migrations, and launches a tmux session with all services:
 
 ```bash
 # Clone
 git clone https://github.com/your-org/twitch-hub.git
 cd twitch-hub
 
-# Install
-bun install
-
-# Start Postgres + Redis
-docker compose up -d
-
 # Configure environment
-cp .env.example .env
+cp apps/server/.env.example apps/server/.env
 # Edit .env with your Twitch app credentials
 
-# Generate Prisma client & run migrations
-bun run --filter @twitch-hub/server db:generate
-bun run --filter @twitch-hub/server db:migrate
-
-# Start dev servers
-bun run dev
+# Full setup + launch
+./scripts/dev-init.sh
 ```
+
+This opens a tmux session (`twitch-hub`) with three panes:
+
+```
+┌─────────────────────────────────┐
+│         bun dev (65%)           │
+│   (SvelteKit :5173 + Server    │
+│         :3001)                  │
+├────────────────┬────────────────┤
+│ docker compose │ stripe listen  │
+│ logs (35%)     │ (or info msg)  │
+└────────────────┴────────────────┘
+```
+
+| Pane         | Content                                                                |
+| ------------ | ---------------------------------------------------------------------- |
+| Top          | `bun dev` — SvelteKit (`:5173`) + Express server (`:3001`)             |
+| Bottom-left  | `docker compose logs -f` — PostgreSQL and Redis output                 |
+| Bottom-right | Stripe webhook listener, or a placeholder if Stripe CLI is unavailable |
+
+### `dev-init.sh` Commands
+
+| Command                         | Description                                         |
+| ------------------------------- | --------------------------------------------------- |
+| `./scripts/dev-init.sh`         | Full setup: prereqs, Docker, install, migrate, tmux |
+| `./scripts/dev-init.sh init`    | Same as above (explicit)                            |
+| `./scripts/dev-init.sh reset`   | Nuke volumes + node_modules, then full init         |
+| `./scripts/dev-init.sh restart` | Restart Docker + tmux session (skip `bun install`)  |
+| `./scripts/dev-init.sh stop`    | Kill tmux session and stop Docker containers        |
+| `./scripts/dev-init.sh stripe`  | Start Stripe webhook listener standalone (no tmux)  |
 
 ## Dev URLs
 
@@ -43,7 +66,7 @@ bun run dev
 
 ## Environment Variables
 
-Create a `.env` file in the project root (see `.env.example`):
+Create a `.env` file in `apps/server/` (see `.env.example`):
 
 | Variable               | Description                      | Default                                                        |
 | ---------------------- | -------------------------------- | -------------------------------------------------------------- |
