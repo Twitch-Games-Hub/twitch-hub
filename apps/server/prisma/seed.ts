@@ -23,7 +23,7 @@ async function main() {
       tokenExpiresAt: new Date('2099-01-01'),
       role: 'STREAMER',
       profileImageUrl:
-        'https://static-cdn.jtvnw.net/user-default-pictures-uv/cdd517fe-def4-11e9-948e-784f43822e80-profile_image-300x300.png',
+        'https://static-cdn.jtvnw.net/user-default-pictures-uv/998f01ae-def8-11e9-b95c-784f43822e80-profile_image-300x300.png',
     },
   });
 
