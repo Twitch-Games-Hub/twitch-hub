@@ -89,3 +89,16 @@ Create a `.env` file in `apps/server/` (see `.env.example`):
 | `bun run typecheck` | Run TypeScript type checking   |
 | `bun run test`      | Run unit tests                 |
 | `bun run docs:dev`  | Start documentation dev server |
+
+## Database Seeding
+
+Populate the database with example Italian Twitch community games (9 games across all 3 types):
+
+```bash
+cd apps/server
+bun run db:seed
+```
+
+This creates a demo streamer user and 9 games (8 READY + 1 DRAFT) covering Hot Take, Balance, and Blind Test types. The seed is idempotent — re-running it deletes previous seed data and recreates it.
+
+The seeded games will appear on the Explore page at `http://localhost:5173/explore`.

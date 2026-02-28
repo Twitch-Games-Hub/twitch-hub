@@ -7,4 +7,7 @@ export default defineConfig({
   datasource: {
     url: process.env.DATABASE_URL ?? 'postgresql://twitch_hub:twitch_hub@localhost:5432/twitch_hub',
   },
+  migrations: {
+    seed: 'bun run prisma/seed.ts',
+  },
 });
