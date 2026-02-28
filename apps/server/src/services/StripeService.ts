@@ -44,6 +44,13 @@ export async function createCheckoutSession(
     const customerId = await getOrCreateCustomer(userId);
 
     const isSubscription = product !== 'credits';
+
+    if (isSubscription) {
+      const existing = await prisma.subscription.findUnique({ where: { userId } });
+      if (existing?.status === 'ACTIVE') {
+        throw new Error('User already has an active subscription');
+      }
+    }
     const priceId =
       product === 'monthly'
         ? config.stripe.monthlyPriceId
@@ -230,6 +237,9 @@ function mapStripeStatus(
   }
 }
 
-export function constructWebhookEvent(body: Buffer, signature: string): Stripe.Event {
-  return stripe.webhooks.constructEvent(body, signature, config.stripe.webhookSecret);
+export async function constructWebhookEvent(
+  body: Buffer,
+  signature: string,
+): Promise<Stripe.Event> {
+  return stripe.webhooks.constructEventAsync(body, signature, config.stripe.webhookSecret);
 }

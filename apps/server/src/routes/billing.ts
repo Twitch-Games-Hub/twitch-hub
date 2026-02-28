@@ -57,14 +57,21 @@ export const billingPlugin: FastifyPluginAsync = async (app) => {
     const successUrl = `${config.appUrl}/dashboard/billing?success=true`;
     const cancelUrl = `${config.appUrl}/dashboard/billing?canceled=true`;
 
-    const checkoutUrl = await createCheckoutSession(
-      request.userId!,
-      product,
-      successUrl,
-      cancelUrl,
-    );
-
-    return { checkoutUrl };
+    try {
+      const checkoutUrl = await createCheckoutSession(
+        request.userId!,
+        product,
+        successUrl,
+        cancelUrl,
+      );
+      return { checkoutUrl };
+    } catch (err) {
+      if (err instanceof Error && err.message === 'User already has an active subscription') {
+        reply.code(409);
+        return { error: err.message };
+      }
+      throw err;
+    }
   });
 
   // POST /portal — create Stripe Customer Portal session

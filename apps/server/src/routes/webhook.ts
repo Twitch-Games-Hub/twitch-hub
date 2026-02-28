@@ -30,7 +30,7 @@ export const webhookPlugin: FastifyPluginAsync = async (app) => {
 
     let event: Stripe.Event;
     try {
-      event = constructWebhookEvent(request.body as Buffer, signature);
+      event = await constructWebhookEvent(request.body as Buffer, signature);
     } catch (err) {
       captureStripeError(err, 'webhook.signatureVerification');
       log.warn({ err }, 'Webhook signature verification failed');
