@@ -11,6 +11,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 TMUX_SESSION="twitch-hub"
+POSTHOG_COMPOSE="docker-compose.posthog.yml"
+POSTHOG_ENV="$ROOT_DIR/.posthog.env"
 
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -27,6 +29,7 @@ usage() {
   echo "  restart   Restart Docker containers + tmux dev session (skip install)"
   echo "  stop      Kill tmux session and stop Docker containers"
   echo "  stripe    Start Stripe webhook listener (standalone, no tmux)"
+  echo "  posthog   Manage PostHog self-hosted [up|down|nuke] (default: up)"
   exit 0
 }
 
@@ -70,12 +73,20 @@ docker_up() {
   docker compose -f docker-compose.dev.yml up -d --wait || fail "Docker services failed to start"
   info "PostgreSQL running (localhost:5432)"
   info "Redis running (localhost:6379)"
+
+  # Start PostHog if compose file exists
+  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+    posthog_up
+  fi
 }
 
 docker_down() {
   echo ""
   echo "Stopping Docker containers..."
   docker compose -f docker-compose.dev.yml down
+  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+    posthog_down
+  fi
   info "Containers stopped"
 }
 
@@ -83,7 +94,48 @@ docker_nuke() {
   echo ""
   echo "Removing Docker containers and volumes..."
   docker compose -f docker-compose.dev.yml down -v
+  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+    posthog_nuke
+  fi
   info "Containers and volumes removed"
+}
+
+# ── PostHog self-hosted helpers ───────────────────────────────────────
+
+posthog_ensure_env() {
+  if [[ ! -f "$POSTHOG_ENV" ]]; then
+    echo "Generating PostHog secret key..."
+    local secret
+    secret=$(openssl rand -hex 32)
+    cat > "$POSTHOG_ENV" <<EOF
+SECRET_KEY=$secret
+ENCRYPTION_SALT_KEYS=$secret
+EOF
+    info "PostHog env created (.posthog.env)"
+  fi
+}
+
+posthog_up() {
+  posthog_ensure_env
+  echo ""
+  echo "Starting PostHog self-hosted (this may take a minute on first run)..."
+  docker compose -f "$POSTHOG_COMPOSE" -p posthog up -d || fail "PostHog services failed to start"
+  info "PostHog running (http://localhost:8000)"
+}
+
+posthog_down() {
+  echo ""
+  echo "Stopping PostHog containers..."
+  docker compose -f "$POSTHOG_COMPOSE" -p posthog down
+  info "PostHog stopped"
+}
+
+posthog_nuke() {
+  echo ""
+  echo "Removing PostHog containers and volumes..."
+  docker compose -f "$POSTHOG_COMPOSE" -p posthog down -v
+  rm -f "$POSTHOG_ENV"
+  info "PostHog containers, volumes, and env removed"
 }
 
 # ── Check .env ───────────────────────────────────────────────────────
@@ -135,8 +187,11 @@ stripe_available() {
 start_tmux_session() {
   echo ""
   echo -e "${GREEN}Launching tmux dev session...${NC}"
-  echo "  Web:    http://localhost:5173"
-  echo "  Server: http://localhost:3001"
+  echo "  Web:      http://localhost:5173"
+  echo "  Server:   http://localhost:3001"
+  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+    echo "  PostHog:  http://localhost:8000"
+  fi
   echo ""
 
   # Kill any existing session
@@ -222,6 +277,16 @@ cmd_stop() {
   docker_down
 }
 
+cmd_posthog() {
+  local subcmd="${2:-up}"
+  case "$subcmd" in
+    up)   posthog_up   ;;
+    down) posthog_down ;;
+    nuke) posthog_nuke ;;
+    *) fail "Unknown posthog subcommand: $subcmd (use: up, down, nuke)" ;;
+  esac
+}
+
 cmd_stripe() {
   if ! command -v stripe &>/dev/null; then
     fail "Stripe CLI is not installed — see https://docs.stripe.com/stripe-cli"
@@ -256,6 +321,7 @@ case "$COMMAND" in
   reset)   cmd_reset   ;;
   restart) cmd_restart ;;
   stop)    cmd_stop    ;;
+  posthog) cmd_posthog "$@" ;;
   stripe)  cmd_stripe  ;;
   -h|--help|help) usage ;;
   *) fail "Unknown command: $COMMAND (run '$0 help' for usage)" ;;
