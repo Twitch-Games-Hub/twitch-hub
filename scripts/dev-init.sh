@@ -315,7 +315,8 @@ start_tmux_session() {
   echo "    0:web     — SvelteKit frontend"
   echo "    1:server  — Express API server"
   echo "    2:docker  — Docker compose logs"
-  echo "    3:stripe  — Stripe webhook listener"
+  echo "    3:posthog — PostHog logs"
+  echo "    4:stripe  — Stripe webhook listener"
   echo ""
 
   # Kill any existing session
@@ -333,7 +334,16 @@ start_tmux_session() {
   tmux new-window -t "$TMUX_SESSION" -n docker -c "$ROOT_DIR" \
     "docker compose -f docker-compose.dev.yml logs -f"
 
-  # Window 3: stripe (webhook listener or placeholder)
+  # Window 3: posthog (logs or placeholder)
+  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
+    tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
+      "cd '$POSTHOG_DIR' && docker compose -f posthog/docker-compose.hobby.yml -f docker-compose.local.yml --env-file .env -p posthog logs -f"
+  else
+    tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
+      "echo -e '${YELLOW}PostHog not set up${NC}'; echo 'Run: ./scripts/dev-init.sh posthog up'; echo ''; exec bash"
+  fi
+
+  # Window 4: stripe (webhook listener or placeholder)
   if stripe_available; then
     local key
     key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2-)
@@ -347,7 +357,7 @@ start_tmux_session() {
   # Focus on web window
   tmux select-window -t "$TMUX_SESSION:0"
 
-  info "tmux session '$TMUX_SESSION' created (4 windows: web, server, docker, stripe)"
+  info "tmux session '$TMUX_SESSION' created (5 windows: web, server, docker, posthog, stripe)"
 
   # Attach — handle nested tmux
   if [[ -n "${TMUX:-}" ]]; then
