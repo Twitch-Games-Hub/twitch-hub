@@ -174,8 +174,14 @@ export async function handleSubscriptionDeleted(subscription: Stripe.Subscriptio
 async function syncSubscription(userId: string, subscription: Stripe.Subscription): Promise<void> {
   return withStripeSpan('stripe.subscription.sync', { userId }, async () => {
     const status = mapStripeStatus(subscription.status);
-    const priceId = subscription.items.data[0]?.price.id ?? null;
+    const item = subscription.items.data[0];
+    const priceId = item?.price.id ?? null;
     const billingPlan = status === 'ACTIVE' ? 'SUBSCRIBER' : 'FREE';
+
+    const periodStart = item?.current_period_start
+      ? new Date(item.current_period_start * 1000)
+      : null;
+    const periodEnd = item?.current_period_end ? new Date(item.current_period_end * 1000) : null;
 
     await prisma.subscription.upsert({
       where: { userId },
@@ -188,16 +194,16 @@ async function syncSubscription(userId: string, subscription: Stripe.Subscriptio
         stripeSubscriptionId: subscription.id,
         stripePriceId: priceId,
         status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
       },
       update: {
         stripeSubscriptionId: subscription.id,
         stripePriceId: priceId,
         status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
       },
     });

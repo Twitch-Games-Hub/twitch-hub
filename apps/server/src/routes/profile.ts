@@ -104,7 +104,7 @@ export const profilePlugin: FastifyPluginAsync = async (app) => {
         followedStreamsResult.status === 'fulfilled' ? followedStreamsResult.value : null,
       followers: followersResult.status === 'fulfilled' ? followersResult.value : null,
       appStats: {
-        games: games.map((g) => ({
+        games: games.map((g: (typeof games)[number]) => ({
           id: g.id,
           title: g.title,
           type: g.type,

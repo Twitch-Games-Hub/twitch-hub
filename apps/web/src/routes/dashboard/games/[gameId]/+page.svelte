@@ -105,16 +105,16 @@
     >
       {#snippet action()}
         <div class="flex items-center gap-3">
-          <StatusBadge status={game.status} />
+          <StatusBadge status={game!.status} />
           <Button href="/dashboard/games/{gameId}/edit" variant="secondary" size="sm">
             <EditIcon size={16} />
             Edit
           </Button>
-          {#if game.status === GameStatus.DRAFT}
+          {#if game!.status === GameStatus.DRAFT}
             <Button onclick={() => (publishConfirmOpen = true)} variant="primary"
               >Publish to Gallery</Button
             >
-          {:else if game.status === GameStatus.READY}
+          {:else if game!.status === GameStatus.READY}
             <Button onclick={() => (unpublishConfirmOpen = true)} variant="ghost" size="sm"
               >Unpublish</Button
             >

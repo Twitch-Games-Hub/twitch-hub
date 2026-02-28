@@ -36,7 +36,7 @@ export const bookmarksPlugin: FastifyPluginAsync = async (app) => {
       prisma.gameBookmark.count({ where }),
     ]);
 
-    const games = bookmarks.map(({ game }) => {
+    const games = bookmarks.map(({ game }: (typeof bookmarks)[number]) => {
       const { ratingScore, ratingCount, userRating } = computeRatings(game.ratings, userId);
 
       return {

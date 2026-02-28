@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../db/client.js';
 import { gameRegistry } from '../engine/GameRegistry.js';
 import { logger } from '../logger.js';

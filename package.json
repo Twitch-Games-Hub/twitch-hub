@@ -1,7 +1,6 @@
 {
   "name": "twitch-hub",
   "private": true,
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017",
   "workspaces": [
     "apps/*",
     "packages/*",
@@ -11,16 +10,16 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "format": "turbo format",
+    "dev": "bun run --filter './apps/*' dev",
+    "build": "bun run --filter @twitch-hub/shared-types build && bun run --filter './apps/*' build",
+    "lint": "bun run --filter '*' lint",
+    "format": "bun run --filter '*' format",
     "format:check": "prettier --check .",
-    "typecheck": "turbo typecheck",
-    "test": "turbo test",
-    "clean": "turbo clean",
-    "docs:dev": "turbo run dev --filter=@twitch-hub/docs",
-    "docs:build": "turbo run build --filter=@twitch-hub/docs",
+    "typecheck": "bun run --filter @twitch-hub/shared-types build && bun run --filter '*' typecheck",
+    "test": "bun run --filter @twitch-hub/shared-types build && bun run --filter '*' test",
+    "clean": "bun run --filter '*' clean",
+    "docs:dev": "bun run --filter @twitch-hub/docs dev",
+    "docs:build": "bun run --filter @twitch-hub/docs build",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -42,7 +41,6 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
     "prettier-plugin-svelte": "^3.5.0",
-    "turbo": "^2.5.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.56.1"
   },

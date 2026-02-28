@@ -32,7 +32,7 @@ export const sessionsPlugin: FastifyPluginAsync = async (app) => {
       prisma.gameSession.count({ where }),
     ]);
 
-    const mapped = sessions.map((s) => ({
+    const mapped = sessions.map((s: (typeof sessions)[number]) => ({
       id: s.id,
       gameId: s.gameId,
       hostId: s.hostId,

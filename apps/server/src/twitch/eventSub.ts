@@ -143,9 +143,6 @@ export class EventSubClient {
           case 'answer':
             answer = command.value;
             break;
-          case 'tier':
-            answer = JSON.parse(command.value as string);
-            break;
         }
 
         await voteService.submitVote({

@@ -40,7 +40,7 @@ export const explorePlugin: FastifyPluginAsync = async (app) => {
       prisma.game.count({ where }),
     ]);
 
-    const results = games.map((game) => {
+    const results = games.map((game: (typeof games)[number]) => {
       const { ratingScore, ratingCount, userRating } = computeRatings(game.ratings, userId);
 
       return {
@@ -63,7 +63,9 @@ export const explorePlugin: FastifyPluginAsync = async (app) => {
     });
 
     if (!isNewest) {
-      results.sort((a, b) => b.ratingScore - a.ratingScore);
+      results.sort(
+        (a: (typeof results)[number], b: (typeof results)[number]) => b.ratingScore - a.ratingScore,
+      );
     }
 
     const paginatedResults = isNewest ? results : results.slice((page - 1) * limit, page * limit);

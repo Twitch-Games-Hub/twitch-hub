@@ -15,25 +15,28 @@ export function countsToPercents(a: number, b: number): [number, number] {
  *  - `percentages: { A: pctA, B: pctB }` (BalanceGame computeRoundResults legacy)
  */
 export function extractBinaryPercents(
-  round: Record<string, unknown> | null | undefined,
+  round:
+    | { distribution?: number[]; percentages?: Record<string, number>; totalResponses?: number }
+    | null
+    | undefined,
 ): { percentA: number; percentB: number; totalVotes: number } | null {
   if (!round) return null;
 
   // Prefer distribution array (raw counts → convert)
-  const dist = round.distribution as number[] | undefined;
+  const dist = round.distribution;
   if (Array.isArray(dist) && dist.length === 2) {
     const [a, b] = dist;
     const [percentA, percentB] = countsToPercents(a, b);
-    return { percentA, percentB, totalVotes: (round.totalResponses as number) ?? a + b };
+    return { percentA, percentB, totalVotes: round.totalResponses ?? a + b };
   }
 
   // Fall back to percentages object (already 0-100)
-  const pcts = round.percentages as Record<string, number> | undefined;
+  const pcts = round.percentages;
   if (pcts && typeof pcts.A === 'number' && typeof pcts.B === 'number') {
     return {
       percentA: pcts.A,
       percentB: pcts.B,
-      totalVotes: (round.totalResponses as number) ?? 0,
+      totalVotes: round.totalResponses ?? 0,
     };
   }
 

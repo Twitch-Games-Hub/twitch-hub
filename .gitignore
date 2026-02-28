@@ -2,10 +2,10 @@ node_modules/
 dist/
 .svelte-kit/
 build/
-.turbo/
 .env
 *.log
 .DS_Store
 .sentryclirc
 docs/.vitepress/cache/
 docs/.vitepress/.temp/
+apps/server/src/generated/
