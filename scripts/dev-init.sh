@@ -193,32 +193,43 @@ start_tmux_session() {
     echo "  PostHog:  http://localhost:8000"
   fi
   echo ""
+  echo "  tmux windows:"
+  echo "    0:web     — SvelteKit frontend"
+  echo "    1:server  — Express API server"
+  echo "    2:docker  — Docker compose logs"
+  echo "    3:stripe  — Stripe webhook listener"
+  echo ""
 
   # Kill any existing session
   tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
 
-  # Create detached session — top pane runs bun dev
-  tmux new-session -d -s "$TMUX_SESSION" -c "$ROOT_DIR" "bun dev"
+  # Window 0: web (SvelteKit frontend)
+  tmux new-session -d -s "$TMUX_SESSION" -n web -c "$ROOT_DIR" \
+    "bun run --filter './apps/web' dev"
 
-  # Split bottom pane (35% height) for docker compose logs
-  tmux split-window -t "$TMUX_SESSION" -v -l 35% -c "$ROOT_DIR" \
+  # Window 1: server (Express API)
+  tmux new-window -t "$TMUX_SESSION" -n server -c "$ROOT_DIR" \
+    "bun run --filter './apps/server' dev"
+
+  # Window 2: docker (compose logs)
+  tmux new-window -t "$TMUX_SESSION" -n docker -c "$ROOT_DIR" \
     "docker compose -f docker-compose.dev.yml logs -f"
 
-  # Split bottom pane vertically (50/50) for stripe or placeholder
+  # Window 3: stripe (webhook listener or placeholder)
   if stripe_available; then
     local key
     key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2-)
-    tmux split-window -t "$TMUX_SESSION" -h -l 50% -c "$ROOT_DIR" \
+    tmux new-window -t "$TMUX_SESSION" -n stripe -c "$ROOT_DIR" \
       "stripe listen --forward-to localhost:3001/api/billing/webhook --api-key '$key'"
   else
-    tmux split-window -t "$TMUX_SESSION" -h -l 50% -c "$ROOT_DIR" \
+    tmux new-window -t "$TMUX_SESSION" -n stripe -c "$ROOT_DIR" \
       "echo -e '${YELLOW}Stripe listener not started${NC}'; echo 'Install stripe CLI and set STRIPE_SECRET_KEY in apps/server/.env'; echo ''; echo 'To start manually: ./scripts/dev-init.sh stripe'; echo ''; exec bash"
   fi
 
-  # Select the top pane (bun dev)
-  tmux select-pane -t "$TMUX_SESSION:0.0"
+  # Focus on web window
+  tmux select-window -t "$TMUX_SESSION:0"
 
-  info "tmux session '$TMUX_SESSION' created (3 panes)"
+  info "tmux session '$TMUX_SESSION' created (4 windows: web, server, docker, stripe)"
 
   # Attach — handle nested tmux
   if [[ -n "${TMUX:-}" ]]; then
