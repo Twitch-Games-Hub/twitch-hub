@@ -1,6 +1,4 @@
-import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import { attachSessionBudget } from '../middleware/sessionBudget.js';
 import { prisma } from '../db/client.js';
 import { config } from '../config.js';
@@ -10,69 +8,69 @@ import {
   type ApiSubscription,
 } from '@twitch-hub/shared-types';
 import { createCheckoutSession, createPortalSession } from '../services/StripeService.js';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
-export const billingRouter = Router();
+export const billingPlugin: FastifyPluginAsync = async (app) => {
+  app.addHook('preHandler', authMiddleware);
 
-billingRouter.use(authMiddleware);
+  // GET /subscription — current subscription status
+  app.get(
+    '/subscription',
+    { preHandler: [attachSessionBudget] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const sub = await prisma.subscription.findUnique({
+        where: { userId: request.userId! },
+      });
 
-// GET /api/billing/subscription — current subscription status
-billingRouter.get(
-  '/subscription',
-  attachSessionBudget,
-  asyncHandler(async (req, res) => {
-    const sub = await prisma.subscription.findUnique({
-      where: { userId: req.userId! },
-    });
+      const budget = request.sessionBudget!;
 
-    const budget = req.sessionBudget!;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
 
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+      const sessionsThisMonth = await prisma.gameSession.count({
+        where: { hostId: request.userId!, createdAt: { gte: monthStart } },
+      });
 
-    const sessionsThisMonth = await prisma.gameSession.count({
-      where: { hostId: req.userId!, createdAt: { gte: monthStart } },
-    });
+      const result: ApiSubscription = {
+        plan: budget.isSubscriber ? BillingPlan.SUBSCRIBER : BillingPlan.FREE,
+        sessionCredits: sub?.sessionCredits ?? 0,
+        freeSessionsUsed: sessionsThisMonth,
+        freeSessionsLimit: FREE_SESSIONS_PER_MONTH,
+        currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
+        cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
+      };
 
-    const result: ApiSubscription = {
-      plan: budget.isSubscriber ? BillingPlan.SUBSCRIBER : BillingPlan.FREE,
-      sessionCredits: sub?.sessionCredits ?? 0,
-      freeSessionsUsed: sessionsThisMonth,
-      freeSessionsLimit: FREE_SESSIONS_PER_MONTH,
-      currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
-      cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
-    };
+      return result;
+    },
+  );
 
-    res.json(result);
-  }),
-);
-
-// POST /api/billing/checkout — create Stripe checkout session
-billingRouter.post(
-  '/checkout',
-  asyncHandler(async (req, res) => {
-    const { product } = req.body as { product: 'monthly' | 'annual' | 'credits' };
+  // POST /checkout — create Stripe checkout session
+  app.post('/checkout', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { product } = request.body as { product: 'monthly' | 'annual' | 'credits' };
 
     if (!['monthly', 'annual', 'credits'].includes(product)) {
-      res.status(400).json({ error: 'Invalid product' });
-      return;
+      reply.code(400);
+      return { error: 'Invalid product' };
     }
 
     const successUrl = `${config.appUrl}/dashboard/billing?success=true`;
     const cancelUrl = `${config.appUrl}/dashboard/billing?canceled=true`;
 
-    const checkoutUrl = await createCheckoutSession(req.userId!, product, successUrl, cancelUrl);
+    const checkoutUrl = await createCheckoutSession(
+      request.userId!,
+      product,
+      successUrl,
+      cancelUrl,
+    );
 
-    res.json({ checkoutUrl });
-  }),
-);
+    return { checkoutUrl };
+  });
 
-// POST /api/billing/portal — create Stripe Customer Portal session
-billingRouter.post(
-  '/portal',
-  asyncHandler(async (req, res) => {
+  // POST /portal — create Stripe Customer Portal session
+  app.post('/portal', async (request: FastifyRequest, reply: FastifyReply) => {
     const returnUrl = `${config.appUrl}/dashboard/billing`;
-    const portalUrl = await createPortalSession(req.userId!, returnUrl);
-    res.json({ portalUrl });
-  }),
-);
+    const portalUrl = await createPortalSession(request.userId!, returnUrl);
+    return { portalUrl };
+  });
+};

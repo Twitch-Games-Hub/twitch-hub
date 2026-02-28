@@ -1,30 +1,28 @@
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../db/client.js';
 import { FREE_SESSIONS_PER_MONTH } from '@twitch-hub/shared-types';
 import type { SessionBudget } from '@twitch-hub/shared-types';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 
 export async function attachSessionBudget(
-  req: Request,
-  res: Response,
-  next: NextFunction,
+  request: FastifyRequest,
+  reply: FastifyReply,
 ): Promise<void> {
-  if (!req.userId) {
-    res.status(401).json({ error: 'Not authenticated' });
+  if (!request.userId) {
+    reply.code(401).send({ error: 'Not authenticated' });
     return;
   }
 
-  const sub = await prisma.subscription.findUnique({ where: { userId: req.userId } });
+  const sub = await prisma.subscription.findUnique({ where: { userId: request.userId } });
   const isSubscriber = sub?.status === 'ACTIVE';
 
   if (isSubscriber) {
-    req.sessionBudget = {
+    request.sessionBudget = {
       canCreateSession: true,
       source: 'subscriber',
       freeRemaining: FREE_SESSIONS_PER_MONTH,
       creditsRemaining: sub?.sessionCredits ?? 0,
       isSubscriber: true,
     };
-    next();
     return;
   }
 
@@ -33,44 +31,41 @@ export async function attachSessionBudget(
   monthStart.setHours(0, 0, 0, 0);
 
   const sessionsThisMonth = await prisma.gameSession.count({
-    where: { hostId: req.userId, createdAt: { gte: monthStart } },
+    where: { hostId: request.userId, createdAt: { gte: monthStart } },
   });
 
   const freeRemaining = Math.max(0, FREE_SESSIONS_PER_MONTH - sessionsThisMonth);
   const creditsRemaining = sub?.sessionCredits ?? 0;
 
   if (freeRemaining > 0) {
-    req.sessionBudget = {
+    request.sessionBudget = {
       canCreateSession: true,
       source: 'free',
       freeRemaining,
       creditsRemaining,
       isSubscriber: false,
     };
-    next();
     return;
   }
 
   if (creditsRemaining > 0) {
-    req.sessionBudget = {
+    request.sessionBudget = {
       canCreateSession: true,
       source: 'credits',
       freeRemaining: 0,
       creditsRemaining,
       isSubscriber: false,
     };
-    next();
     return;
   }
 
-  req.sessionBudget = {
+  request.sessionBudget = {
     canCreateSession: false,
     source: 'none',
     freeRemaining: 0,
     creditsRemaining: 0,
     isSubscriber: false,
   };
-  next();
 }
 
 /**

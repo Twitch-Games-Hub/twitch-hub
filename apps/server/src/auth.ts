@@ -1,92 +1,88 @@
-import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from './db/client.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { asyncHandler } from './middleware/asyncHandler.js';
-import type { Request, Response, NextFunction } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
 const log = logger.child({ module: 'auth' });
 
-export const authRouter = Router();
-
-// Upsert user from Twitch OAuth callback (internal-only)
-authRouter.post(
-  '/upsert',
-  (req: Request, res: Response, next: NextFunction) => {
-    const secret = req.headers['x-internal-secret'];
-    if (!config.internalApiSecret || secret !== config.internalApiSecret) {
-      log.warn('Upsert rejected: invalid internal secret');
-      res.status(403).json({ error: 'Forbidden' });
-      return;
-    }
-    next();
-  },
-  asyncHandler(async (req: Request, res: Response) => {
-    const {
-      twitchId,
-      twitchLogin,
-      displayName,
-      profileImageUrl,
-      accessToken,
-      refreshToken,
-      tokenExpiresAt,
-    } = req.body;
-
-    const user = await prisma.user.upsert({
-      where: { twitchId },
-      create: {
+export const authPlugin: FastifyPluginAsync = async (app) => {
+  // Upsert user from Twitch OAuth callback (internal-only)
+  app.post(
+    '/upsert',
+    {
+      preHandler: async (request: FastifyRequest, reply: FastifyReply) => {
+        const secret = request.headers['x-internal-secret'];
+        if (!config.internalApiSecret || secret !== config.internalApiSecret) {
+          log.warn('Upsert rejected: invalid internal secret');
+          reply.code(403).send({ error: 'Forbidden' });
+          return;
+        }
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const {
         twitchId,
         twitchLogin,
         displayName,
         profileImageUrl,
         accessToken,
         refreshToken,
-        tokenExpiresAt: new Date(tokenExpiresAt),
-        role: 'STREAMER',
-        subscription: { create: {} },
-      },
-      update: {
-        twitchLogin,
-        displayName,
-        profileImageUrl,
-        accessToken,
-        refreshToken,
-        tokenExpiresAt: new Date(tokenExpiresAt),
-      },
-      include: { subscription: true },
-    });
+        tokenExpiresAt,
+      } = request.body as Record<string, string>;
 
-    // Ensure subscription row exists for existing users
-    if (!user.subscription) {
-      await prisma.subscription.create({ data: { userId: user.id } });
-    }
+      const user = await prisma.user.upsert({
+        where: { twitchId },
+        create: {
+          twitchId,
+          twitchLogin,
+          displayName,
+          profileImageUrl,
+          accessToken,
+          refreshToken,
+          tokenExpiresAt: new Date(tokenExpiresAt),
+          role: 'STREAMER',
+          subscription: { create: {} },
+        },
+        update: {
+          twitchLogin,
+          displayName,
+          profileImageUrl,
+          accessToken,
+          refreshToken,
+          tokenExpiresAt: new Date(tokenExpiresAt),
+        },
+        include: { subscription: true },
+      });
 
-    log.info({ twitchLogin, userId: user.id }, 'User authenticated');
+      // Ensure subscription row exists for existing users
+      if (!user.subscription) {
+        await prisma.subscription.create({ data: { userId: user.id } });
+      }
 
-    const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
-      expiresIn: '7d',
-    });
+      log.info({ twitchLogin, userId: user.id }, 'User authenticated');
 
-    res.json({ token, user: sanitizeUser(user) });
-  }),
-);
+      const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
+        expiresIn: '7d',
+      });
 
-// Get current user from JWT
-authRouter.get(
-  '/me',
-  asyncHandler(async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization;
+      return { token, user: sanitizeUser(user) };
+    },
+  );
+
+  // Get current user from JWT
+  app.get('/me', async (request: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'Missing token' });
-      return;
+      reply.code(401);
+      return { error: 'Missing token' };
     }
 
     const payload = verifyToken(authHeader.slice(7));
     if (!payload) {
       log.warn('/me invalid token');
-      res.status(401).json({ error: 'Invalid token' });
-      return;
+      reply.code(401);
+      return { error: 'Invalid token' };
     }
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
@@ -94,12 +90,12 @@ authRouter.get(
     });
     if (!user) {
       log.warn({ userId: payload.userId }, '/me user not found');
-      res.status(401).json({ error: 'User not found' });
-      return;
+      reply.code(401);
+      return { error: 'User not found' };
     }
-    res.json(sanitizeUser(user));
-  }),
-);
+    return sanitizeUser(user);
+  });
+};
 
 function sanitizeUser(user: {
   id: string;
@@ -131,20 +127,19 @@ export function verifyToken(token: string): { userId: string; twitchId: string }
   }
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  const authHeader = request.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing token' });
+    reply.code(401).send({ error: 'Missing token' });
     return;
   }
 
   const payload = verifyToken(authHeader.slice(7));
   if (!payload) {
-    log.warn({ path: req.path }, 'Auth middleware rejected invalid token');
-    res.status(401).json({ error: 'Invalid token' });
+    log.warn({ path: request.url }, 'Auth middleware rejected invalid token');
+    reply.code(401).send({ error: 'Invalid token' });
     return;
   }
 
-  req.userId = payload.userId;
-  next();
+  request.userId = payload.userId;
 }

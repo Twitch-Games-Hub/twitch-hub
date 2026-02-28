@@ -1,29 +1,24 @@
-import { Router } from 'express';
 import { prisma } from '../db/client.js';
 import { verifyToken } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import { computeRatings } from '../utils/ratings.js';
 import { computeContentCount } from '../utils/contentCount.js';
 import { parsePagination } from '../utils/pagination.js';
-import type { Request, Response } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
-export const exploreRouter = Router();
+export const explorePlugin: FastifyPluginAsync = async (app) => {
+  function extractUserId(request: FastifyRequest): string | null {
+    const authHeader = request.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const payload = verifyToken(authHeader.slice(7));
+    return payload?.userId ?? null;
+  }
 
-function extractUserId(req: Request): string | null {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const payload = verifyToken(authHeader.slice(7));
-  return payload?.userId ?? null;
-}
-
-// List public READY games with ratings
-exploreRouter.get(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
-    const { page, limit } = parsePagination(req.query as { page?: string; limit?: string });
-    const type = req.query.type as string | undefined;
-    const sort = req.query.sort as string | undefined;
+  // List public READY games with ratings
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = extractUserId(request);
+    const { page, limit } = parsePagination(request.query as { page?: string; limit?: string });
+    const type = (request.query as Record<string, string>).type;
+    const sort = (request.query as Record<string, string>).sort;
 
     const where: Record<string, unknown> = { status: 'READY' };
     if (type) where.type = type;
@@ -73,18 +68,15 @@ exploreRouter.get(
 
     const paginatedResults = isNewest ? results : results.slice((page - 1) * limit, page * limit);
 
-    res.json({ games: paginatedResults, total, page, limit });
-  }),
-);
+    return { games: paginatedResults, total, page, limit };
+  });
 
-// Get single public game
-exploreRouter.get(
-  '/:gameId',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
+  // Get single public game
+  app.get<{ Params: { gameId: string } }>('/:gameId', async (request, reply) => {
+    const userId = extractUserId(request);
 
     const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, status: 'READY' },
+      where: { id: request.params.gameId, status: 'READY' },
       include: {
         owner: { select: { displayName: true, profileImageUrl: true, twitchLogin: true } },
         ratings: true,
@@ -94,13 +86,13 @@ exploreRouter.get(
     });
 
     if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
+      reply.code(404);
+      return { error: 'Game not found' };
     }
 
     const { ratingScore, ratingCount, userRating } = computeRatings(game.ratings, userId);
 
-    res.json({
+    return {
       id: game.id,
       type: game.type,
       title: game.title,
@@ -116,128 +108,116 @@ exploreRouter.get(
       isSaved: 'bookmarks' in game ? (game.bookmarks as unknown[]).length > 0 : false,
       playCount: game._count.sessions,
       contentCount: computeContentCount(game.type, game.config),
-    });
-  }),
-);
+    };
+  });
 
-// Rate a game (upsert)
-exploreRouter.post(
-  '/:gameId/rate',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
+  // Rate a game (upsert)
+  app.post<{ Params: { gameId: string } }>('/:gameId/rate', async (request, reply) => {
+    const userId = extractUserId(request);
     if (!userId) {
-      res.status(401).json({ error: 'Authentication required' });
-      return;
+      reply.code(401);
+      return { error: 'Authentication required' };
     }
 
-    const { value } = req.body;
+    const { value } = request.body as { value: number };
     if (value !== 1 && value !== -1) {
-      res.status(400).json({ error: 'Value must be 1 or -1' });
-      return;
+      reply.code(400);
+      return { error: 'Value must be 1 or -1' };
     }
 
     const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, status: 'READY' },
+      where: { id: request.params.gameId, status: 'READY' },
     });
 
     if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
+      reply.code(404);
+      return { error: 'Game not found' };
     }
 
     if (game.ownerId === userId) {
-      res.status(403).json({ error: 'Cannot rate your own game' });
-      return;
+      reply.code(403);
+      return { error: 'Cannot rate your own game' };
     }
 
     await prisma.gameRating.upsert({
-      where: { gameId_userId: { gameId: req.params.gameId, userId } },
-      create: { gameId: req.params.gameId, userId, value },
+      where: { gameId_userId: { gameId: request.params.gameId, userId } },
+      create: { gameId: request.params.gameId, userId, value },
       update: { value },
     });
 
     const ratings = await prisma.gameRating.findMany({
-      where: { gameId: req.params.gameId },
+      where: { gameId: request.params.gameId },
     });
 
     const { ratingScore, ratingCount } = computeRatings(ratings, userId);
 
-    res.json({ ratingScore, ratingCount, userRating: value });
-  }),
-);
+    return { ratingScore, ratingCount, userRating: value };
+  });
 
-// Remove rating
-exploreRouter.delete(
-  '/:gameId/rate',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
+  // Remove rating
+  app.delete<{ Params: { gameId: string } }>('/:gameId/rate', async (request, reply) => {
+    const userId = extractUserId(request);
     if (!userId) {
-      res.status(401).json({ error: 'Authentication required' });
-      return;
+      reply.code(401);
+      return { error: 'Authentication required' };
     }
 
     await prisma.gameRating.deleteMany({
-      where: { gameId: req.params.gameId, userId },
+      where: { gameId: request.params.gameId, userId },
     });
 
     const ratings = await prisma.gameRating.findMany({
-      where: { gameId: req.params.gameId },
+      where: { gameId: request.params.gameId },
     });
 
     const { ratingScore, ratingCount } = computeRatings(ratings, userId);
 
-    res.json({ ratingScore, ratingCount, userRating: null });
-  }),
-);
+    return { ratingScore, ratingCount, userRating: null };
+  });
 
-// Save (bookmark) a game
-exploreRouter.post(
-  '/:gameId/save',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
+  // Save (bookmark) a game
+  app.post<{ Params: { gameId: string } }>('/:gameId/save', async (request, reply) => {
+    const userId = extractUserId(request);
     if (!userId) {
-      res.status(401).json({ error: 'Authentication required' });
-      return;
+      reply.code(401);
+      return { error: 'Authentication required' };
     }
 
     const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, status: 'READY' },
+      where: { id: request.params.gameId, status: 'READY' },
     });
 
     if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
+      reply.code(404);
+      return { error: 'Game not found' };
     }
 
     if (game.ownerId === userId) {
-      res.status(403).json({ error: 'Cannot save your own game' });
-      return;
+      reply.code(403);
+      return { error: 'Cannot save your own game' };
     }
 
     await prisma.gameBookmark.upsert({
-      where: { gameId_userId: { gameId: req.params.gameId, userId } },
-      create: { gameId: req.params.gameId, userId },
+      where: { gameId_userId: { gameId: request.params.gameId, userId } },
+      create: { gameId: request.params.gameId, userId },
       update: {},
     });
 
-    res.json({ isSaved: true });
-  }),
-);
+    return { isSaved: true };
+  });
 
-// Unsave (remove bookmark) a game
-exploreRouter.delete(
-  '/:gameId/save',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = extractUserId(req);
+  // Unsave (remove bookmark) a game
+  app.delete<{ Params: { gameId: string } }>('/:gameId/save', async (request, reply) => {
+    const userId = extractUserId(request);
     if (!userId) {
-      res.status(401).json({ error: 'Authentication required' });
-      return;
+      reply.code(401);
+      return { error: 'Authentication required' };
     }
 
     await prisma.gameBookmark.deleteMany({
-      where: { gameId: req.params.gameId, userId },
+      where: { gameId: request.params.gameId, userId },
     });
 
-    res.json({ isSaved: false });
-  }),
-);
+    return { isSaved: false };
+  });
+};

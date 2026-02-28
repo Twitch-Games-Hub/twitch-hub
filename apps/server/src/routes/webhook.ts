@@ -1,5 +1,3 @@
-import { Router } from 'express';
-import express from 'express';
 import { logger } from '../logger.js';
 import {
   constructWebhookEvent,
@@ -8,29 +6,30 @@ import {
   handleSubscriptionDeleted,
 } from '../services/StripeService.js';
 import type Stripe from 'stripe';
+import type { FastifyPluginAsync } from 'fastify';
 
 const log = logger.child({ module: 'webhook' });
 
-export const webhookRouter = Router();
+export const webhookPlugin: FastifyPluginAsync = async (app) => {
+  // Scoped raw body parser — only applies within this plugin
+  app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_request, body, done) => {
+    done(null, body);
+  });
 
-// Raw body parser — must NOT use express.json()
-webhookRouter.post(
-  '/api/billing/webhook',
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    const signature = req.headers['stripe-signature'] as string;
+  app.post('/webhook', async (request, reply) => {
+    const signature = request.headers['stripe-signature'] as string;
     if (!signature) {
-      res.status(400).json({ error: 'Missing stripe-signature header' });
-      return;
+      reply.code(400);
+      return { error: 'Missing stripe-signature header' };
     }
 
     let event: Stripe.Event;
     try {
-      event = constructWebhookEvent(req.body as Buffer, signature);
+      event = constructWebhookEvent(request.body as Buffer, signature);
     } catch (err) {
       log.warn({ err }, 'Webhook signature verification failed');
-      res.status(400).json({ error: 'Invalid signature' });
-      return;
+      reply.code(400);
+      return { error: 'Invalid signature' };
     }
 
     log.info({ type: event.type, id: event.id }, 'Webhook received');
@@ -51,10 +50,10 @@ webhookRouter.post(
       }
     } catch (err) {
       log.error({ err, type: event.type }, 'Webhook handler error');
-      res.status(500).json({ error: 'Webhook processing failed' });
-      return;
+      reply.code(500);
+      return { error: 'Webhook processing failed' };
     }
 
-    res.json({ received: true });
-  },
-);
+    return { received: true };
+  });
+};

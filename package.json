@@ -1,7 +1,11 @@
 {
   "name": "twitch-hub",
   "private": true,
-  "packageManager": "pnpm@10.30.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "docs"
+  ],
   "engines": {
     "node": ">=22.0.0"
   },
@@ -14,8 +18,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "clean": "turbo clean",
-    "docs:dev": "pnpm --filter @twitch-hub/docs run dev",
-    "docs:build": "pnpm --filter @twitch-hub/docs run build",
+    "docs:dev": "turbo run dev --filter=@twitch-hub/docs",
+    "docs:build": "turbo run build --filter=@twitch-hub/docs",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -25,15 +29,6 @@
     ],
     "*.{json,md,yml,yaml,css,html}": [
       "prettier --write"
-    ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "@sentry/cli",
-      "esbuild",
-      "prisma"
     ]
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
+import type { FastifyInstance } from 'fastify';
 import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/shared-types';
 import { socketAuthMiddleware, optionalSocketAuthMiddleware } from './middleware.js';
 import { registerGameHandlers } from './handlers/gameHandler.js';
@@ -14,8 +14,8 @@ export type AppSocket =
     ? Parameters<Parameters<Server<ClientToServerEvents, ServerToClientEvents>['on']>[1]>[0]
     : never;
 
-export function createSocketServer(httpServer: HttpServer) {
-  const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+export function createSocketServer(app: FastifyInstance) {
+  const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
     cors: {
       origin: config.appUrl,
       credentials: true,

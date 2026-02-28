@@ -3,7 +3,7 @@ dist
 build
 .svelte-kit
 .turbo
-pnpm-lock.yaml
+bun.lockb
 prisma/migrations
 .vitepress/cache
 .vitepress/dist

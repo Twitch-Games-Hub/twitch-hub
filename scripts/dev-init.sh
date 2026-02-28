@@ -24,6 +24,7 @@ usage() {
   echo "  reset     Nuke Docker volumes + node_modules, then full init"
   echo "  restart   Restart Docker containers + dev server (skip install)"
   echo "  stop      Stop Docker containers"
+  echo "  stripe    Start Stripe webhook listener (requires stripe CLI)"
   exit 0
 }
 
@@ -43,10 +44,10 @@ check_prereqs() {
   fi
   info "Node.js $node_version"
 
-  if ! command -v pnpm &>/dev/null; then
-    fail "pnpm is not installed (run: corepack enable && corepack prepare pnpm@latest --activate)"
+  if ! command -v bun &>/dev/null; then
+    fail "bun is not installed (run: curl -fsSL https://bun.sh/install | bash)"
   fi
-  info "pnpm $(pnpm -v)"
+  info "bun $(bun -v)"
 
   if ! command -v docker &>/dev/null; then
     fail "Docker is not installed"
@@ -94,7 +95,7 @@ check_env() {
 install_deps() {
   echo ""
   echo "Installing dependencies..."
-  pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+  bun install --frozen-lockfile 2>/dev/null || bun install
   info "Dependencies installed"
 }
 
@@ -119,7 +120,7 @@ start_dev() {
   echo "  Web:    http://localhost:5173"
   echo "  Server: http://localhost:3001"
   echo ""
-  exec pnpm dev
+  exec bun dev
 }
 
 # ── Commands ──────────────────────────────────────────────────────────
@@ -161,6 +162,33 @@ cmd_stop() {
   docker_down
 }
 
+cmd_stripe() {
+  if ! command -v stripe &>/dev/null; then
+    fail "Stripe CLI is not installed — see https://docs.stripe.com/stripe-cli"
+  fi
+  info "Stripe CLI $(stripe version 2>/dev/null || stripe --version 2>/dev/null)"
+
+  if [[ ! -f apps/server/.env ]]; then
+    fail "apps/server/.env not found"
+  fi
+
+  # Read existing key from .env
+  local key
+  key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2-)
+  if [[ -z "$key" || "$key" == "sk_test_..." ]]; then
+    fail "Set STRIPE_SECRET_KEY in apps/server/.env first"
+  fi
+
+  echo ""
+  echo -e "${GREEN}Starting Stripe webhook listener...${NC}"
+  echo "  Forwarding to: http://localhost:3001/api/billing/webhook"
+  echo ""
+  echo -e "${YELLOW}[!]${NC} Copy the whsec_... secret printed below into STRIPE_WEBHOOK_SECRET in apps/server/.env"
+  echo ""
+
+  exec stripe listen --forward-to localhost:3001/api/billing/webhook --api-key "$key"
+}
+
 # ── Dispatch ──────────────────────────────────────────────────────────
 
 case "$COMMAND" in
@@ -168,6 +196,7 @@ case "$COMMAND" in
   reset)   cmd_reset   ;;
   restart) cmd_restart ;;
   stop)    cmd_stop    ;;
+  stripe)  cmd_stripe  ;;
   -h|--help|help) usage ;;
   *) fail "Unknown command: $COMMAND (run '$0 help' for usage)" ;;
 esac

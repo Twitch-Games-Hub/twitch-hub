@@ -1,22 +1,19 @@
-import { Router } from 'express';
 import { prisma } from '../db/client.js';
 import { authMiddleware } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import { computeRatings } from '../utils/ratings.js';
 import { computeContentCount } from '../utils/contentCount.js';
 import { parsePagination } from '../utils/pagination.js';
-import type { Request, Response } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
-export const bookmarksRouter = Router();
+export const bookmarksPlugin: FastifyPluginAsync = async (app) => {
+  app.addHook('preHandler', authMiddleware);
 
-bookmarksRouter.use(authMiddleware);
-
-// List saved games for the authenticated user
-bookmarksRouter.get(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
-    const { page, limit, skip } = parsePagination(req.query as { page?: string; limit?: string });
+  // List saved games for the authenticated user
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = request.userId!;
+    const { page, limit, skip } = parsePagination(
+      request.query as { page?: string; limit?: string },
+    );
 
     const where = { userId, game: { status: 'READY' as const } };
 
@@ -61,6 +58,6 @@ bookmarksRouter.get(
       };
     });
 
-    res.json({ games, total, page, limit });
-  }),
-);
+    return { games, total, page, limit };
+  });
+};

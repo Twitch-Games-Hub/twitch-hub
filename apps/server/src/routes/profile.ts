@@ -1,7 +1,5 @@
-import { Router } from 'express';
 import { prisma } from '../db/client.js';
 import { authMiddleware } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getUserById,
   getChannel,
@@ -13,56 +11,53 @@ import {
   refreshUserToken,
 } from '../twitch/api.js';
 import { logger } from '../logger.js';
-import type { Request, Response } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { ProfileData } from '@twitch-hub/shared-types';
 
 const log = logger.child({ module: 'profile' });
 
-export const profileRouter = Router();
+export const profilePlugin: FastifyPluginAsync = async (app) => {
+  app.addHook('preHandler', authMiddleware);
 
-profileRouter.use(authMiddleware);
+  async function getValidAccessToken(
+    userId: string,
+  ): Promise<{ accessToken: string; twitchId: string } | null> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
 
-async function getValidAccessToken(
-  userId: string,
-): Promise<{ accessToken: string; twitchId: string } | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return null;
+    let { accessToken } = user;
+    const { refreshToken, twitchId } = user;
 
-  let { accessToken } = user;
-  const { refreshToken, twitchId } = user;
-
-  const isValid = await validateToken(accessToken);
-  if (!isValid) {
-    try {
-      const refreshed = await refreshUserToken(refreshToken);
-      accessToken = refreshed.access_token;
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          accessToken: refreshed.access_token,
-          refreshToken: refreshed.refresh_token,
-          tokenExpiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
-        },
-      });
-    } catch (err) {
-      log.error({ err, userId }, 'Failed to refresh token');
-      return null;
+    const isValid = await validateToken(accessToken);
+    if (!isValid) {
+      try {
+        const refreshed = await refreshUserToken(refreshToken);
+        accessToken = refreshed.access_token;
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            accessToken: refreshed.access_token,
+            refreshToken: refreshed.refresh_token,
+            tokenExpiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
+          },
+        });
+      } catch (err) {
+        log.error({ err, userId }, 'Failed to refresh token');
+        return null;
+      }
     }
+
+    return { accessToken, twitchId };
   }
 
-  return { accessToken, twitchId };
-}
-
-// GET / — full profile data
-profileRouter.get(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+  // GET / — full profile data
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = request.userId!;
 
     const tokens = await getValidAccessToken(userId);
     if (!tokens) {
-      res.status(401).json({ error: 'Unable to authenticate with Twitch' });
-      return;
+      reply.code(401);
+      return { error: 'Unable to authenticate with Twitch' };
     }
 
     const { accessToken, twitchId } = tokens;
@@ -120,42 +115,36 @@ profileRouter.get(
       },
     };
 
-    res.json(profileData);
-  }),
-);
+    return profileData;
+  });
 
-// GET /followed?after=CURSOR — paginate followed channels
-profileRouter.get(
-  '/followed',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+  // GET /followed?after=CURSOR — paginate followed channels
+  app.get('/followed', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = request.userId!;
 
     const tokens = await getValidAccessToken(userId);
     if (!tokens) {
-      res.status(401).json({ error: 'Unable to authenticate with Twitch' });
-      return;
+      reply.code(401);
+      return { error: 'Unable to authenticate with Twitch' };
     }
 
-    const after = req.query.after as string | undefined;
+    const after = (request.query as Record<string, string>).after;
     const data = await getFollowedChannels(tokens.twitchId, tokens.accessToken, 20, after);
-    res.json(data);
-  }),
-);
+    return data;
+  });
 
-// GET /followers?after=CURSOR — paginate followers
-profileRouter.get(
-  '/followers',
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+  // GET /followers?after=CURSOR — paginate followers
+  app.get('/followers', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = request.userId!;
 
     const tokens = await getValidAccessToken(userId);
     if (!tokens) {
-      res.status(401).json({ error: 'Unable to authenticate with Twitch' });
-      return;
+      reply.code(401);
+      return { error: 'Unable to authenticate with Twitch' };
     }
 
-    const after = req.query.after as string | undefined;
+    const after = (request.query as Record<string, string>).after;
     const data = await getFollowers(tokens.twitchId, tokens.accessToken, 20, after);
-    res.json(data);
-  }),
-);
+    return data;
+  });
+};

@@ -1,53 +1,46 @@
-import { Router } from 'express';
 import { prisma } from '../db/client.js';
 import { authMiddleware } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireGameOwner } from '../middleware/requireGameOwner.js';
-import type { Request, Response } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
-export const gamesRouter = Router();
+export const gamesPlugin: FastifyPluginAsync = async (app) => {
+  app.addHook('preHandler', authMiddleware);
 
-gamesRouter.use(authMiddleware);
-
-// List user's games
-gamesRouter.get(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
+  // List user's games
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const games = await prisma.game.findMany({
-      where: { ownerId: req.userId },
+      where: { ownerId: request.userId },
       orderBy: { updatedAt: 'desc' },
       include: { sessions: { select: { id: true, status: true } } },
     });
-    res.json(games);
-  }),
-);
+    return games;
+  });
 
-// Get single game
-gamesRouter.get(
-  '/:gameId',
-  requireGameOwner,
-  asyncHandler(async (req: Request, res: Response) => {
-    const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, ownerId: req.userId },
-      include: { sessions: { orderBy: { createdAt: 'desc' } } },
-    });
-    if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
-    }
-    res.json(game);
-  }),
-);
+  // Get single game
+  app.get<{ Params: { gameId: string } }>(
+    '/:gameId',
+    { preHandler: [requireGameOwner] },
+    async (request, reply) => {
+      const game = await prisma.game.findFirst({
+        where: { id: request.params.gameId, ownerId: request.userId },
+        include: { sessions: { orderBy: { createdAt: 'desc' } } },
+      });
+      if (!game) {
+        reply.code(404);
+        return { error: 'Game not found' };
+      }
+      return game;
+    },
+  );
 
-// Create game
-gamesRouter.post(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { type, title, description, coverImageUrl, config } = req.body;
+  // Create game
+  app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { type, title, description, coverImageUrl, config } = request.body as any;
 
     const game = await prisma.game.create({
       data: {
-        ownerId: req.userId!,
+        ownerId: request.userId!,
         type,
         title,
         description: description || null,
@@ -57,37 +50,39 @@ gamesRouter.post(
       },
     });
 
-    res.status(201).json(game);
-  }),
-);
+    reply.code(201);
+    return game;
+  });
 
-// Update game
-gamesRouter.put(
-  '/:gameId',
-  requireGameOwner,
-  asyncHandler(async (req: Request, res: Response) => {
-    const { title, description, coverImageUrl, config, status } = req.body;
-    const game = await prisma.game.update({
-      where: { id: req.params.gameId },
-      data: {
-        title,
-        config,
-        status,
-        ...(description !== undefined ? { description: description || null } : {}),
-        ...(coverImageUrl !== undefined ? { coverImageUrl: coverImageUrl || null } : {}),
-      },
-    });
+  // Update game
+  app.put<{ Params: { gameId: string } }>(
+    '/:gameId',
+    { preHandler: [requireGameOwner] },
+    async (request, reply) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { title, description, coverImageUrl, config, status } = request.body as any;
+      const game = await prisma.game.update({
+        where: { id: request.params.gameId },
+        data: {
+          title,
+          config,
+          status,
+          ...(description !== undefined ? { description: description || null } : {}),
+          ...(coverImageUrl !== undefined ? { coverImageUrl: coverImageUrl || null } : {}),
+        },
+      });
 
-    res.json(game);
-  }),
-);
+      return game;
+    },
+  );
 
-// Delete game
-gamesRouter.delete(
-  '/:gameId',
-  requireGameOwner,
-  asyncHandler(async (req: Request, res: Response) => {
-    await prisma.game.delete({ where: { id: req.params.gameId } });
-    res.json({ success: true });
-  }),
-);
+  // Delete game
+  app.delete<{ Params: { gameId: string } }>(
+    '/:gameId',
+    { preHandler: [requireGameOwner] },
+    async (request, reply) => {
+      await prisma.game.delete({ where: { id: request.params.gameId } });
+      return { success: true };
+    },
+  );
+};

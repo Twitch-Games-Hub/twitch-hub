@@ -1,22 +1,20 @@
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../db/client.js';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 
-export async function requireGameOwner(req: Request, res: Response, next: NextFunction) {
-  const gameId = req.params.gameId;
+export async function requireGameOwner(
+  request: FastifyRequest<{ Params: { gameId: string } }>,
+  reply: FastifyReply,
+) {
+  const gameId = request.params.gameId;
   if (!gameId) {
-    res.status(400).json({ error: 'Missing gameId' });
+    reply.code(400).send({ error: 'Missing gameId' });
     return;
   }
 
-  try {
-    const game = await prisma.game.findFirst({ where: { id: gameId, ownerId: req.userId } });
-    if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
-    }
-    req.game = game;
-    next();
-  } catch (err) {
-    next(err);
+  const game = await prisma.game.findFirst({ where: { id: gameId, ownerId: request.userId } });
+  if (!game) {
+    reply.code(404).send({ error: 'Game not found' });
+    return;
   }
+  request.game = game;
 }

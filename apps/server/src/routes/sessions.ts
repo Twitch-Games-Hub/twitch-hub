@@ -1,22 +1,19 @@
-import { Router } from 'express';
 import { prisma } from '../db/client.js';
 import { authMiddleware } from '../auth.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
 import { parsePagination } from '../utils/pagination.js';
-import type { Request, Response } from 'express';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
-export const sessionsRouter = Router();
+export const sessionsPlugin: FastifyPluginAsync = async (app) => {
+  app.addHook('preHandler', authMiddleware);
 
-sessionsRouter.use(authMiddleware);
+  // List user's sessions (paginated, filterable by status)
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { page, limit, skip } = parsePagination(
+      request.query as { page?: string; limit?: string },
+    );
+    const status = (request.query as Record<string, string>).status;
 
-// List user's sessions (paginated, filterable by status)
-sessionsRouter.get(
-  '/',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, skip } = parsePagination(req.query as { page?: string; limit?: string });
-    const status = req.query.status as string | undefined;
-
-    const where: Record<string, unknown> = { hostId: req.userId };
+    const where: Record<string, unknown> = { hostId: request.userId };
     if (status && ['LOBBY', 'LIVE', 'ENDED'].includes(status)) {
       where.status = status;
     }
@@ -49,45 +46,39 @@ sessionsRouter.get(
       responseCount: s._count.responses,
     }));
 
-    res.json({ sessions: mapped, total, page, limit });
-  }),
-);
+    return { sessions: mapped, total, page, limit };
+  });
 
-// Get session results (FinalResults from state column)
-sessionsRouter.get(
-  '/:sessionId/results',
-  asyncHandler(async (req: Request, res: Response) => {
+  // Get session results (FinalResults from state column)
+  app.get<{ Params: { sessionId: string } }>('/:sessionId/results', async (request, reply) => {
     const session = await prisma.gameSession.findFirst({
-      where: { id: req.params.sessionId, hostId: req.userId },
+      where: { id: request.params.sessionId, hostId: request.userId },
       select: { status: true, state: true },
     });
 
     if (!session) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
+      reply.code(404);
+      return { error: 'Session not found' };
     }
 
     if (session.status !== 'ENDED') {
-      res.status(404).json({ error: 'Session has not ended' });
-      return;
+      reply.code(404);
+      return { error: 'Session has not ended' };
     }
 
     const results = session.state as Record<string, unknown> | null;
     if (!results || Object.keys(results).length === 0) {
-      res.status(404).json({ error: 'No results available' });
-      return;
+      reply.code(404);
+      return { error: 'No results available' };
     }
 
-    res.json(results);
-  }),
-);
+    return results;
+  });
 
-// Get a single session with full game data
-sessionsRouter.get(
-  '/:sessionId',
-  asyncHandler(async (req: Request, res: Response) => {
+  // Get a single session with full game data
+  app.get<{ Params: { sessionId: string } }>('/:sessionId', async (request, reply) => {
     const session = await prisma.gameSession.findFirst({
-      where: { id: req.params.sessionId, hostId: req.userId },
+      where: { id: request.params.sessionId, hostId: request.userId },
       include: {
         game: true,
         _count: { select: { responses: true } },
@@ -95,11 +86,11 @@ sessionsRouter.get(
     });
 
     if (!session) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
+      reply.code(404);
+      return { error: 'Session not found' };
     }
 
-    res.json({
+    return {
       id: session.id,
       gameId: session.gameId,
       hostId: session.hostId,
@@ -120,6 +111,6 @@ sessionsRouter.get(
         createdAt: session.game.createdAt.toISOString(),
       },
       responseCount: session._count.responses,
-    });
-  }),
-);
+    };
+  });
+};
