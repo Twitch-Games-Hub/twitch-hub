@@ -8,11 +8,10 @@
   import { toastStore } from '$lib/stores/toast.svelte';
   import { createGameSession } from '$lib/utils/session';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
-  import { ThumbsUpIcon, ThumbsDownIcon } from '$lib/components/ui/icons';
+  import ExploreGameCard from '$lib/components/explore/ExploreGameCard.svelte';
 
   let games = $state<ApiPublicGame[]>([]);
   let loading = $state(true);
@@ -116,6 +115,27 @@
     }
   }
 
+  async function toggleSave(game: ApiPublicGame) {
+    if (!authStore.user) {
+      toastStore.add('Log in to save games', 'info');
+      return;
+    }
+
+    const wasSaved = game.isSaved;
+
+    try {
+      const res = await fetch(`/api/explore/${game.id}/save`, {
+        method: wasSaved ? 'DELETE' : 'POST',
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      game.isSaved = data.isSaved;
+    } catch {
+      game.isSaved = wasSaved;
+      toastStore.add('Failed to update bookmark', 'error');
+    }
+  }
+
   async function startSession(gameId: string) {
     if (creatingGameId) return;
     creatingGameId = gameId;
@@ -203,83 +223,13 @@
   {:else}
     <div class="grid gap-4 sm:grid-cols-2">
       {#each games as game (game.id)}
-        <Card padding="none" class="relative overflow-hidden">
-          {#if game.coverImageUrl}
-            <img
-              src={game.coverImageUrl}
-              alt=""
-              loading="lazy"
-              class="absolute inset-0 h-full w-full object-cover"
-              onerror={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            <div class="absolute inset-0 bg-surface-secondary/80 backdrop-blur-sm"></div>
-          {/if}
-          <div class="relative p-6">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <span
-                  class="mb-2 inline-block rounded-full bg-brand-600/20 px-2.5 py-0.5 text-xs font-medium text-brand-400"
-                >
-                  {GAME_TYPE_META[game.type as GameType]?.label || game.type}
-                </span>
-                <h3 class="mb-1 truncate text-lg font-semibold text-text-primary">{game.title}</h3>
-                <div class="flex items-center gap-2 text-sm text-text-muted">
-                  {#if game.owner.profileImageUrl}
-                    <img src={game.owner.profileImageUrl} alt="" class="h-5 w-5 rounded-full" />
-                  {/if}
-                  <span>by {game.owner.displayName}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4 flex items-center justify-between">
-              <!-- Rating buttons -->
-              <div class="flex items-center gap-1">
-                <button
-                  class="rounded-lg p-1.5 transition-colors {game.userRating === 1
-                    ? 'text-success-500'
-                    : 'text-text-muted hover:text-text-secondary'}"
-                  onclick={() => rateGame(game, 1)}
-                  aria-label="Upvote"
-                >
-                  <ThumbsUpIcon size={18} />
-                </button>
-                <span
-                  class="min-w-[2rem] text-center text-sm font-medium {game.ratingScore > 0
-                    ? 'text-success-500'
-                    : game.ratingScore < 0
-                      ? 'text-danger-500'
-                      : 'text-text-muted'}"
-                >
-                  {game.ratingScore}
-                </span>
-                <button
-                  class="rounded-lg p-1.5 transition-colors {game.userRating === -1
-                    ? 'text-danger-500'
-                    : 'text-text-muted hover:text-text-secondary'}"
-                  onclick={() => rateGame(game, -1)}
-                  aria-label="Downvote"
-                >
-                  <ThumbsDownIcon size={18} />
-                </button>
-              </div>
-
-              {#if authStore.user}
-                <Button
-                  onclick={() => startSession(game.id)}
-                  size="sm"
-                  variant="secondary"
-                  loading={creatingGameId === game.id}
-                  disabled={creatingGameId !== null}
-                >
-                  Use This Game
-                </Button>
-              {/if}
-            </div>
-          </div>
-        </Card>
+        <ExploreGameCard
+          {game}
+          onrate={rateGame}
+          onsave={toggleSave}
+          onstart={startSession}
+          {creatingGameId}
+        />
       {/each}
     </div>
 

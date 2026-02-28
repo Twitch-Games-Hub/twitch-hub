@@ -12,3 +12,5 @@ export { default as EditIcon } from './EditIcon.svelte';
 export { default as ThumbsUpIcon } from './ThumbsUpIcon.svelte';
 export { default as ThumbsDownIcon } from './ThumbsDownIcon.svelte';
 export { default as GamepadIcon } from './GamepadIcon.svelte';
+export { default as BookmarkIcon } from './BookmarkIcon.svelte';
+export { default as UsersIcon } from './UsersIcon.svelte';

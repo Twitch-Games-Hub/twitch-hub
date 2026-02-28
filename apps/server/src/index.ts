@@ -10,6 +10,7 @@ import { gamesRouter } from './routes/games.js';
 import { exploreRouter } from './routes/explore.js';
 import { profileRouter } from './routes/profile.js';
 import { sessionsRouter } from './routes/sessions.js';
+import { bookmarksRouter } from './routes/bookmarks.js';
 import { createSocketServer } from './socket/index.js';
 import { gameRegistry } from './engine/GameRegistry.js';
 import { redis } from './db/redis.js';
@@ -63,6 +64,7 @@ app.use('/api/games', gamesRouter);
 app.use('/api/explore', exploreRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/sessions', sessionsRouter);
+app.use('/api/bookmarks', bookmarksRouter);
 
 // Sentry error handler (must be before custom error handler)
 Sentry.setupExpressErrorHandler(app);

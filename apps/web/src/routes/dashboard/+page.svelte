@@ -2,8 +2,15 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiDelete } from '$lib/api';
-  import { GameStatus, type ApiGame, type GameType } from '@twitch-hub/shared-types';
+  import {
+    GameStatus,
+    type ApiGame,
+    type ApiPublicGame,
+    type GameType,
+    type RateGameResponse,
+  } from '@twitch-hub/shared-types';
   import { GAME_TYPE_META } from '$lib/constants';
+  import { authStore } from '$lib/stores/auth.svelte';
   import { toastStore } from '$lib/stores/toast.svelte';
   import { createGameSession } from '$lib/utils/session';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -13,6 +20,7 @@
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import ExploreGameCard from '$lib/components/explore/ExploreGameCard.svelte';
   import { PlusIcon, TrashIcon, GamepadIcon, EditIcon } from '$lib/components/ui/icons';
 
   let games = $state<ApiGame[]>([]);
@@ -20,6 +28,14 @@
   let deleteTarget = $state<string | null>(null);
   let confirmOpen = $state(false);
   let creatingGameId = $state<string | null>(null);
+
+  // Tab state
+  let activeTab = $state<'my-games' | 'saved'>('my-games');
+
+  // Saved games state
+  let savedGames = $state<ApiPublicGame[]>([]);
+  let savedLoading = $state(false);
+  let savedLoaded = $state(false);
 
   onMount(async () => {
     try {
@@ -59,6 +75,71 @@
       toastStore.add('Failed to delete game', 'error');
     }
   }
+
+  // Saved tab functions
+  async function fetchSavedGames() {
+    if (savedLoaded) return;
+    savedLoading = true;
+    try {
+      const res = await fetch('/api/bookmarks?limit=50');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      savedGames = data.games;
+      savedLoaded = true;
+    } catch {
+      toastStore.add('Failed to load saved games', 'error');
+    } finally {
+      savedLoading = false;
+    }
+  }
+
+  function switchTab(tab: 'my-games' | 'saved') {
+    activeTab = tab;
+    if (tab === 'saved') fetchSavedGames();
+  }
+
+  async function unsaveGame(game: ApiPublicGame) {
+    try {
+      const res = await fetch(`/api/explore/${game.id}/save`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      savedGames = savedGames.filter((g) => g.id !== game.id);
+    } catch {
+      toastStore.add('Failed to unsave game', 'error');
+    }
+  }
+
+  async function rateSavedGame(game: ApiPublicGame, value: 1 | -1) {
+    const prevRating = game.userRating;
+    const prevScore = game.ratingScore;
+    const prevCount = game.ratingCount;
+
+    try {
+      let data: RateGameResponse;
+
+      if (game.userRating === value) {
+        const res = await fetch(`/api/explore/${game.id}/rate`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        data = await res.json();
+      } else {
+        const res = await fetch(`/api/explore/${game.id}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+        });
+        if (!res.ok) throw new Error();
+        data = await res.json();
+      }
+
+      game.ratingScore = data.ratingScore;
+      game.ratingCount = data.ratingCount;
+      game.userRating = data.userRating;
+    } catch {
+      game.ratingScore = prevScore;
+      game.ratingCount = prevCount;
+      game.userRating = prevRating;
+      toastStore.add('Failed to rate game', 'error');
+    }
+  }
 </script>
 
 <svelte:head>
@@ -75,70 +156,130 @@
     {/snippet}
   </PageHeader>
 
-  {#if loading}
-    <div class="space-y-4">
-      {#each [1, 2, 3] as n (n)}
-        <Skeleton height="5rem" rounded="rounded-xl" />
-      {/each}
-    </div>
-  {:else if games.length === 0}
-    <EmptyState
-      title="No games yet"
-      description="Create your first interactive game for your stream."
+  <!-- Tabs -->
+  <div class="mb-6 flex border-b border-border-default">
+    <button
+      class="relative px-4 py-2.5 text-sm font-medium transition-colors {activeTab === 'my-games'
+        ? 'text-brand-400'
+        : 'text-text-muted hover:text-text-secondary'}"
+      onclick={() => switchTab('my-games')}
     >
-      {#snippet action()}
-        <Button href="/dashboard/games/new">
-          <PlusIcon size={16} />
-          Create Game
-        </Button>
-      {/snippet}
-    </EmptyState>
-  {:else}
-    <Card padding="none" class="divide-y divide-border-default overflow-hidden">
-      {#each games as game (game.id)}
-        <div
-          class="animate-fade-in flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-surface-tertiary/60 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="truncate text-sm font-medium text-text-primary">{game.title}</h3>
-              <StatusBadge status={game.status} />
+      My Games
+      {#if activeTab === 'my-games'}
+        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-brand-400"></span>
+      {/if}
+    </button>
+    <button
+      class="relative px-4 py-2.5 text-sm font-medium transition-colors {activeTab === 'saved'
+        ? 'text-brand-400'
+        : 'text-text-muted hover:text-text-secondary'}"
+      onclick={() => switchTab('saved')}
+    >
+      Saved Games
+      {#if activeTab === 'saved'}
+        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-brand-400"></span>
+      {/if}
+    </button>
+  </div>
+
+  <!-- My Games Tab -->
+  {#if activeTab === 'my-games'}
+    {#if loading}
+      <div class="space-y-4">
+        {#each [1, 2, 3] as n (n)}
+          <Skeleton height="5rem" rounded="rounded-xl" />
+        {/each}
+      </div>
+    {:else if games.length === 0}
+      <EmptyState
+        title="No games yet"
+        description="Create your first interactive game for your stream."
+      >
+        {#snippet action()}
+          <Button href="/dashboard/games/new">
+            <PlusIcon size={16} />
+            Create Game
+          </Button>
+        {/snippet}
+      </EmptyState>
+    {:else}
+      <Card padding="none" class="divide-y divide-border-default overflow-hidden">
+        {#each games as game (game.id)}
+          <div
+            class="animate-fade-in flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-surface-tertiary/60 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="truncate text-sm font-medium text-text-primary">{game.title}</h3>
+                <StatusBadge status={game.status} />
+              </div>
+              <p class="mt-0.5 text-xs text-text-muted">
+                {GAME_TYPE_META[game.type as GameType]?.label ||
+                  game.type}{#if game.status === GameStatus.READY}
+                  <span class="text-text-muted"> · Visible on Explore</span>
+                {:else if game.status === GameStatus.ARCHIVED}
+                  <span class="text-text-muted"> · Hidden</span>
+                {/if}
+              </p>
             </div>
-            <p class="mt-0.5 text-xs text-text-muted">
-              {GAME_TYPE_META[game.type as GameType]?.label ||
-                game.type}{#if game.status === GameStatus.READY}
-                <span class="text-text-muted"> · Visible on Explore</span>
-              {:else if game.status === GameStatus.ARCHIVED}
-                <span class="text-text-muted"> · Hidden</span>
-              {/if}
-            </p>
+            <div class="flex shrink-0 items-center gap-1">
+              <Button
+                onclick={() => startSession(game.id)}
+                variant="primary"
+                size="sm"
+                loading={creatingGameId === game.id}
+                disabled={creatingGameId !== null}
+              >
+                <GamepadIcon size={14} />
+                Start
+              </Button>
+              <Button href="/dashboard/games/{game.id}" variant="ghost" size="sm" class="!px-2">
+                <EditIcon size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="!px-2 hover:!bg-danger-900/20 hover:!text-danger-500"
+                onclick={() => promptDelete(game.id)}
+              >
+                <TrashIcon size={14} />
+              </Button>
+            </div>
           </div>
-          <div class="flex shrink-0 items-center gap-1">
-            <Button
-              onclick={() => startSession(game.id)}
-              variant="primary"
-              size="sm"
-              loading={creatingGameId === game.id}
-              disabled={creatingGameId !== null}
-            >
-              <GamepadIcon size={14} />
-              Start
-            </Button>
-            <Button href="/dashboard/games/{game.id}" variant="ghost" size="sm" class="!px-2">
-              <EditIcon size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="!px-2 hover:!bg-danger-900/20 hover:!text-danger-500"
-              onclick={() => promptDelete(game.id)}
-            >
-              <TrashIcon size={14} />
-            </Button>
-          </div>
-        </div>
-      {/each}
-    </Card>
+        {/each}
+      </Card>
+    {/if}
+
+    <!-- Saved Games Tab -->
+  {:else if activeTab === 'saved'}
+    {#if savedLoading}
+      <div class="grid gap-4 sm:grid-cols-2">
+        {#each Array(4) as _, i (i)}
+          <Skeleton height="12rem" rounded="rounded-xl" />
+        {/each}
+      </div>
+    {:else if savedGames.length === 0}
+      <EmptyState
+        title="No saved games"
+        description="Browse the Explore page and bookmark games you'd like to use later."
+      >
+        {#snippet action()}
+          <Button href="/explore" variant="secondary">Explore Games</Button>
+        {/snippet}
+      </EmptyState>
+    {:else}
+      <div class="grid gap-4 sm:grid-cols-2">
+        {#each savedGames as game (game.id)}
+          <ExploreGameCard
+            {game}
+            onrate={rateSavedGame}
+            onsave={unsaveGame}
+            onstart={startSession}
+            {creatingGameId}
+          />
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 

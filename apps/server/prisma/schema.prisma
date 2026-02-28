@@ -22,6 +22,7 @@ model User {
   ownedGames      Game[]
   responses       Response[]
   ratings         GameRating[]
+  bookmarks       GameBookmark[]
 }
 
 enum UserRole {
@@ -43,6 +44,7 @@ model Game {
   updatedAt     DateTime   @updatedAt
   sessions      GameSession[]
   ratings       GameRating[]
+  bookmarks     GameBookmark[]
 }
 
 enum GameType {
@@ -114,4 +116,16 @@ model GameRating {
 
   @@unique([gameId, userId])
   @@index([gameId])
+}
+
+model GameBookmark {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([gameId, userId])
+  @@index([userId])
 }

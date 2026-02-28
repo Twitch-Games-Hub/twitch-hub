@@ -3,6 +3,7 @@ import { prisma } from '../db/client.js';
 import { verifyToken } from '../auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { computeRatings } from '../utils/ratings.js';
+import { computeContentCount } from '../utils/contentCount.js';
 import { parsePagination } from '../utils/pagination.js';
 import type { Request, Response } from 'express';
 
@@ -35,6 +36,8 @@ exploreRouter.get(
         include: {
           owner: { select: { displayName: true, profileImageUrl: true, twitchLogin: true } },
           ratings: true,
+          _count: { select: { sessions: true } },
+          ...(userId ? { bookmarks: { where: { userId }, select: { id: true } } } : {}),
         },
         orderBy: isNewest ? { createdAt: 'desc' } : undefined,
         ...(isNewest ? { skip: (page - 1) * limit, take: limit } : {}),
@@ -49,6 +52,7 @@ exploreRouter.get(
         id: game.id,
         type: game.type,
         title: game.title,
+        description: game.description,
         coverImageUrl: game.coverImageUrl,
         config: game.config,
         status: game.status,
@@ -57,6 +61,9 @@ exploreRouter.get(
         ratingScore,
         ratingCount,
         userRating,
+        isSaved: 'bookmarks' in game ? (game.bookmarks as unknown[]).length > 0 : false,
+        playCount: game._count.sessions,
+        contentCount: computeContentCount(game.type, game.config),
       };
     });
 
@@ -81,6 +88,8 @@ exploreRouter.get(
       include: {
         owner: { select: { displayName: true, profileImageUrl: true, twitchLogin: true } },
         ratings: true,
+        _count: { select: { sessions: true } },
+        ...(userId ? { bookmarks: { where: { userId }, select: { id: true } } } : {}),
       },
     });
 
@@ -95,6 +104,7 @@ exploreRouter.get(
       id: game.id,
       type: game.type,
       title: game.title,
+      description: game.description,
       coverImageUrl: game.coverImageUrl,
       config: game.config,
       status: game.status,
@@ -103,6 +113,9 @@ exploreRouter.get(
       ratingScore,
       ratingCount,
       userRating,
+      isSaved: 'bookmarks' in game ? (game.bookmarks as unknown[]).length > 0 : false,
+      playCount: game._count.sessions,
+      contentCount: computeContentCount(game.type, game.config),
     });
   }),
 );
@@ -174,5 +187,52 @@ exploreRouter.delete(
     const { ratingScore, ratingCount } = computeRatings(ratings, userId);
 
     res.json({ ratingScore, ratingCount, userRating: null });
+  }),
+);
+
+// Save (bookmark) a game
+exploreRouter.post(
+  '/:gameId/save',
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = extractUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const game = await prisma.game.findFirst({
+      where: { id: req.params.gameId, status: 'READY' },
+    });
+
+    if (!game) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+
+    await prisma.gameBookmark.upsert({
+      where: { gameId_userId: { gameId: req.params.gameId, userId } },
+      create: { gameId: req.params.gameId, userId },
+      update: {},
+    });
+
+    res.json({ isSaved: true });
+  }),
+);
+
+// Unsave (remove bookmark) a game
+exploreRouter.delete(
+  '/:gameId/save',
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = extractUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    await prisma.gameBookmark.deleteMany({
+      where: { gameId: req.params.gameId, userId },
+    });
+
+    res.json({ isSaved: false });
   }),
 );

@@ -55,6 +55,9 @@ export interface ApiPublicGame extends ApiGameBase {
   ratingScore: number;
   ratingCount: number;
   userRating: number | null;
+  isSaved: boolean;
+  playCount: number;
+  contentCount: number;
 }
 
 export interface RateGameResponse {
