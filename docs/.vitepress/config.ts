@@ -23,6 +23,7 @@ export default defineConfig({
             { text: 'Getting Started', link: '/dev/getting-started' },
             { text: 'Architecture', link: '/dev/architecture' },
             { text: 'Contributing', link: '/dev/contributing' },
+            { text: 'Self-Hosting PostHog', link: '/dev/posthog-selfhost' },
           ],
         },
       ],
