@@ -12,7 +12,7 @@ twitch-hub/
 └── docs/             # VitePress documentation
 ```
 
-**Tooling**: Turborepo orchestrates builds across workspaces. pnpm manages dependencies.
+**Tooling**: Bun workspaces manage dependencies and orchestrate builds/scripts across packages.
 
 ## Data Flow
 

@@ -5,7 +5,7 @@
 | Tool    | Version                |
 | ------- | ---------------------- |
 | Node.js | >= 22                  |
-| pnpm    | 10.x                   |
+| Bun     | >= 1.x                 |
 | Docker  | For PostgreSQL + Redis |
 
 ## Setup
@@ -16,7 +16,7 @@ git clone https://github.com/your-org/twitch-hub.git
 cd twitch-hub
 
 # Install
-pnpm install
+bun install
 
 # Start Postgres + Redis
 docker compose up -d
@@ -26,11 +26,11 @@ cp .env.example .env
 # Edit .env with your Twitch app credentials
 
 # Generate Prisma client & run migrations
-pnpm --filter @twitch-hub/server db:generate
-pnpm --filter @twitch-hub/server db:migrate
+bun run --filter @twitch-hub/server db:generate
+bun run --filter @twitch-hub/server db:migrate
 
 # Start dev servers
-pnpm dev
+bun run dev
 ```
 
 ## Dev URLs
@@ -57,12 +57,12 @@ Create a `.env` file in the project root (see `.env.example`):
 
 ## Scripts
 
-| Command          | Description                    |
-| ---------------- | ------------------------------ |
-| `pnpm dev`       | Start all services in dev mode |
-| `pnpm build`     | Build all packages             |
-| `pnpm lint`      | Run ESLint across workspaces   |
-| `pnpm format`    | Format code with Prettier      |
-| `pnpm typecheck` | Run TypeScript type checking   |
-| `pnpm test`      | Run unit tests                 |
-| `pnpm docs:dev`  | Start documentation dev server |
+| Command             | Description                    |
+| ------------------- | ------------------------------ |
+| `bun run dev`       | Start all services in dev mode |
+| `bun run build`     | Build all packages             |
+| `bun run lint`      | Run ESLint across workspaces   |
+| `bun run format`    | Format code with Prettier      |
+| `bun run typecheck` | Run TypeScript type checking   |
+| `bun run test`      | Run unit tests                 |
+| `bun run docs:dev`  | Start documentation dev server |

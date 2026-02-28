@@ -7,26 +7,26 @@ Interactive games and polls for Twitch streamers — powered by chat commands an
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-black)
 ![Prisma](https://img.shields.io/badge/Prisma-6-teal)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-blue)
-![Turborepo](https://img.shields.io/badge/Turborepo-2-red)
+![Bun](https://img.shields.io/badge/Bun-1-f9f1e1)
 
 ## Quick Start
 
 ```bash
 git clone https://github.com/your-org/twitch-hub.git
 cd twitch-hub
-pnpm install
+bun install
 docker compose up -d              # Postgres + Redis
 cp .env.example .env              # Add your Twitch app credentials
-pnpm --filter @twitch-hub/server db:generate
-pnpm --filter @twitch-hub/server db:migrate
-pnpm dev
+bun run --filter @twitch-hub/server db:generate
+bun run --filter @twitch-hub/server db:migrate
+bun run dev
 ```
 
 Web: `http://localhost:5173` | API: `http://localhost:3001`
 
 ## Documentation
 
-Full docs available at the [documentation site](./docs/) — run `pnpm docs:dev` to browse locally.
+Full docs available at the [documentation site](./docs/) — run `bun run docs:dev` to browse locally.
 
 ## Project Structure
 
@@ -57,15 +57,15 @@ twitch-hub/
 
 ## Scripts
 
-| Command             | Description               |
-| ------------------- | ------------------------- |
-| `pnpm dev`          | Start all services        |
-| `pnpm build`        | Build all packages        |
-| `pnpm lint`         | Run ESLint                |
-| `pnpm format:check` | Check Prettier formatting |
-| `pnpm typecheck`    | TypeScript type checking  |
-| `pnpm test`         | Run unit tests            |
-| `pnpm docs:dev`     | Documentation dev server  |
+| Command                | Description               |
+| ---------------------- | ------------------------- |
+| `bun run dev`          | Start all services        |
+| `bun run build`        | Build all packages        |
+| `bun run lint`         | Run ESLint                |
+| `bun run format:check` | Check Prettier formatting |
+| `bun run typecheck`    | TypeScript type checking  |
+| `bun run test`         | Run unit tests            |
+| `bun run docs:dev`     | Documentation dev server  |
 
 ## Production
 

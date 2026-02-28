@@ -26,11 +26,11 @@ test: add chatParser edge case tests
 1. Create a branch from `main`
 2. Make changes and ensure all checks pass:
    ```bash
-   pnpm lint
-   pnpm format:check
-   pnpm typecheck
-   pnpm test
-   pnpm build
+   bun run lint
+   bun run format:check
+   bun run typecheck
+   bun run test
+   bun run build
    ```
 3. Push and open a PR against `main`
 4. CI runs automatically (lint, typecheck, build, test)
@@ -85,4 +85,4 @@ Husky + lint-staged runs on every commit:
 
 6. **Create overlay component** in `apps/web/src/lib/components/overlay/`
 
-7. **Run migrations**: `pnpm --filter @twitch-hub/server db:migrate`
+7. **Run migrations**: `bun run --filter @twitch-hub/server db:migrate`
