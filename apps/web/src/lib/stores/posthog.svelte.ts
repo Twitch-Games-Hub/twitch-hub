@@ -17,8 +17,6 @@ function createPostHogStore() {
       posthog.init(key, {
         api_host: import.meta.env.PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
         defaults: '2026-01-30',
-        capture_pageview: false,
-        capture_pageleave: true,
         loaded: (ph) => {
           initialized = true;
           const sessionId = ph.get_session_id();

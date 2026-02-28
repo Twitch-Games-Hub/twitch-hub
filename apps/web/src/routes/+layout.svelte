@@ -3,7 +3,6 @@
   import { authStore } from '$lib/stores/auth.svelte';
   import { posthogStore } from '$lib/stores/posthog.svelte';
   import { onMount } from 'svelte';
-  import { afterNavigate } from '$app/navigation';
   import Button from '$lib/components/ui/Button.svelte';
   import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
   import { page } from '$app/stores';
@@ -15,10 +14,6 @@
 
   onMount(() => {
     authStore.fetchSession();
-  });
-
-  afterNavigate(({ to }) => {
-    if (to?.url) posthogStore.capturePageview(to.url.pathname);
   });
 
   $effect(() => {
