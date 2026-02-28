@@ -106,7 +106,7 @@ docker_nuke() {
 posthog_compose() {
   cd "$POSTHOG_DIR"
   docker compose \
-    -f posthog/docker-compose.hobby.yml \
+    -f docker-compose.yml \
     -f docker-compose.local.yml \
     --env-file .env \
     -p posthog "$@"
@@ -114,13 +114,17 @@ posthog_compose() {
 }
 
 posthog_setup() {
-  # Clone PostHog repo (one-time)
+  # Clone PostHog repo (one-time) — use treeless clone per official deploy script
   if [[ ! -d "$POSTHOG_DIR/posthog" ]]; then
     echo "Cloning PostHog repository (one-time setup)..."
     mkdir -p "$POSTHOG_DIR"
-    git clone --depth 1 https://github.com/PostHog/posthog.git "$POSTHOG_DIR/posthog"
+    git clone --filter=blob:none https://github.com/PostHog/posthog.git "$POSTHOG_DIR/posthog"
     info "PostHog repo cloned"
   fi
+
+  # Copy compose files to parent dir (official layout — paths resolve correctly)
+  cp "$POSTHOG_DIR/posthog/docker-compose.base.yml" "$POSTHOG_DIR/docker-compose.base.yml"
+  cp "$POSTHOG_DIR/posthog/docker-compose.hobby.yml" "$POSTHOG_DIR/docker-compose.yml"
 
   # Generate secrets
   if [[ ! -f "$POSTHOG_DIR/.env" ]]; then
@@ -337,7 +341,7 @@ start_tmux_session() {
   # Window 3: posthog (logs or placeholder)
   if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
-      "cd '$POSTHOG_DIR' && docker compose -f posthog/docker-compose.hobby.yml -f docker-compose.local.yml --env-file .env -p posthog logs -f"
+      "cd '$POSTHOG_DIR' && docker compose -f docker-compose.yml -f docker-compose.local.yml --env-file .env -p posthog logs -f"
   else
     tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
       "echo -e '${YELLOW}PostHog not set up${NC}'; echo 'Run: ./scripts/dev-init.sh posthog up'; echo ''; exec bash"
