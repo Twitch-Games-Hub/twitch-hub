@@ -11,8 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 TMUX_SESSION="twitch-hub"
-POSTHOG_COMPOSE="docker-compose.posthog.yml"
-POSTHOG_ENV="$ROOT_DIR/.posthog.env"
+POSTHOG_DIR="$ROOT_DIR/.posthog"
 
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -74,8 +73,8 @@ docker_up() {
   info "PostgreSQL running (localhost:5432)"
   info "Redis running (localhost:6379)"
 
-  # Start PostHog if compose file exists
-  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+  # Start PostHog if previously set up
+  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     posthog_up
   fi
 }
@@ -84,7 +83,7 @@ docker_down() {
   echo ""
   echo "Stopping Docker containers..."
   docker compose -f docker-compose.dev.yml down
-  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     posthog_down
   fi
   info "Containers stopped"
@@ -94,48 +93,167 @@ docker_nuke() {
   echo ""
   echo "Removing Docker containers and volumes..."
   docker compose -f docker-compose.dev.yml down -v
-  if [[ -f "$POSTHOG_COMPOSE" ]]; then
-    posthog_nuke
+  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
+    posthog_down_volumes
   fi
   info "Containers and volumes removed"
 }
 
 # ── PostHog self-hosted helpers ───────────────────────────────────────
+# Uses the official PostHog hobby deployment (cloned into .posthog/).
+# Docs: https://posthog.com/docs/self-host
 
-posthog_ensure_env() {
-  if [[ ! -f "$POSTHOG_ENV" ]]; then
-    echo "Generating PostHog secret key..."
-    local secret
-    secret=$(openssl rand -hex 32)
-    cat > "$POSTHOG_ENV" <<EOF
-SECRET_KEY=$secret
-ENCRYPTION_SALT_KEYS=$secret
-EOF
-    info "PostHog env created (.posthog.env)"
+posthog_compose() {
+  cd "$POSTHOG_DIR"
+  docker compose \
+    -f posthog/docker-compose.hobby.yml \
+    -f docker-compose.local.yml \
+    --env-file .env \
+    -p posthog "$@"
+  cd "$ROOT_DIR"
+}
+
+posthog_setup() {
+  # Clone PostHog repo (one-time)
+  if [[ ! -d "$POSTHOG_DIR/posthog" ]]; then
+    echo "Cloning PostHog repository (one-time setup)..."
+    mkdir -p "$POSTHOG_DIR"
+    git clone --depth 1 https://github.com/PostHog/posthog.git "$POSTHOG_DIR/posthog"
+    info "PostHog repo cloned"
+  fi
+
+  # Generate secrets
+  if [[ ! -f "$POSTHOG_DIR/.env" ]]; then
+    echo "Generating PostHog secrets..."
+    local secret encryption_salt
+    secret=$(head -c 28 /dev/urandom | sha224sum -b | head -c 56)
+    encryption_salt=$(openssl rand -hex 16)
+    cat > "$POSTHOG_DIR/.env" <<ENVEOF
+POSTHOG_SECRET=$secret
+ENCRYPTION_SALT_KEYS=$encryption_salt
+DOMAIN=localhost
+TLS_BLOCK=
+REGISTRY_URL=posthog/posthog
+CADDY_TLS_BLOCK=
+CADDY_HOST=http://:8333
+POSTHOG_APP_TAG=latest
+ENVEOF
+    info "PostHog secrets generated"
+  fi
+
+  # Local compose override (port 8333, no TLS)
+  cat > "$POSTHOG_DIR/docker-compose.local.yml" <<'LOCALEOF'
+services:
+  proxy:
+    ports: !reset
+      - '8333:8333'
+    environment:
+      CADDY_HOST: 'http://:8333'
+      CADDY_TLS_BLOCK: ''
+  web:
+    environment:
+      SITE_URL: http://localhost:8333
+      LIVESTREAM_HOST: http://localhost:8333/livestream
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
+  worker:
+    environment:
+      SITE_URL: http://localhost:8333
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
+  plugins:
+    environment:
+      SITE_URL: http://localhost:8333
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
+  asyncmigrationscheck:
+    environment:
+      SITE_URL: http://localhost:8333
+  temporal-django-worker:
+    environment:
+      SITE_URL: http://localhost:8333
+LOCALEOF
+
+  # Compose entrypoint scripts (required by hobby deployment)
+  mkdir -p "$POSTHOG_DIR/compose"
+
+  cat > "$POSTHOG_DIR/compose/start" <<'STARTEOF'
+#!/bin/bash
+./compose/wait
+./bin/migrate
+./bin/docker-server
+STARTEOF
+  chmod +x "$POSTHOG_DIR/compose/start"
+
+  cat > "$POSTHOG_DIR/compose/temporal-django-worker" <<'TEOF'
+#!/bin/bash
+./bin/temporal-django-worker
+TEOF
+  chmod +x "$POSTHOG_DIR/compose/temporal-django-worker"
+
+  cat > "$POSTHOG_DIR/compose/wait" <<'WEOF'
+#!/usr/bin/env python3
+import socket, time
+
+def loop():
+    print("Waiting for ClickHouse and Postgres to be ready")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('clickhouse', 9000))
+        print("ClickHouse is ready")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('db', 5432))
+        print("Postgres is ready")
+    except ConnectionRefusedError:
+        time.sleep(5)
+        loop()
+
+loop()
+WEOF
+  chmod +x "$POSTHOG_DIR/compose/wait"
+
+  # GeoIP database (needed for feature-flags and cymbal services)
+  mkdir -p "$POSTHOG_DIR/share"
+  if [[ ! -f "$POSTHOG_DIR/share/GeoLite2-City.mmdb" ]]; then
+    echo "Downloading GeoIP database..."
+    if command -v brotli &>/dev/null; then
+      curl -fsSL --http1.1 'https://mmdbcdn.posthog.net/' \
+        | brotli --decompress > "$POSTHOG_DIR/share/GeoLite2-City.mmdb" 2>/dev/null \
+        && info "GeoIP database downloaded" \
+        || warn "GeoIP download failed (non-critical)"
+    else
+      warn "brotli not installed — skipping GeoIP database (sudo apt install brotli)"
+    fi
   fi
 }
 
 posthog_up() {
-  posthog_ensure_env
+  posthog_setup
   echo ""
-  echo "Starting PostHog self-hosted (this may take a minute on first run)..."
-  docker compose -f "$POSTHOG_COMPOSE" -p posthog up -d || fail "PostHog services failed to start"
+  echo "Starting PostHog self-hosted (first run pulls ~4GB of images)..."
+  posthog_compose up -d || fail "PostHog services failed to start"
   info "PostHog running (http://localhost:8333)"
 }
 
 posthog_down() {
   echo ""
   echo "Stopping PostHog containers..."
-  docker compose -f "$POSTHOG_COMPOSE" -p posthog down
+  posthog_compose down
   info "PostHog stopped"
+}
+
+posthog_down_volumes() {
+  echo ""
+  echo "Removing PostHog containers and volumes..."
+  posthog_compose down -v
+  info "PostHog volumes removed (repo kept in .posthog/)"
 }
 
 posthog_nuke() {
   echo ""
-  echo "Removing PostHog containers and volumes..."
-  docker compose -f "$POSTHOG_COMPOSE" -p posthog down -v
-  rm -f "$POSTHOG_ENV"
-  info "PostHog containers, volumes, and env removed"
+  echo "Removing PostHog completely..."
+  if [[ -d "$POSTHOG_DIR" ]]; then
+    posthog_compose down -v 2>/dev/null || true
+    rm -rf "$POSTHOG_DIR"
+  fi
+  info "PostHog completely removed"
 }
 
 # ── Check .env ───────────────────────────────────────────────────────
@@ -189,7 +307,7 @@ start_tmux_session() {
   echo -e "${GREEN}Launching tmux dev session...${NC}"
   echo "  Web:      http://localhost:5173"
   echo "  Server:   http://localhost:3001"
-  if [[ -f "$POSTHOG_COMPOSE" ]]; then
+  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     echo "  PostHog:  http://localhost:8333"
   fi
   echo ""

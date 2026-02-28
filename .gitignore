@@ -3,7 +3,7 @@ dist/
 .svelte-kit/
 build/
 .env
-.posthog.env
+.posthog/
 *.log
 .DS_Store
 .sentryclirc
