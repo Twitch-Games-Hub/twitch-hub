@@ -15,7 +15,7 @@ function createPostHogStore() {
       if (!key) return;
 
       posthog.init(key, {
-        api_host: import.meta.env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+        api_host: import.meta.env.PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
         capture_pageview: false,
         capture_pageleave: true,
         loaded: (ph) => {
