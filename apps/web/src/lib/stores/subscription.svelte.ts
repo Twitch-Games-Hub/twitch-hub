@@ -1,5 +1,6 @@
 import { BillingPlan, type ApiSubscription } from '@twitch-hub/shared-types';
 import { apiGet } from '$lib/api';
+import * as Sentry from '@sentry/sveltekit';
 
 interface SubscriptionState {
   plan: BillingPlan;
@@ -73,8 +74,13 @@ function createSubscriptionStore() {
         state.currentPeriodEnd = data.currentPeriodEnd;
         state.cancelAtPeriodEnd = data.cancelAtPeriodEnd;
         state.loaded = true;
-      } catch {
-        // Silently fail — billing info is non-critical
+      } catch (err) {
+        Sentry.addBreadcrumb({
+          category: 'billing',
+          message: 'Failed to fetch subscription data',
+          level: 'warning',
+          data: { error: err instanceof Error ? err.message : 'unknown' },
+        });
       } finally {
         state.loading = false;
       }

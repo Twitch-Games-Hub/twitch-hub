@@ -2,6 +2,7 @@ import { prisma } from '../db/client.js';
 import { FREE_SESSIONS_PER_MONTH } from '@twitch-hub/shared-types';
 import type { SessionBudget } from '@twitch-hub/shared-types';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { trackEvent } from '../services/PostHogService.js';
 
 export async function attachSessionBudget(
   request: FastifyRequest,
@@ -66,6 +67,7 @@ export async function attachSessionBudget(
     creditsRemaining: 0,
     isSubscriber: false,
   };
+  trackEvent(request.userId!, 'session_budget_exhausted', {});
 }
 
 /**
@@ -116,13 +118,15 @@ export async function computeSessionBudget(userId: string): Promise<SessionBudge
     };
   }
 
-  return {
+  const result: SessionBudget = {
     canCreateSession: false,
     source: 'none',
     freeRemaining: 0,
     creditsRemaining: 0,
     isSubscriber: false,
   };
+  trackEvent(userId, 'session_budget_exhausted', {});
+  return result;
 }
 
 /**

@@ -5,6 +5,11 @@ import {
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
 } from '../services/StripeService.js';
+import {
+  captureStripeError,
+  withStripeSpan,
+  addStripeBreadcrumb,
+} from '../services/sentryStripe.js';
 import type Stripe from 'stripe';
 import type { FastifyPluginAsync } from 'fastify';
 
@@ -27,6 +32,7 @@ export const webhookPlugin: FastifyPluginAsync = async (app) => {
     try {
       event = constructWebhookEvent(request.body as Buffer, signature);
     } catch (err) {
+      captureStripeError(err, 'webhook.signatureVerification');
       log.warn({ err }, 'Webhook signature verification failed');
       reply.code(400);
       return { error: 'Invalid signature' };
@@ -35,25 +41,32 @@ export const webhookPlugin: FastifyPluginAsync = async (app) => {
     log.info({ type: event.type, id: event.id }, 'Webhook received');
 
     try {
-      switch (event.type) {
-        case 'checkout.session.completed':
-          await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
-          break;
-        case 'customer.subscription.updated':
-          await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-          break;
-        case 'customer.subscription.deleted':
-          await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-          break;
-        default:
-          log.info({ type: event.type }, 'Unhandled webhook event');
-      }
+      await withStripeSpan(
+        'stripe.webhook.process',
+        { type: event.type, eventId: event.id },
+        async () => {
+          switch (event.type) {
+            case 'checkout.session.completed':
+              await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+              break;
+            case 'customer.subscription.updated':
+              await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+              break;
+            case 'customer.subscription.deleted':
+              await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+              break;
+            default:
+              log.info({ type: event.type }, 'Unhandled webhook event');
+          }
+        },
+      );
     } catch (err) {
       log.error({ err, type: event.type }, 'Webhook handler error');
       reply.code(500);
       return { error: 'Webhook processing failed' };
     }
 
+    addStripeBreadcrumb('webhook.processed', 'ok', { type: event.type });
     return { received: true };
   });
 };

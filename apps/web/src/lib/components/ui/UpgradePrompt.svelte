@@ -1,8 +1,14 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Button from './Button.svelte';
   import Card from './Card.svelte';
+  import { posthogStore } from '$lib/stores/posthog.svelte';
 
   let { onclose }: { onclose?: () => void } = $props();
+
+  onMount(() => {
+    posthogStore.capture('upgrade_prompt_shown');
+  });
 </script>
 
 <Card padding="md" class="border-warning-500/20 bg-warning-900/10">
@@ -15,7 +21,12 @@
     </div>
 
     <div class="flex flex-wrap gap-2">
-      <Button href="/dashboard/billing" size="sm" variant="primary">View Plans</Button>
+      <Button
+        href="/dashboard/billing"
+        size="sm"
+        variant="primary"
+        onclick={() => posthogStore.capture('upgrade_prompt_clicked')}>View Plans</Button
+      >
       {#if onclose}
         <Button size="sm" variant="ghost" onclick={onclose}>Dismiss</Button>
       {/if}

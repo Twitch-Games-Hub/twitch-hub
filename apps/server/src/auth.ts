@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
+import * as Sentry from '@sentry/node';
 import { prisma } from './db/client.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
+import { identifyUser, trackEventWithGroups } from './services/PostHogService.js';
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 
 const log = logger.child({ module: 'auth' });
@@ -61,6 +63,20 @@ export const authPlugin: FastifyPluginAsync = async (app) => {
       }
 
       log.info({ twitchLogin, userId: user.id }, 'User authenticated');
+
+      const billingPlan = user.subscription?.status === 'ACTIVE' ? 'SUBSCRIBER' : 'FREE';
+      identifyUser(user.id, {
+        twitch_id: twitchId,
+        twitch_login: twitchLogin,
+        display_name: displayName,
+        billing_plan: billingPlan,
+      });
+      trackEventWithGroups(
+        user.id,
+        'user_authenticated',
+        { twitch_login: twitchLogin },
+        { billing_plan: billingPlan },
+      );
 
       const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
         expiresIn: '7d',
@@ -142,4 +158,5 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
   }
 
   request.userId = payload.userId;
+  Sentry.setUser({ id: payload.userId });
 }

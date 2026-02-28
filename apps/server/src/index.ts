@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { config, validateConfig } from './config.js';
 import { logger } from './logger.js';
 import { buildApp } from './app.js';
+import { shutdownPostHog } from './services/PostHogService.js';
 import { authPlugin } from './auth.js';
 import { gamesPlugin } from './routes/games.js';
 import { explorePlugin } from './routes/explore.js';
@@ -104,7 +105,8 @@ async function shutdown(signal: string) {
   await redis.quit();
   await prisma.$disconnect();
 
-  // Flush Sentry events before exit
+  // Flush analytics and error tracking before exit
+  await shutdownPostHog();
   await Sentry.close(2000);
 
   logger.info('Shutdown complete');

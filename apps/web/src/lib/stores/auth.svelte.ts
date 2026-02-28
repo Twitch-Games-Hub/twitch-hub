@@ -1,6 +1,7 @@
 import type { ApiUser } from '@twitch-hub/shared-types';
 import { disconnectAll } from '../socket.js';
 import { subscriptionStore } from './subscription.svelte.js';
+import { posthogStore } from './posthog.svelte.js';
 
 interface AuthState {
   user: ApiUser | null;
@@ -51,6 +52,7 @@ function createAuthStore() {
       disconnectAll();
       state.user = null;
       subscriptionStore.reset();
+      posthogStore.reset();
     },
   };
 }
