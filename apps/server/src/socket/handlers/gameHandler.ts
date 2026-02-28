@@ -27,8 +27,8 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       socket.join(session.id);
       socket.emit('session:created', { sessionId: session.id });
 
-      // Initialize game engine
-      await gameRegistry.initSession(session.id, game);
+      // Initialize game engine with host tracking
+      await gameRegistry.initSession(session.id, game, socket.data.userId);
     } catch (err) {
       socket.emit('error', 'Failed to create session');
       console.error('game:create-session error:', err);
@@ -37,6 +37,11 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
   socket.on('game:start', async (sessionId) => {
     try {
+      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
+        socket.emit('error', 'Not authorized');
+        return;
+      }
+
       const engine = gameRegistry.getEngine(sessionId);
       if (!engine) {
         socket.emit('error', 'Session not found');
@@ -64,6 +69,11 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
   socket.on('game:next-round', async (sessionId) => {
     try {
+      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
+        socket.emit('error', 'Not authorized');
+        return;
+      }
+
       const engine = gameRegistry.getEngine(sessionId);
       if (!engine) {
         socket.emit('error', 'Session not found');
@@ -88,6 +98,11 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
   socket.on('game:end', async (sessionId) => {
     try {
+      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
+        socket.emit('error', 'Not authorized');
+        return;
+      }
+
       const engine = gameRegistry.getEngine(sessionId);
       if (!engine) {
         socket.emit('error', 'Session not found');

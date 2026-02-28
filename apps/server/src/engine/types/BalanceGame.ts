@@ -24,16 +24,21 @@ export class BalanceGame extends GameEngine<BalanceConfig, string> {
       questionId: `balance-${round - 1}`,
       prompt: `${q.optionA} vs ${q.optionB}`,
       options: [q.optionA, q.optionB],
+      optionImages: [q.imageUrlA ?? null, q.imageUrlB ?? null],
     };
   }
 
   async processAnswer(userId: string, answer: string, questionId: string): Promise<void> {
+    const q = this.config.questions[this.currentRound - 1];
+    if (!q) return;
+
+    const isA = answer === 'A' || answer === q.optionA;
+    const isB = answer === 'B' || answer === q.optionB;
+    if (!isA && !isB) return;
+
     const isDupe = await this.isDuplicate(userId);
     if (isDupe) return;
-    const bucket =
-      answer === 'A' || answer === this.config.questions[this.currentRound - 1]?.optionA
-        ? '0'
-        : '1';
+    const bucket = isA ? '0' : '1';
     await redis.hincrby(this.voteKey(questionId), bucket, 1);
     await redis.expire(this.voteKey(questionId), 3600);
   }

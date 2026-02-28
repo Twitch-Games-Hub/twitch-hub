@@ -43,6 +43,7 @@ services:
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
       TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       SERVER_PORT: '3001'
     ports:
       - '3001:3001'
@@ -56,6 +57,7 @@ services:
       - server
     environment:
       PUBLIC_SERVER_URL: http://server:3001
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       ORIGIN: ${ORIGIN:-http://localhost:3000}
       PORT: '3000'
     ports:

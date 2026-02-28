@@ -69,6 +69,8 @@ model GameSession {
   endedAt      DateTime?
   createdAt    DateTime      @default(now())
   responses    Response[]
+
+  @@index([hostId])
 }
 
 enum SessionStatus {

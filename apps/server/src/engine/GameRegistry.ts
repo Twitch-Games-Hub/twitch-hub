@@ -38,13 +38,14 @@ const engineMap: Record<string, new (sessionId: string, config: never) => GameEn
 
 class GameRegistryClass {
   private engines = new Map<string, GameEngine>();
+  private sessionHosts = new Map<string, string>();
   private broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
 
   setBroadcastCallback(cb: (sessionId: string, event: string, data: unknown) => void) {
     this.broadcastCallback = cb;
   }
 
-  async initSession(sessionId: string, game: GameRecord): Promise<GameEngine> {
+  async initSession(sessionId: string, game: GameRecord, hostId: string): Promise<GameEngine> {
     const EngineClass = engineMap[game.type];
     if (!EngineClass) {
       throw new Error(`Unknown game type: ${game.type}`);
@@ -55,7 +56,12 @@ class GameRegistryClass {
       engine.setBroadcastCallback(this.broadcastCallback);
     }
     this.engines.set(sessionId, engine);
+    this.sessionHosts.set(sessionId, hostId);
     return engine;
+  }
+
+  isHost(sessionId: string, userId: string): boolean {
+    return this.sessionHosts.get(sessionId) === userId;
   }
 
   getEngine(sessionId: string): GameEngine | undefined {
@@ -66,6 +72,14 @@ class GameRegistryClass {
     const engine = this.engines.get(sessionId);
     engine?.cleanup();
     this.engines.delete(sessionId);
+    this.sessionHosts.delete(sessionId);
+  }
+
+  async cleanupAll() {
+    const cleanups = Array.from(this.engines.values()).map((engine) => engine.cleanup());
+    await Promise.allSettled(cleanups);
+    this.engines.clear();
+    this.sessionHosts.clear();
   }
 }
 

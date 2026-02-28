@@ -6,6 +6,7 @@ export const config = {
     process.env.DATABASE_URL || 'postgresql://twitch_hub:twitch_hub@localhost:5432/twitch_hub',
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+  internalApiSecret: process.env.INTERNAL_API_SECRET || '',
   twitch: {
     clientId: process.env.TWITCH_CLIENT_ID || '',
     clientSecret: process.env.TWITCH_CLIENT_SECRET || '',
@@ -13,3 +14,25 @@ export const config = {
   },
   appUrl: process.env.PUBLIC_APP_URL || 'http://localhost:5173',
 };
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+export function validateConfig() {
+  const required: { key: string; value: string }[] = [
+    { key: 'JWT_SECRET', value: config.jwtSecret },
+    { key: 'INTERNAL_API_SECRET', value: config.internalApiSecret },
+    { key: 'TWITCH_CLIENT_ID', value: config.twitch.clientId },
+    { key: 'TWITCH_CLIENT_SECRET', value: config.twitch.clientSecret },
+  ];
+
+  if (isProduction && config.jwtSecret === 'dev-secret') {
+    console.error('FATAL: JWT_SECRET must not be "dev-secret" in production');
+    process.exit(1);
+  }
+
+  const missing = required.filter((r) => !r.value).map((r) => r.key);
+  if (isProduction && missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}

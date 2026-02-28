@@ -6,6 +6,8 @@ import {
   type FinalResults,
 } from '@twitch-hub/shared-types';
 import { GameEngine } from '../GameEngine.js';
+import { leaderboardService } from '../../services/LeaderboardService.js';
+import { redis } from '../../db/redis.js';
 
 export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
   getGameType() {
@@ -22,31 +24,76 @@ export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
       round,
       questionId: `blind-${round - 1}`,
       prompt: r.hints[0] || 'Guess the answer!',
+      optionImages: r.imageUrl ? [r.imageUrl] : undefined,
       endsAt: new Date(Date.now() + this.config.answerWindowSec * 1000).toISOString(),
     };
   }
 
   async processAnswer(userId: string, answer: string, questionId: string): Promise<void> {
+    if (typeof answer !== 'string' || !answer.trim()) return;
+
+    const roundIdx = parseInt(questionId.replace('blind-', ''), 10);
+    if (isNaN(roundIdx) || roundIdx < 0 || roundIdx >= this.config.rounds.length) return;
+
     const isDupe = await this.isDuplicate(userId);
     if (isDupe) return;
-    const roundIdx = parseInt(questionId.replace('blind-', ''), 10);
     const correctAnswer = this.config.rounds[roundIdx]?.answer?.toLowerCase();
     if (answer.toLowerCase().trim() === correctAnswer) {
-      const { redis } = await import('../../db/redis.js');
-      // Track correct answers for leaderboard
-      await redis.zincrby(`session:${this.sessionId}:leaderboard`, 1, userId);
+      await leaderboardService.addScore(this.sessionId, userId, 1);
     }
   }
 
   async computeRoundResults(round: number): Promise<RoundResults> {
-    return { round, questionId: `blind-${round - 1}`, totalResponses: 0 };
+    const questionId = `blind-${round - 1}`;
+
+    // Get top 10 from leaderboard
+    const topEntries = await leaderboardService.getTopScores(this.sessionId, 10);
+    const percentages: Record<string, number> = {};
+    for (const entry of topEntries) {
+      percentages[entry.userId] = entry.score;
+    }
+
+    // Count total members in leaderboard
+    const leaderboardKey = `session:${this.sessionId}:leaderboard`;
+    const totalResponses = await redis.zcard(leaderboardKey);
+
+    return {
+      round,
+      questionId,
+      percentages,
+      totalResponses,
+    };
   }
 
   async computeFinalResults(): Promise<FinalResults> {
+    // Read full leaderboard for complete rankings
+    const leaderboardKey = `session:${this.sessionId}:leaderboard`;
+    const totalMembers = await redis.zcard(leaderboardKey);
+    const allEntries = await leaderboardService.getTopScores(this.sessionId, totalMembers || 100);
+
+    const rankings: Record<string, number> = {};
+    for (const entry of allEntries) {
+      rankings[entry.userId] = entry.score;
+    }
+
+    // Include full rankings in the final round results
+    const finalRounds = [...this.roundResults];
+    if (finalRounds.length > 0) {
+      finalRounds[finalRounds.length - 1] = {
+        ...finalRounds[finalRounds.length - 1],
+        percentages: rankings,
+      };
+    }
+
     return {
       sessionId: this.sessionId,
-      rounds: this.roundResults,
+      rounds: finalRounds,
       totalParticipants: this.participantIds.size,
     };
+  }
+
+  protected async getDistribution(_questionId: string): Promise<number[]> {
+    // BlindTest is not histogram-based; data flows through percentages/leaderboard
+    return [];
   }
 }

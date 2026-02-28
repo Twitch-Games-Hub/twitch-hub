@@ -21,6 +21,7 @@ import { HotTakeGame } from './HotTakeGame.js';
 
 const testConfig = {
   statements: ['Pineapple on pizza is great', 'Tabs are better than spaces'],
+  roundDurationSec: 30,
 };
 
 describe('HotTakeGame', () => {

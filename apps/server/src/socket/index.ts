@@ -5,11 +5,21 @@ import { socketAuthMiddleware } from './middleware.js';
 import { registerGameHandlers } from './handlers/gameHandler.js';
 import { registerVoteHandlers } from './handlers/voteHandler.js';
 import { config } from '../config.js';
+import { prisma } from '../db/client.js';
 
 export type AppSocket =
   ReturnType<typeof createSocketServer> extends Server<ClientToServerEvents, ServerToClientEvents>
     ? Parameters<Parameters<Server<ClientToServerEvents, ServerToClientEvents>['on']>[1]>[0]
     : never;
+
+async function validateSession(sessionId: string): Promise<boolean> {
+  if (!sessionId || typeof sessionId !== 'string') return false;
+  const session = await prisma.gameSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true },
+  });
+  return !!session;
+}
 
 export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
@@ -37,6 +47,10 @@ export function createSocketServer(httpServer: HttpServer) {
     registerGameHandlers(socket, io);
     registerVoteHandlers(socket, io);
 
+    socket.on('error', (err) => {
+      console.error(`Dashboard socket error [${socket.id}]:`, err);
+    });
+
     socket.on('disconnect', () => {
       console.log(`Dashboard client disconnected: ${socket.id}`);
     });
@@ -46,9 +60,18 @@ export function createSocketServer(httpServer: HttpServer) {
     console.log(`Player connected: ${socket.id}`);
     registerVoteHandlers(socket, io);
 
-    socket.on('session:join', (sessionId) => {
+    socket.on('session:join', async (sessionId) => {
+      const exists = await validateSession(sessionId);
+      if (!exists) {
+        socket.emit('error', 'Session not found');
+        return;
+      }
       socket.join(sessionId);
       console.log(`Player ${socket.id} joined session ${sessionId}`);
+    });
+
+    socket.on('error', (err) => {
+      console.error(`Play socket error [${socket.id}]:`, err);
     });
 
     socket.on('disconnect', () => {
@@ -59,9 +82,18 @@ export function createSocketServer(httpServer: HttpServer) {
   overlay.on('connection', (socket) => {
     console.log(`Overlay connected: ${socket.id}`);
 
-    socket.on('session:join', (sessionId) => {
+    socket.on('session:join', async (sessionId) => {
+      const exists = await validateSession(sessionId);
+      if (!exists) {
+        socket.emit('error', 'Session not found');
+        return;
+      }
       socket.join(sessionId);
       console.log(`Overlay ${socket.id} joined session ${sessionId}`);
+    });
+
+    socket.on('error', (err) => {
+      console.error(`Overlay socket error [${socket.id}]:`, err);
     });
 
     socket.on('disconnect', () => {

@@ -1,4 +1,5 @@
 import type { ApiUser } from '@twitch-hub/shared-types';
+import { disconnectAll } from '../socket.js';
 
 interface AuthState {
   user: ApiUser | null;
@@ -45,6 +46,7 @@ function createAuthStore() {
     },
 
     logout() {
+      disconnectAll();
       state.user = null;
     },
   };

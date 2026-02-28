@@ -60,6 +60,8 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   async onAnswer(userId: string, answer: TAnswer, questionId: string): Promise<void> {
     this.participantIds.add(userId);
     await this.processAnswer(userId, answer, questionId);
+    // Set TTL on vote key after votes are written
+    await redis.expire(this.voteKey(questionId), 3600);
     await this.scheduleBroadcast(questionId);
   }
 
@@ -142,5 +144,16 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     if (this.broadcastTimer) {
       clearTimeout(this.broadcastTimer);
     }
+
+    // Clean up all Redis keys for this session using SCAN (non-blocking)
+    const pattern = `session:${this.sessionId}:*`;
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } while (cursor !== '0');
   }
 }

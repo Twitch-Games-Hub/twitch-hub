@@ -1,6 +1,7 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
+import { dev } from '$app/environment';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
@@ -52,7 +53,10 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const serverUrl = env.PUBLIC_SERVER_URL || 'http://localhost:3001';
   const upsertRes = await fetch(`${serverUrl}/api/auth/upsert`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Secret': env.INTERNAL_API_SECRET || '',
+    },
     body: JSON.stringify({
       twitchId: twitchUser.id,
       twitchLogin: twitchUser.login,
@@ -74,7 +78,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: !dev,
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 

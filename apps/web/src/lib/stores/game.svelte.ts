@@ -73,6 +73,11 @@ function createGameStore() {
     s.on('error', (msg: string) => {
       state.error = msg;
     });
+
+    s.on('connect_error', (err: Error) => {
+      state.error = `Connection failed: ${err.message}`;
+      state.connected = false;
+    });
   }
 
   function reset() {

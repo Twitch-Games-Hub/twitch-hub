@@ -6,46 +6,57 @@ import type { Request, Response, NextFunction } from 'express';
 
 export const authRouter = Router();
 
-// Upsert user from Twitch OAuth callback
-authRouter.post('/upsert', async (req: Request, res: Response) => {
-  const {
-    twitchId,
-    twitchLogin,
-    displayName,
-    profileImageUrl,
-    accessToken,
-    refreshToken,
-    tokenExpiresAt,
-  } = req.body;
-
-  const user = await prisma.user.upsert({
-    where: { twitchId },
-    create: {
+// Upsert user from Twitch OAuth callback (internal-only)
+authRouter.post(
+  '/upsert',
+  (req: Request, res: Response, next: NextFunction) => {
+    const secret = req.headers['x-internal-secret'];
+    if (!config.internalApiSecret || secret !== config.internalApiSecret) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+    next();
+  },
+  async (req: Request, res: Response) => {
+    const {
       twitchId,
       twitchLogin,
       displayName,
       profileImageUrl,
       accessToken,
       refreshToken,
-      tokenExpiresAt: new Date(tokenExpiresAt),
-      role: 'STREAMER',
-    },
-    update: {
-      twitchLogin,
-      displayName,
-      profileImageUrl,
-      accessToken,
-      refreshToken,
-      tokenExpiresAt: new Date(tokenExpiresAt),
-    },
-  });
+      tokenExpiresAt,
+    } = req.body;
 
-  const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
-    expiresIn: '7d',
-  });
+    const user = await prisma.user.upsert({
+      where: { twitchId },
+      create: {
+        twitchId,
+        twitchLogin,
+        displayName,
+        profileImageUrl,
+        accessToken,
+        refreshToken,
+        tokenExpiresAt: new Date(tokenExpiresAt),
+        role: 'STREAMER',
+      },
+      update: {
+        twitchLogin,
+        displayName,
+        profileImageUrl,
+        accessToken,
+        refreshToken,
+        tokenExpiresAt: new Date(tokenExpiresAt),
+      },
+    });
 
-  res.json({ token, user: sanitizeUser(user) });
-});
+    const token = jwt.sign({ userId: user.id, twitchId: user.twitchId }, config.jwtSecret, {
+      expiresIn: '7d',
+    });
+
+    res.json({ token, user: sanitizeUser(user) });
+  },
+);
 
 // Get current user from JWT
 authRouter.get('/me', async (req: Request, res: Response) => {
