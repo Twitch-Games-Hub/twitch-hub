@@ -21,7 +21,7 @@
   onMount(async () => {
     try {
       games = await apiGet<ApiGame[]>('/api/games');
-    } catch (err) {
+    } catch {
       toastStore.add('Failed to load games', 'error');
     } finally {
       loading = false;
@@ -61,7 +61,7 @@
 
   {#if loading}
     <div class="space-y-4">
-      {#each [1, 2, 3] as _}
+      {#each [1, 2, 3] as n (n)}
         <Skeleton height="5rem" rounded="rounded-xl" />
       {/each}
     </div>
@@ -79,7 +79,7 @@
     </EmptyState>
   {:else}
     <div class="grid gap-4">
-      {#each games as game}
+      {#each games as game (game.id)}
         <Card
           padding="md"
           class="animate-fade-in flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"

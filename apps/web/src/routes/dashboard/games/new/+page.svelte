@@ -100,7 +100,7 @@
       <div>
         <label class="mb-2 block text-sm font-medium text-text-secondary">Game Type</label>
         <div class="grid gap-3 sm:grid-cols-2">
-          {#each allTypes as type}
+          {#each allTypes as type (type.value)}
             {@const isAvailable = type.available}
             <button
               type="button"
@@ -131,7 +131,7 @@
         <div>
           <label class="mb-2 block text-sm font-medium text-text-secondary">Statements</label>
           <div class="space-y-2">
-            {#each statements as statement, i}
+            {#each statements as statement, i (i)}
               <div class="flex gap-2">
                 <input
                   type="text"

@@ -65,7 +65,7 @@
       <p class="mb-6 text-text-secondary">
         Thanks for playing! {gameStore.finalResults.totalParticipants} participants joined.
       </p>
-      {#each gameStore.finalResults.rounds as round}
+      {#each gameStore.finalResults.rounds as round (round.round)}
         <Card padding="md" class="mb-4 text-left">
           <p class="mb-2 text-sm text-text-muted">Round {round.round}</p>
           {#if round.distribution}

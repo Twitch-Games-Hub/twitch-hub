@@ -34,7 +34,7 @@
   onMount(async () => {
     try {
       game = await apiGet<ApiGame>(`/api/games/${gameId}`);
-    } catch (err) {
+    } catch {
       toastStore.add('Failed to load game', 'error');
     } finally {
       loading = false;
@@ -130,7 +130,7 @@
             Statements ({config.statements.length})
           </h2>
           <ol class="list-inside list-decimal space-y-1 text-text-secondary">
-            {#each config.statements as statement}
+            {#each config.statements as statement, i (i)}
               <li>{statement}</li>
             {/each}
           </ol>
