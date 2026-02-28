@@ -45,5 +45,8 @@
     "turbo": "^2.5.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "prisma": "^7.4.2"
   }
 }
