@@ -203,24 +203,20 @@
   {:else}
     <div class="grid gap-4 sm:grid-cols-2">
       {#each games as game (game.id)}
-        <Card padding="none" class="overflow-hidden">
+        <Card padding="none" class="relative overflow-hidden">
           {#if game.coverImageUrl}
-            <div class="relative h-32 w-full overflow-hidden">
-              <img
-                src={game.coverImageUrl}
-                alt=""
-                loading="lazy"
-                class="h-full w-full object-cover"
-                onerror={(e) => {
-                  (e.target as HTMLImageElement).parentElement!.style.display = 'none';
-                }}
-              />
-              <div
-                class="absolute inset-0 bg-gradient-to-t from-surface-secondary/90 to-transparent"
-              ></div>
-            </div>
+            <img
+              src={game.coverImageUrl}
+              alt=""
+              loading="lazy"
+              class="absolute inset-0 h-full w-full object-cover"
+              onerror={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <div class="absolute inset-0 bg-surface-secondary/80 backdrop-blur-sm"></div>
           {/if}
-          <div class="p-6">
+          <div class="relative p-6">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
                 <span

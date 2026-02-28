@@ -91,8 +91,17 @@ profileRouter.get(
 
     const games = gamesResult.status === 'fulfilled' ? gamesResult.value : [];
 
+    // Sync profile image URL to DB when fresh Twitch data is available
+    const twitchUser = userResult.status === 'fulfilled' ? userResult.value : null;
+    if (twitchUser?.profile_image_url) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { profileImageUrl: twitchUser.profile_image_url },
+      });
+    }
+
     const profileData: ProfileData = {
-      twitchUser: userResult.status === 'fulfilled' ? userResult.value : null,
+      twitchUser,
       channel: channelResult.status === 'fulfilled' ? channelResult.value : null,
       stream: streamResult.status === 'fulfilled' ? streamResult.value : null,
       followed: followedResult.status === 'fulfilled' ? followedResult.value : null,

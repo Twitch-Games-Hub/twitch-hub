@@ -6,6 +6,7 @@
   import { GAME_TYPE_META } from '$lib/constants';
   import type { GameType } from '@twitch-hub/shared-types';
   import { toastStore } from '$lib/stores/toast.svelte';
+  import { authStore } from '$lib/stores/auth.svelte';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import Card from '$lib/components/ui/Card.svelte';
@@ -23,6 +24,10 @@
   onMount(async () => {
     try {
       profile = await apiGet<ProfileData>('/api/profile');
+      // Sync fresh Twitch profile image to auth store so navbar updates immediately
+      if (profile?.twitchUser?.profile_image_url && authStore.user) {
+        authStore.user.profileImageUrl = profile.twitchUser.profile_image_url;
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load profile';
       toastStore.add('Failed to load profile', 'error');
