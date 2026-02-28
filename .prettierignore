@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.svelte-kit
+.turbo
+pnpm-lock.yaml
+prisma/migrations
+.vitepress/cache
+.vitepress/dist
