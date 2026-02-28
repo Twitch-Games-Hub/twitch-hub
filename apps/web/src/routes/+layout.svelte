@@ -13,6 +13,7 @@
   let onDashboard = $derived($page.url.pathname.startsWith('/dashboard'));
 
   onMount(() => {
+    posthogStore.init();
     authStore.fetchSession();
   });
 
