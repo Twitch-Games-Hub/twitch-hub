@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/sveltekit';
 import { handleErrorWithSentry, replayIntegration } from '@sentry/sveltekit';
-import { posthogStore } from '$lib/stores/posthog.svelte';
 
 Sentry.init({
   dsn: import.meta.env.PUBLIC_SENTRY_DSN,
@@ -11,7 +10,5 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
   integrations: [replayIntegration()],
 });
-
-posthogStore.init();
 
 export const handleError = handleErrorWithSentry();
