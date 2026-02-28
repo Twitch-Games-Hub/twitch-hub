@@ -6,6 +6,7 @@ import { gameRegistry } from '../../engine/GameRegistry.js';
 import { prisma } from '../../db/client.js';
 import { logger } from '../../logger.js';
 import { requireHost } from '../helpers.js';
+import { computeSessionBudget, consumeCredit } from '../../middleware/sessionBudget.js';
 
 const log = logger.child({ module: 'game' });
 
@@ -18,6 +19,13 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const game = await prisma.game.findUnique({ where: { id: gameId } });
       if (!game) {
         socket.emit('error', 'Game not found');
+        return;
+      }
+
+      // Check session budget
+      const budget = await computeSessionBudget(socket.data.userId);
+      if (!budget.canCreateSession) {
+        socket.emit('error', 'Session limit reached. Upgrade your plan or purchase credits.');
         return;
       }
 
@@ -42,6 +50,11 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
           state: {},
         },
       });
+
+      // Consume a credit if that was the budget source
+      if (budget.source === 'credits') {
+        await consumeCredit(socket.data.userId);
+      }
 
       socket.join(session.id);
       socket.emit('session:created', { sessionId: session.id });

@@ -22,6 +22,9 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import ExploreGameCard from '$lib/components/explore/ExploreGameCard.svelte';
   import { PlusIcon, TrashIcon, GamepadIcon, EditIcon } from '$lib/components/ui/icons';
+  import SessionBudgetIndicator from '$lib/components/ui/SessionBudgetIndicator.svelte';
+  import UpgradePrompt from '$lib/components/ui/UpgradePrompt.svelte';
+  import { subscriptionStore } from '$lib/stores/subscription.svelte';
 
   let games = $state<ApiGame[]>([]);
   let loading = $state(true);
@@ -149,12 +152,21 @@
 <div class="mx-auto max-w-5xl px-4 py-8">
   <PageHeader title="Your Games">
     {#snippet action()}
-      <Button href="/dashboard/games/new">
-        <PlusIcon size={16} />
-        New Game
-      </Button>
+      <div class="flex items-center gap-3">
+        <SessionBudgetIndicator />
+        <Button href="/dashboard/games/new">
+          <PlusIcon size={16} />
+          New Game
+        </Button>
+      </div>
     {/snippet}
   </PageHeader>
+
+  {#if subscriptionStore.loaded && !subscriptionStore.canCreateSession}
+    <div class="mb-6">
+      <UpgradePrompt />
+    </div>
+  {/if}
 
   <!-- Tabs -->
   <div class="mb-6 flex border-b border-border-default">
@@ -228,7 +240,7 @@
                 variant="primary"
                 size="sm"
                 loading={creatingGameId === game.id}
-                disabled={creatingGameId !== null}
+                disabled={creatingGameId !== null || !subscriptionStore.canCreateSession}
               >
                 <GamepadIcon size={14} />
                 Start

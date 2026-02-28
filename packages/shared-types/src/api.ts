@@ -1,4 +1,5 @@
 import type { GameType, GameStatus, SessionStatus } from './game.js';
+import type { BillingPlan } from './subscription.js';
 
 export interface ApiUser {
   id: string;
@@ -7,6 +8,7 @@ export interface ApiUser {
   displayName: string;
   profileImageUrl?: string;
   role: 'STREAMER' | 'VIEWER';
+  billingPlan: BillingPlan;
 }
 
 export interface ApiGameBase {

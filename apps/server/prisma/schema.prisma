@@ -23,6 +23,7 @@ model User {
   responses       Response[]
   ratings         GameRating[]
   bookmarks       GameBookmark[]
+  subscription    Subscription?
 }
 
 enum UserRole {
@@ -102,6 +103,34 @@ model Response {
 enum ResponseSource {
   WEB
   CHAT
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+model Subscription {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId      String?             @unique
+  stripeSubscriptionId  String?             @unique
+  stripePriceId         String?
+  status                SubscriptionStatus?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean             @default(false)
+
+  sessionCredits        Int                 @default(0)
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([stripeCustomerId])
 }
 
 model GameRating {

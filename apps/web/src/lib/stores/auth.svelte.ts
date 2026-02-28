@@ -1,5 +1,6 @@
 import type { ApiUser } from '@twitch-hub/shared-types';
 import { disconnectAll } from '../socket.js';
+import { subscriptionStore } from './subscription.svelte.js';
 
 interface AuthState {
   user: ApiUser | null;
@@ -37,6 +38,7 @@ function createAuthStore() {
         if (res.ok) {
           const user: ApiUser = await res.json();
           state.user = user;
+          subscriptionStore.fetch();
         }
       } catch (err) {
         state.error = err instanceof Error ? err.message : 'Failed to load session';
@@ -48,6 +50,7 @@ function createAuthStore() {
     logout() {
       disconnectAll();
       state.user = null;
+      subscriptionStore.reset();
     },
   };
 }

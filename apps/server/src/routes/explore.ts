@@ -209,6 +209,11 @@ exploreRouter.post(
       return;
     }
 
+    if (game.ownerId === userId) {
+      res.status(403).json({ error: 'Cannot save your own game' });
+      return;
+    }
+
     await prisma.gameBookmark.upsert({
       where: { gameId_userId: { gameId: req.params.gameId, userId } },
       create: { gameId: req.params.gameId, userId },

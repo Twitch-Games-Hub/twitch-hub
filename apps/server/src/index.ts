@@ -11,6 +11,8 @@ import { exploreRouter } from './routes/explore.js';
 import { profileRouter } from './routes/profile.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { bookmarksRouter } from './routes/bookmarks.js';
+import { billingRouter } from './routes/billing.js';
+import { webhookRouter } from './routes/webhook.js';
 import { createSocketServer } from './socket/index.js';
 import { gameRegistry } from './engine/GameRegistry.js';
 import { redis } from './db/redis.js';
@@ -33,6 +35,10 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 app.use(cors({ origin: config.appUrl, credentials: true }));
+
+// Webhook route MUST be mounted before express.json() for raw body signature verification
+app.use(webhookRouter);
+
 app.use(express.json());
 
 // Structured request logging via pino-http
@@ -65,6 +71,7 @@ app.use('/api/explore', exploreRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/bookmarks', bookmarksRouter);
+app.use('/api/billing', billingRouter);
 
 // Sentry error handler (must be before custom error handler)
 Sentry.setupExpressErrorHandler(app);

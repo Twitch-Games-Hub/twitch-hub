@@ -39,6 +39,7 @@
         {:else if authStore.user}
           <Button href="/dashboard" variant="ghost" size="sm">Dashboard</Button>
           <Button href="/dashboard/sessions" variant="ghost" size="sm">Sessions</Button>
+          <Button href="/dashboard/billing" variant="ghost" size="sm">Billing</Button>
           {#if !onDashboard}
             <Button href="/dashboard/games/new" size="sm">
               <PlusIcon size={16} />
@@ -117,6 +118,15 @@
             onclick={() => (mobileMenuOpen = false)}
           >
             Sessions
+          </Button>
+          <Button
+            href="/dashboard/billing"
+            variant="ghost"
+            size="sm"
+            class="w-full !justify-start"
+            onclick={() => (mobileMenuOpen = false)}
+          >
+            Billing
           </Button>
           {#if !onDashboard}
             <Button

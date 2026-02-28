@@ -4,7 +4,13 @@
   import { authStore } from '$lib/stores/auth.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { ThumbsUpIcon, ThumbsDownIcon, BookmarkIcon, UsersIcon } from '$lib/components/ui/icons';
+  import {
+    ThumbsUpIcon,
+    ThumbsDownIcon,
+    BookmarkIcon,
+    UsersIcon,
+    PlayIcon,
+  } from '$lib/components/ui/icons';
 
   let {
     game,
@@ -87,7 +93,7 @@
         </div>
       </div>
 
-      {#if authStore.user && showSave}
+      {#if authStore.user && showSave && !isOwn}
         <button
           class="shrink-0 rounded-lg p-1.5 transition-colors {game.isSaved
             ? 'text-brand-400'
@@ -145,10 +151,10 @@
         <Button
           onclick={() => onstart?.(game.id)}
           size="sm"
-          variant="secondary"
           loading={creatingGameId === game.id}
           disabled={creatingGameId !== null}
         >
+          <PlayIcon size={14} />
           Start Game
         </Button>
       {/if}

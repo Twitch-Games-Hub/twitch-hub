@@ -14,6 +14,13 @@ export const config = {
   },
   appUrl: process.env.PUBLIC_APP_URL || 'http://localhost:5173',
   sentryDsn: process.env.SENTRY_DSN || '',
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    monthlyPriceId: process.env.STRIPE_MONTHLY_PRICE_ID || '',
+    annualPriceId: process.env.STRIPE_ANNUAL_PRICE_ID || '',
+    creditPackPriceId: process.env.STRIPE_CREDIT_PACK_PRICE_ID || '',
+  },
 };
 
 const isProduction = process.env.NODE_ENV === 'production';

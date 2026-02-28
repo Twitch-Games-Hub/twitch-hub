@@ -44,6 +44,7 @@ authRouter.post(
         refreshToken,
         tokenExpiresAt: new Date(tokenExpiresAt),
         role: 'STREAMER',
+        subscription: { create: {} },
       },
       update: {
         twitchLogin,
@@ -53,7 +54,13 @@ authRouter.post(
         refreshToken,
         tokenExpiresAt: new Date(tokenExpiresAt),
       },
+      include: { subscription: true },
     });
+
+    // Ensure subscription row exists for existing users
+    if (!user.subscription) {
+      await prisma.subscription.create({ data: { userId: user.id } });
+    }
 
     log.info({ twitchLogin, userId: user.id }, 'User authenticated');
 
@@ -81,7 +88,10 @@ authRouter.get(
       res.status(401).json({ error: 'Invalid token' });
       return;
     }
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { subscription: true },
+    });
     if (!user) {
       log.warn({ userId: payload.userId }, '/me user not found');
       res.status(401).json({ error: 'User not found' });
@@ -98,7 +108,9 @@ function sanitizeUser(user: {
   displayName: string;
   profileImageUrl: string | null;
   role: string;
+  subscription?: { status: string | null } | null;
 }) {
+  const isSubscriber = user.subscription?.status === 'ACTIVE';
   return {
     id: user.id,
     twitchId: user.twitchId,
@@ -106,6 +118,7 @@ function sanitizeUser(user: {
     displayName: user.displayName,
     profileImageUrl: user.profileImageUrl,
     role: user.role,
+    billingPlan: isSubscriber ? 'SUBSCRIBER' : 'FREE',
   };
 }
 
