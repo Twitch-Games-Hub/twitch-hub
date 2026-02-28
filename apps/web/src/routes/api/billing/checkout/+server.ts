@@ -11,6 +11,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     headers,
     body: JSON.stringify(body),
   });
-  if (!res.ok) error(res.status, 'Failed to create checkout session');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    error(res.status, body.error || 'Failed to create checkout session');
+  }
   return json(await res.json());
 };

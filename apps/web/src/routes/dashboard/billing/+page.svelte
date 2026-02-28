@@ -41,8 +41,9 @@
         product,
       });
       window.location.href = checkoutUrl;
-    } catch {
-      toastStore.add('Failed to start checkout', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start checkout';
+      toastStore.add(message, 'error');
       checkoutLoading = null;
     }
   }
