@@ -37,27 +37,36 @@
     cancelHref?: string;
   } = $props();
 
-  const isCreate = mode === 'create';
+  const isCreate = $derived(mode === 'create');
 
-  const STEPS = isCreate
-    ? [{ label: 'Game Type' }, { label: 'Details' }, { label: 'Config' }, { label: 'Review' }]
-    : [{ label: 'Details' }, { label: 'Config' }, { label: 'Review' }];
+  const STEPS = $derived(
+    isCreate
+      ? [{ label: 'Game Type' }, { label: 'Details' }, { label: 'Config' }, { label: 'Review' }]
+      : [{ label: 'Details' }, { label: 'Config' }, { label: 'Review' }],
+  );
 
   // Map step index to semantic view name
-  const VIEW_ORDER: Array<'type' | 'details' | 'config' | 'review'> = isCreate
-    ? ['type', 'details', 'config', 'review']
-    : ['details', 'config', 'review'];
+  const VIEW_ORDER = $derived<Array<'type' | 'details' | 'config' | 'review'>>(
+    isCreate ? ['type', 'details', 'config', 'review'] : ['details', 'config', 'review'],
+  );
 
   // Wizard state
   let currentStep = $state(0);
+  // svelte-ignore state_referenced_locally
   let completedSteps = $state(isCreate ? new Set<number>([0]) : new Set<number>([0, 1, 2]));
 
-  // Form state
+  // Form state — intentionally capture initial prop values once
+  // svelte-ignore state_referenced_locally
   let selectedType = $state<GameType>(gameType ?? GameType.HOT_TAKE);
+  // svelte-ignore state_referenced_locally
   let lastConfirmedType = $state<GameType>(gameType ?? GameType.HOT_TAKE);
+  // svelte-ignore state_referenced_locally
   let title = $state(initialTitle);
+  // svelte-ignore state_referenced_locally
   let description = $state(initialDescription);
+  // svelte-ignore state_referenced_locally
   let coverImageUrl = $state(initialCoverImageUrl);
+  // svelte-ignore state_referenced_locally
   let config = $state<unknown>(initialConfig ?? getDefaultConfig(selectedType));
 
   const currentView = $derived(VIEW_ORDER[currentStep]);
@@ -66,8 +75,8 @@
     currentView === 'type' || currentView === 'config' ? true : title.trim().length > 0,
   );
 
-  const submitLabel = isCreate ? 'Create Game' : 'Save Changes';
-  const submittingLabel = isCreate ? 'Creating...' : 'Saving...';
+  const submitLabel = $derived(isCreate ? 'Create Game' : 'Save Changes');
+  const submittingLabel = $derived(isCreate ? 'Creating...' : 'Saving...');
 
   function goToStep(step: number) {
     if (step < currentStep) {

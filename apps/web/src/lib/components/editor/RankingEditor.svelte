@@ -12,9 +12,9 @@
   }
 
   let {
-    items: initialItems,
-    bracketSize: initialBracketSize,
-    roundDurationSec: initialDuration,
+    items,
+    bracketSize,
+    roundDurationSec,
     onchange,
   }: {
     items: RankingItem[];
@@ -27,24 +27,22 @@
     }) => void;
   } = $props();
 
-  let items = $state<RankingItem[]>(initialItems.map((item) => ({ ...item })));
-  let bracketSize = $state<8 | 16 | 32>(initialBracketSize);
-  let roundDurationSec = $state(initialDuration);
-
-  $effect(() => {
-    onchange({ items: items.map((item) => ({ ...item })), bracketSize, roundDurationSec });
-  });
+  function emit(
+    patch: Partial<{ items: RankingItem[]; bracketSize: 8 | 16 | 32; roundDurationSec: number }>,
+  ) {
+    onchange({ items, bracketSize, roundDurationSec, ...patch });
+  }
 
   function addItem() {
-    items = [...items, { id: crypto.randomUUID(), name: '' }];
+    emit({ items: [...items, { id: crypto.randomUUID(), name: '' }] });
   }
 
   function removeItem(index: number) {
-    items = items.filter((_, i) => i !== index);
+    emit({ items: items.filter((_, i) => i !== index) });
   }
 
   function updateItem(index: number, field: keyof RankingItem, value: string) {
-    items = items.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+    emit({ items: items.map((item, i) => (i === index ? { ...item, [field]: value } : item)) });
   }
 
   const validItemCount = $derived(items.filter((item) => item.name.trim()).length);
@@ -58,7 +56,7 @@
       class="w-full rounded-lg border border-border-default bg-surface-secondary px-3 py-2 text-sm text-text-primary"
       value={bracketSize}
       onchange={(e) => {
-        bracketSize = parseInt((e.target as HTMLSelectElement).value) as 8 | 16 | 32;
+        emit({ bracketSize: parseInt((e.target as HTMLSelectElement).value) as 8 | 16 | 32 });
       }}
     >
       <option value={8}>8 items</option>
@@ -132,6 +130,16 @@
 
   <div>
     <Label for="roundDuration">Round Duration (seconds)</Label>
-    <Input id="roundDuration" type="number" min="5" max="300" bind:value={roundDurationSec} />
+    <Input
+      id="roundDuration"
+      type="number"
+      min="5"
+      max="300"
+      value={roundDurationSec}
+      oninput={(e) => {
+        const val = (e.target as HTMLInputElement).valueAsNumber;
+        if (!isNaN(val)) emit({ roundDurationSec: val });
+      }}
+    />
   </div>
 </div>

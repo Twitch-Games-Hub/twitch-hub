@@ -37,7 +37,7 @@
     <div class="flex justify-center">
       <img
         src={imageUrl}
-        alt="Image clue"
+        alt="Visual clue"
         loading="lazy"
         class="max-h-48 w-auto mx-auto rounded-lg"
         onerror={(e) => {

@@ -6,8 +6,8 @@
   import Button from '$lib/components/ui/Button.svelte';
 
   let {
-    statements: initialStatements,
-    roundDurationSec: initialDuration,
+    statements,
+    roundDurationSec,
     onchange,
   }: {
     statements: string[];
@@ -15,23 +15,19 @@
     onchange: (config: { statements: string[]; roundDurationSec: number }) => void;
   } = $props();
 
-  let statements = $state<string[]>([...initialStatements]);
-  let roundDurationSec = $state(initialDuration);
-
-  $effect(() => {
-    onchange({ statements: [...statements], roundDurationSec });
-  });
-
   function addStatement() {
-    statements = [...statements, ''];
+    onchange({ statements: [...statements, ''], roundDurationSec });
   }
 
   function removeStatement(index: number) {
-    statements = statements.filter((_, i) => i !== index);
+    onchange({ statements: statements.filter((_, i) => i !== index), roundDurationSec });
   }
 
   function updateStatement(index: number, value: string) {
-    statements = statements.map((s, i) => (i === index ? value : s));
+    onchange({
+      statements: statements.map((s, i) => (i === index ? value : s)),
+      roundDurationSec,
+    });
   }
 </script>
 
@@ -61,6 +57,16 @@
 
   <div>
     <Label for="roundDuration">Round Duration (seconds)</Label>
-    <Input id="roundDuration" type="number" min="5" max="300" bind:value={roundDurationSec} />
+    <Input
+      id="roundDuration"
+      type="number"
+      min="5"
+      max="300"
+      value={roundDurationSec}
+      oninput={(e) => {
+        const val = (e.target as HTMLInputElement).valueAsNumber;
+        if (!isNaN(val)) onchange({ statements, roundDurationSec: val });
+      }}
+    />
   </div>
 </div>

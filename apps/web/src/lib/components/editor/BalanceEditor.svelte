@@ -13,8 +13,8 @@
   }
 
   let {
-    questions: initialQuestions,
-    roundDurationSec: initialDuration,
+    questions,
+    roundDurationSec,
     onchange,
   }: {
     questions: BalanceQuestion[];
@@ -22,23 +22,19 @@
     onchange: (config: { questions: BalanceQuestion[]; roundDurationSec: number }) => void;
   } = $props();
 
-  let questions = $state<BalanceQuestion[]>(initialQuestions.map((q) => ({ ...q })));
-  let roundDurationSec = $state(initialDuration);
-
-  $effect(() => {
-    onchange({ questions: questions.map((q) => ({ ...q })), roundDurationSec });
-  });
-
   function addQuestion() {
-    questions = [...questions, { optionA: '', optionB: '' }];
+    onchange({ questions: [...questions, { optionA: '', optionB: '' }], roundDurationSec });
   }
 
   function removeQuestion(index: number) {
-    questions = questions.filter((_, i) => i !== index);
+    onchange({ questions: questions.filter((_, i) => i !== index), roundDurationSec });
   }
 
   function updateQuestion(index: number, field: keyof BalanceQuestion, value: string) {
-    questions = questions.map((q, i) => (i === index ? { ...q, [field]: value } : q));
+    onchange({
+      questions: questions.map((q, i) => (i === index ? { ...q, [field]: value } : q)),
+      roundDurationSec,
+    });
   }
 </script>
 
@@ -117,6 +113,16 @@
 
   <div>
     <Label for="roundDuration">Round Duration (seconds) — 0 for no timer</Label>
-    <Input id="roundDuration" type="number" min="0" max="300" bind:value={roundDurationSec} />
+    <Input
+      id="roundDuration"
+      type="number"
+      min="0"
+      max="300"
+      value={roundDurationSec}
+      oninput={(e) => {
+        const val = (e.target as HTMLInputElement).valueAsNumber;
+        if (!isNaN(val)) onchange({ questions, roundDurationSec: val });
+      }}
+    />
   </div>
 </div>

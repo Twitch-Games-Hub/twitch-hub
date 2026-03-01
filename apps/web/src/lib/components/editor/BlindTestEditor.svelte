@@ -15,8 +15,8 @@
   }
 
   let {
-    rounds: initialRounds,
-    answerWindowSec: initialAnswerWindow,
+    rounds,
+    answerWindowSec,
     onchange,
   }: {
     rounds: BlindRound[];
@@ -24,45 +24,45 @@
     onchange: (config: { rounds: BlindRound[]; answerWindowSec: number }) => void;
   } = $props();
 
-  let rounds = $state<BlindRound[]>(initialRounds.map((r) => ({ ...r, hints: [...r.hints] })));
-  let answerWindowSec = $state(initialAnswerWindow);
-
-  $effect(() => {
-    onchange({
-      rounds: rounds.map((r) => ({ ...r, hints: [...r.hints] })),
-      answerWindowSec,
-    });
-  });
+  function emitRounds(updated: BlindRound[]) {
+    onchange({ rounds: updated, answerWindowSec });
+  }
 
   function addRound() {
-    rounds = [...rounds, { answer: '', hints: [''] }];
+    emitRounds([...rounds, { answer: '', hints: [''] }]);
   }
 
   function removeRound(index: number) {
-    rounds = rounds.filter((_, i) => i !== index);
+    emitRounds(rounds.filter((_, i) => i !== index));
   }
 
   function updateRoundAnswer(index: number, value: string) {
-    rounds = rounds.map((r, i) => (i === index ? { ...r, answer: value } : r));
+    emitRounds(rounds.map((r, i) => (i === index ? { ...r, answer: value } : r)));
   }
 
   function updateRoundImageUrl(index: number, value: string) {
-    rounds = rounds.map((r, i) => (i === index ? { ...r, imageUrl: value } : r));
+    emitRounds(rounds.map((r, i) => (i === index ? { ...r, imageUrl: value } : r)));
   }
 
   function addHint(roundIndex: number) {
-    rounds = rounds.map((r, i) => (i === roundIndex ? { ...r, hints: [...r.hints, ''] } : r));
+    emitRounds(rounds.map((r, i) => (i === roundIndex ? { ...r, hints: [...r.hints, ''] } : r)));
   }
 
   function removeHint(roundIndex: number, hintIndex: number) {
-    rounds = rounds.map((r, i) =>
-      i === roundIndex ? { ...r, hints: r.hints.filter((_, j) => j !== hintIndex) } : r,
+    emitRounds(
+      rounds.map((r, i) =>
+        i === roundIndex ? { ...r, hints: r.hints.filter((_, j) => j !== hintIndex) } : r,
+      ),
     );
   }
 
   function updateHint(roundIndex: number, hintIndex: number, value: string) {
-    rounds = rounds.map((r, i) =>
-      i === roundIndex ? { ...r, hints: r.hints.map((h, j) => (j === hintIndex ? value : h)) } : r,
+    emitRounds(
+      rounds.map((r, i) =>
+        i === roundIndex
+          ? { ...r, hints: r.hints.map((h, j) => (j === hintIndex ? value : h)) }
+          : r,
+      ),
     );
   }
 </script>
@@ -124,6 +124,16 @@
 
   <div>
     <Label for="answerWindow">Answer Window (seconds)</Label>
-    <Input id="answerWindow" type="number" min="5" max="300" bind:value={answerWindowSec} />
+    <Input
+      id="answerWindow"
+      type="number"
+      min="5"
+      max="300"
+      value={answerWindowSec}
+      oninput={(e) => {
+        const val = (e.target as HTMLInputElement).valueAsNumber;
+        if (!isNaN(val)) onchange({ rounds, answerWindowSec: val });
+      }}
+    />
   </div>
 </div>
