@@ -6,7 +6,7 @@
 twitch-hub/
 ├── apps/
 │   ├── web/          # SvelteKit 5 frontend
-│   └── server/       # Express + Socket.IO backend
+│   └── server/       # Fastify + Socket.IO backend
 ├── packages/
 │   └── shared-types/ # TypeScript types shared between apps
 └── docs/             # VitePress documentation
@@ -34,12 +34,12 @@ Browser ──→ Socket.IO /play ──→ voteHandler ──→ GameEngine.onA
 
 ## Server Architecture
 
-- **Express** handles REST API (auth, game CRUD)
+- **Fastify** handles REST API (auth, game CRUD)
 - **Socket.IO** runs 3 namespaces:
   - `/dashboard` — Authenticated streamer control (start/stop/next round)
   - `/play` — Public participation (submit responses)
   - `/overlay` — Public read-only (live vote aggregation for OBS)
-- **GameEngine** — Abstract base class extended by 6 game types
+- **GameEngine** — Abstract base class extended by 4 game types
 - **GameRegistry** — Maps game types to engine instances per session
 - **Redis** — Vote aggregation (HINCRBY), deduplication (SADD), leaderboards (sorted sets)
 
