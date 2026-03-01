@@ -16,3 +16,5 @@ apps/server/src/generated/
 # Infrastructure
 infra/.env.infra
 infra/.server_ip
+infra/__pycache__/
+infra/**/__pycache__/
