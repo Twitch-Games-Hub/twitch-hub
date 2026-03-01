@@ -15,8 +15,9 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 export function registerGameHandlers(socket: AppSocket, io: AppServer) {
-  socket.on('game:create-session', async (data) => {
+  socket.on('game:create-session', async (rawData) => {
     // Support both legacy (string) and new ({ gameId, onBehalfOf? }) format
+    const data = rawData as string | { gameId: string; onBehalfOf?: string };
     const gameId = typeof data === 'string' ? data : data.gameId;
     const onBehalfOf = typeof data === 'string' ? undefined : data.onBehalfOf;
 

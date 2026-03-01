@@ -5,7 +5,7 @@ import { getDashboardSocket } from '$lib/socket';
  * Fetches an auth token, connects, emits `game:create-session`,
  * and resolves with the new sessionId (or throws on failure/timeout).
  */
-export async function createGameSession(gameId: string): Promise<string> {
+export async function createGameSession(gameId: string, onBehalfOf?: string): Promise<string> {
   const res = await fetch('/api/auth/token');
   if (!res.ok) throw new Error('Authentication failed');
 
@@ -39,7 +39,8 @@ export async function createGameSession(gameId: string): Promise<string> {
     socket.once('session:created', onCreated);
     raw.once('error', onError);
 
-    const emit = () => raw.emit('game:create-session', gameId);
+    const payload = onBehalfOf ? { gameId, onBehalfOf } : gameId;
+    const emit = () => raw.emit('game:create-session', payload);
     if (socket.connected) {
       emit();
     } else {

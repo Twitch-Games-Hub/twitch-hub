@@ -51,9 +51,9 @@ export const invitesPlugin: FastifyPluginAsync = async (app) => {
     }
 
     // Resolve follower twitchIds to app User records
-    let targetTwitchIds = followerTwitchIds;
+    let targetTwitchIds: string[] = followerTwitchIds ?? [];
 
-    if (!targetTwitchIds || targetTwitchIds.length === 0) {
+    if (targetTwitchIds.length === 0) {
       // If no specific followers provided, get all followers who are app users
       const tokens = await getValidAccessToken(session.hostId);
       if (!tokens) {

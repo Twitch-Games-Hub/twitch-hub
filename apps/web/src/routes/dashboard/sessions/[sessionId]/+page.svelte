@@ -19,10 +19,13 @@
   import Button from '$lib/components/ui/Button.svelte';
   import SessionResults from '$lib/components/dashboard/SessionResults.svelte';
   import LiveSessionPanel from '$lib/components/dashboard/LiveSessionPanel.svelte';
+  import InviteFollowersModal from '$lib/components/dashboard/InviteFollowersModal.svelte';
+  import { SendIcon } from '$lib/components/ui/icons';
 
   let session = $state<ApiSessionDetail | null>(null);
   let results = $state<FinalResults | null>(null);
   let loading = $state(true);
+  let inviteModalOpen = $state(false);
 
   const sessionId = $derived($page.params.sessionId ?? '');
   const source = $derived($page.url.searchParams.get('source'));
@@ -112,6 +115,12 @@
       {:else if session.startedAt}
         <span>Started {formatDate(session.startedAt)}</span>
       {/if}
+      {#if session.status === SessionStatus.LOBBY || session.status === SessionStatus.LIVE}
+        <Button size="sm" variant="secondary" onclick={() => (inviteModalOpen = true)}>
+          <SendIcon size={14} />
+          Invite Followers
+        </Button>
+      {/if}
     </div>
 
     <!-- Results content -->
@@ -147,3 +156,7 @@
     </EmptyState>
   {/if}
 </div>
+
+{#if session}
+  <InviteFollowersModal bind:open={inviteModalOpen} sessionId={session.id} />
+{/if}

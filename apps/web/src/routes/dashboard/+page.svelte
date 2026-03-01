@@ -13,6 +13,7 @@
   import { authStore } from '$lib/stores/auth.svelte';
   import { toastStore } from '$lib/stores/toast.svelte';
   import { createGameSession } from '$lib/utils/session';
+  import { UsersIcon } from '$lib/components/ui/icons';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -33,12 +34,33 @@
   let creatingGameId = $state<string | null>(null);
 
   // Tab state
-  let activeTab = $state<'my-games' | 'saved'>('my-games');
+  let activeTab = $state<'my-games' | 'saved' | 'mod-for'>('my-games');
 
   // Saved games state
   let savedGames = $state<ApiPublicGame[]>([]);
   let savedLoading = $state(false);
   let savedLoaded = $state(false);
+
+  // Mod For state
+  interface ModStreamer {
+    streamerId: string;
+    displayName: string;
+    profileImageUrl: string | null;
+    twitchLogin: string;
+    games?: Array<{
+      id: string;
+      type: string;
+      title: string;
+      description: string | null;
+      coverImageUrl: string | null;
+      status: string;
+      createdAt: string;
+    }>;
+    gamesLoading?: boolean;
+  }
+  let modStreamers = $state<ModStreamer[]>([]);
+  let modLoading = $state(false);
+  let modLoaded = $state(false);
 
   onMount(async () => {
     try {
@@ -96,9 +118,55 @@
     }
   }
 
-  function switchTab(tab: 'my-games' | 'saved') {
+  function switchTab(tab: 'my-games' | 'saved' | 'mod-for') {
     activeTab = tab;
     if (tab === 'saved') fetchSavedGames();
+    if (tab === 'mod-for') fetchModStreamers();
+  }
+
+  async function fetchModStreamers() {
+    if (modLoaded) return;
+    modLoading = true;
+    try {
+      const data = await apiGet<{ streamers: ModStreamer[] }>('/api/moderators/streamers');
+      modStreamers = data.streamers;
+      modLoaded = true;
+      // Auto-load games for each streamer
+      for (const streamer of modStreamers) {
+        loadStreamerGames(streamer);
+      }
+    } catch {
+      toastStore.add('Failed to load streamers', 'error');
+    } finally {
+      modLoading = false;
+    }
+  }
+
+  async function loadStreamerGames(streamer: ModStreamer) {
+    streamer.gamesLoading = true;
+    try {
+      const data = await apiGet<{ games: ModStreamer['games'] }>(
+        `/api/moderators/streamers/${streamer.streamerId}/games`,
+      );
+      streamer.games = data.games ?? [];
+    } catch {
+      streamer.games = [];
+    } finally {
+      streamer.gamesLoading = false;
+    }
+  }
+
+  async function startModSession(gameId: string, streamerId: string) {
+    if (creatingGameId) return;
+    creatingGameId = gameId;
+    try {
+      const sessionId = await createGameSession(gameId, streamerId);
+      goto(`/dashboard/sessions/${sessionId}`);
+    } catch (err) {
+      toastStore.add(err instanceof Error ? err.message : 'Failed to create session', 'error');
+    } finally {
+      creatingGameId = null;
+    }
   }
 
   async function unsaveGame(game: ApiPublicGame) {
@@ -189,6 +257,20 @@
     >
       Saved Games
       {#if activeTab === 'saved'}
+        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-brand-400"></span>
+      {/if}
+    </button>
+    <button
+      class="relative px-4 py-2.5 text-sm font-medium transition-colors {activeTab === 'mod-for'
+        ? 'text-brand-400'
+        : 'text-text-muted hover:text-text-secondary'}"
+      onclick={() => switchTab('mod-for')}
+    >
+      <span class="flex items-center gap-1.5">
+        <UsersIcon size={14} />
+        Mod For
+      </span>
+      {#if activeTab === 'mod-for'}
         <span class="absolute inset-x-0 bottom-0 h-0.5 bg-brand-400"></span>
       {/if}
     </button>
@@ -289,6 +371,68 @@
             onstart={startSession}
             {creatingGameId}
           />
+        {/each}
+      </div>
+    {/if}
+
+    <!-- Mod For Tab -->
+  {:else if activeTab === 'mod-for'}
+    {#if modLoading}
+      <div class="space-y-4">
+        {#each [1, 2] as n (n)}
+          <Skeleton height="8rem" rounded="rounded-xl" />
+        {/each}
+      </div>
+    {:else if modStreamers.length === 0}
+      <EmptyState
+        title="Not moderating for anyone"
+        description="When a streamer enables you as a moderator in their settings, their games will appear here."
+      />
+    {:else}
+      <div class="space-y-6">
+        {#each modStreamers as streamer (streamer.streamerId)}
+          <Card>
+            <div class="mb-3 flex items-center gap-3">
+              {#if streamer.profileImageUrl}
+                <img src={streamer.profileImageUrl} alt="" class="h-8 w-8 rounded-full" />
+              {:else}
+                <div class="h-8 w-8 rounded-full bg-surface-tertiary"></div>
+              {/if}
+              <div>
+                <h3 class="text-sm font-semibold text-text-primary">{streamer.displayName}</h3>
+                <p class="text-xs text-text-muted">@{streamer.twitchLogin}</p>
+              </div>
+            </div>
+
+            {#if streamer.gamesLoading}
+              <Skeleton height="3rem" rounded="rounded-lg" />
+            {:else if !streamer.games || streamer.games.length === 0}
+              <p class="text-sm text-text-muted">No ready games available.</p>
+            {:else}
+              <div class="divide-y divide-border-subtle">
+                {#each streamer.games as game (game.id)}
+                  <div class="flex items-center justify-between py-2">
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-sm font-medium text-text-primary">{game.title}</p>
+                      <p class="text-xs text-text-muted">
+                        {GAME_TYPE_META[game.type as GameType]?.label || game.type}
+                      </p>
+                    </div>
+                    <Button
+                      onclick={() => startModSession(game.id, streamer.streamerId)}
+                      variant="primary"
+                      size="sm"
+                      loading={creatingGameId === game.id}
+                      disabled={creatingGameId !== null}
+                    >
+                      <GamepadIcon size={14} />
+                      Start Session
+                    </Button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
         {/each}
       </div>
     {/if}

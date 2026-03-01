@@ -1,19 +1,66 @@
 <script lang="ts">
   import '../app.css';
   import { authStore } from '$lib/stores/auth.svelte';
-  import { onMount } from 'svelte';
+  import { notificationStore } from '$lib/stores/notifications.svelte';
+  import { onMount, onDestroy } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
+  import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import {
+    TwitchIcon,
+    MenuIcon,
+    XIcon,
+    GamepadIcon,
+    PlusIcon,
+    SettingsIcon,
+  } from '$lib/components/ui/icons';
   import { page } from '$app/stores';
+  import { getDashboardSocket } from '$lib/socket';
+  import type { ApiNotification } from '@twitch-hub/shared-types';
   import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 
   let { children } = $props();
   let mobileMenuOpen = $state(false);
   let onDashboard = $derived($page.url.pathname.startsWith('/dashboard'));
   let isOverlay = $derived($page.url.pathname.startsWith('/overlay'));
+  let notificationSocketBound = false;
 
   onMount(() => {
     authStore.fetchSession();
+  });
+
+  // Set up notification socket when user becomes available
+  $effect(() => {
+    if (authStore.user && !notificationSocketBound) {
+      notificationSocketBound = true;
+      notificationStore.fetchCount();
+      setupNotificationSocket();
+    }
+  });
+
+  async function setupNotificationSocket() {
+    try {
+      const res = await fetch('/api/auth/token');
+      if (!res.ok) return;
+      const { token } = await res.json();
+      const socket = getDashboardSocket(token);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = socket as any;
+      raw.on('notification:received', (notification: ApiNotification) => {
+        notificationStore.addRealtime(notification);
+      });
+      raw.on('notification:count', (data: { unreadCount: number }) => {
+        notificationStore.setUnreadCount(data.unreadCount);
+      });
+    } catch {
+      // Silently fail - notifications are non-critical
+    }
+  }
+
+  onDestroy(() => {
+    if (notificationSocketBound) {
+      notificationSocketBound = false;
+    }
   });
 </script>
 
@@ -50,6 +97,14 @@
                 New Game
               </Button>
             {/if}
+            <NotificationBell />
+            <a
+              href="/dashboard/settings"
+              class="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+              aria-label="Settings"
+            >
+              <SettingsIcon size={18} />
+            </a>
             <a
               href="/dashboard/profile"
               class="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-surface-tertiary"
@@ -131,6 +186,16 @@
               onclick={() => (mobileMenuOpen = false)}
             >
               Billing
+            </Button>
+            <Button
+              href="/dashboard/settings"
+              variant="ghost"
+              size="sm"
+              class="w-full !justify-start"
+              onclick={() => (mobileMenuOpen = false)}
+            >
+              <SettingsIcon size={14} />
+              Settings
             </Button>
             {#if !onDashboard}
               <Button

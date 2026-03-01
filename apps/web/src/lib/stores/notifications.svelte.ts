@@ -1,4 +1,4 @@
-import type { ApiNotification } from '@twitch-hub/shared-types';
+import { NotificationStatus, type ApiNotification } from '@twitch-hub/shared-types';
 import { apiGet, apiPost, apiDelete } from '$lib/api';
 
 interface NotificationState {
@@ -58,7 +58,7 @@ function createNotificationStore() {
       try {
         await apiPost('/api/notifications/read', { ids });
         state.notifications = state.notifications.map((n) =>
-          ids.includes(n.id) ? { ...n, status: 'READ' as const } : n,
+          ids.includes(n.id) ? { ...n, status: NotificationStatus.READ } : n,
         );
         state.unreadCount = Math.max(0, state.unreadCount - ids.length);
       } catch {
@@ -71,7 +71,7 @@ function createNotificationStore() {
         await apiPost('/api/notifications/read-all', {});
         state.notifications = state.notifications.map((n) => ({
           ...n,
-          status: 'READ' as const,
+          status: NotificationStatus.READ,
         }));
         state.unreadCount = 0;
       } catch {

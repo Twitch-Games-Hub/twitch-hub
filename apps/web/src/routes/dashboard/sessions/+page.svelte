@@ -17,8 +17,10 @@
 
   let activeSessions = $state<ApiSessionWithGame[]>([]);
   let archivedSessions = $state<ApiSessionWithGame[]>([]);
+  let modSessions = $state<ApiSessionWithGame[]>([]);
   let loadingActive = $state(true);
   let loadingArchive = $state(true);
+  let loadingMod = $state(true);
   let loadingMore = $state(false);
   let archivePage = $state(1);
   let archiveTotal = $state(0);
@@ -82,9 +84,30 @@
     fetchArchivedSessions(false);
   }
 
+  async function fetchModSessions() {
+    loadingMod = true;
+    try {
+      const [liveRes, lobbyRes] = await Promise.all([
+        fetch(`/api/sessions?page=1&limit=10&status=${SessionStatus.LIVE}&role=moderator`),
+        fetch(`/api/sessions?page=1&limit=10&status=${SessionStatus.LOBBY}&role=moderator`),
+      ]);
+      if (!liveRes.ok || !lobbyRes.ok) throw new Error('Failed to fetch');
+      const [liveData, lobbyData]: ApiSessionsResponse[] = await Promise.all([
+        liveRes.json(),
+        lobbyRes.json(),
+      ]);
+      modSessions = [...liveData.sessions, ...lobbyData.sessions];
+    } catch {
+      // Silently fail — mod sessions are supplementary
+    } finally {
+      loadingMod = false;
+    }
+  }
+
   onMount(() => {
     fetchActiveSessions();
     fetchArchivedSessions(true);
+    fetchModSessions();
   });
 </script>
 
@@ -153,6 +176,20 @@
       {#each activeSessions as session (session.id)}
         {@render sessionCard(session)}
       {/each}
+    </div>
+  {/if}
+
+  <!-- Moderating Sessions -->
+  {#if loadingMod}
+    <!-- Loading mod sessions silently -->
+  {:else if modSessions.length > 0}
+    <div class="mb-10">
+      <h2 class="mb-4 text-lg font-semibold text-text-secondary">Moderating</h2>
+      <div class="space-y-3">
+        {#each modSessions as session (session.id)}
+          {@render sessionCard(session)}
+        {/each}
+      </div>
     </div>
   {/if}
 

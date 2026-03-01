@@ -33,6 +33,7 @@ export default defineConfig({
             { text: 'Streamer Setup', link: '/guide/streamer-setup' },
             { text: 'Overlay Setup', link: '/guide/overlay-setup' },
             { text: 'Chat Commands', link: '/guide/chat-commands' },
+            { text: 'Moderators & Invites', link: '/guide/moderators-and-invites' },
           ],
         },
       ],

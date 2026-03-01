@@ -1,5 +1,7 @@
+import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
+import type { ApiNotification } from '@twitch-hub/shared-types';
 
 const log = logger.child({ module: 'notifications' });
 
@@ -11,24 +13,24 @@ export type NotificationInput = {
   data?: Record<string, unknown>;
 };
 
-export async function createNotification(input: NotificationInput) {
+export async function createNotification(input: NotificationInput): Promise<ApiNotification> {
   const notification = await prisma.notification.create({
     data: {
       recipientId: input.recipientId,
       type: input.type,
       title: input.title,
       body: input.body,
-      data: input.data ?? {},
+      data: (input.data ?? {}) as Prisma.InputJsonValue,
     },
   });
 
   return {
     id: notification.id,
-    type: notification.type,
+    type: notification.type as ApiNotification['type'],
     title: notification.title,
     body: notification.body,
     data: notification.data as Record<string, unknown>,
-    status: notification.status,
+    status: notification.status as ApiNotification['status'],
     createdAt: notification.createdAt.toISOString(),
   };
 }
