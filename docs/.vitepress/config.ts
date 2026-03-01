@@ -35,6 +35,7 @@ export default defineConfig({
             { text: 'Overlay Setup', link: '/guide/overlay-setup' },
             { text: 'Chat Commands', link: '/guide/chat-commands' },
             { text: 'Moderators & Invites', link: '/guide/moderators-and-invites' },
+            { text: 'Viewer Engagement', link: '/guide/viewer-engagement' },
           ],
         },
       ],
