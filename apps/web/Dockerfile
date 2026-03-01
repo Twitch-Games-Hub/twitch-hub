@@ -15,14 +15,13 @@ COPY tsconfig.base.json ./
 COPY packages/shared-types ./packages/shared-types
 COPY apps/web ./apps/web
 
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
-ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-ENV SENTRY_ORG=${SENTRY_ORG}
-ENV SENTRY_PROJECT=${SENTRY_PROJECT}
-
-RUN bun run --filter @twitch-hub/shared-types build && \
+RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
+    --mount=type=secret,id=SENTRY_ORG \
+    --mount=type=secret,id=SENTRY_PROJECT \
+    export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN 2>/dev/null)" && \
+    export SENTRY_ORG="$(cat /run/secrets/SENTRY_ORG 2>/dev/null)" && \
+    export SENTRY_PROJECT="$(cat /run/secrets/SENTRY_PROJECT 2>/dev/null)" && \
+    bun run --filter @twitch-hub/shared-types build && \
     bun run --filter @twitch-hub/web build
 
 # Runtime stage

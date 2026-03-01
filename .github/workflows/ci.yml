@@ -43,6 +43,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bun run --filter @twitch-hub/server db:generate
       - run: bun run ${{ matrix.check == 'lint' && 'lint && bun run format:check' || matrix.check }}
@@ -87,7 +92,7 @@ jobs:
           tags: |
             ghcr.io/${{ steps.vars.outputs.owner }}/twitch-hub-${{ matrix.app }}:latest
             ghcr.io/${{ steps.vars.outputs.owner }}/twitch-hub-${{ matrix.app }}:${{ github.sha }}
-          build-args: |
+          secrets: |
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             SENTRY_ORG=${{ secrets.SENTRY_ORG }}
             SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}
@@ -99,6 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [publish]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions: {}
     steps:
       - name: Trigger deploy webhook
         env:
