@@ -68,15 +68,16 @@ GitHub Actions automatically builds and publishes Docker images on every push to
 push to main
     │
     ├── lint ──────┐
-    ├── typecheck ─┤
-    ├── build ─────┼── all pass ──→ publish-server ──→ ghcr.io/<org>/twitch-hub-server
-    └── test ──────┘               publish-web    ──→ ghcr.io/<org>/twitch-hub-web
+    ├── typecheck ─┤                                                          ┌──→ deploy (SSH)
+    ├── build ─────┼── all pass ──→ publish-server ──→ ghcr.io/…/server ──┤
+    └── test ──────┘               publish-web    ──→ ghcr.io/…/web    ──┘
                                    (parallel)
 ```
 
 - PRs run `lint`, `typecheck`, `build`, and `test` only — no images are published.
 - Both publish jobs run in parallel once all four checks pass.
 - Images are tagged `:latest` and `:<git-sha>` for every push.
+- After both images are published, the `deploy` job automatically deploys to production via SSH.
 
 ### Image naming
 
@@ -87,6 +88,47 @@ echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
 ```
 
 The `GHCR_SERVER_IMAGE` and `GHCR_WEB_IMAGE` values in `.env.production` must also be lowercase (handled automatically by the `| lower` filter in `infra/templates/env.production.j2`).
+
+### Continuous Deployment
+
+After CI publishes new Docker images, the `deploy` job SSHs into the production server and runs `/opt/twitch-hub/auto-upgrade.sh`. This script:
+
+1. Captures current image digests for rollback
+2. Backs up the database (fatal on failure)
+3. Logs in to GHCR
+4. Pulls the latest `server` and `web` images
+5. Runs DB migration (`prisma db push` + seed)
+6. Recreates `server` and `web` containers
+7. Health checks both services (90s timeout)
+8. Smoke tests API `/health` and web frontend
+
+If any step from 5-8 fails, the script automatically rolls back: stops containers, restores the DB backup, re-tags the old images, and restarts.
+
+#### Setup (one-time)
+
+1. Generate a deploy SSH keypair:
+
+   ```bash
+   ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gh-actions-deploy -N ""
+   ```
+
+2. Add the public key to the server's deploy user:
+
+   ```bash
+   ssh deploy@<server-ip> 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/gh-actions-deploy.pub
+   ```
+
+3. Add GitHub Secrets (repo Settings → Secrets → Actions):
+   - `DEPLOY_SSH_KEY` — contents of `~/.ssh/gh-actions-deploy`
+   - `SERVER_IP` — the VPS IP address
+
+4. Run `python run.py deploy` to sync `auto-upgrade.sh` to the server.
+
+**Optional hardening:** Restrict the deploy key to only run the upgrade script:
+
+```
+command="/opt/twitch-hub/auto-upgrade.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-ed25519 AAAA... github-actions-deploy
+```
 
 ### Rolling back
 
@@ -108,18 +150,20 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## CLI Commands
 
-| Command                          | Description                                   |
-| -------------------------------- | --------------------------------------------- |
-| `python run.py wizard`           | Interactive first-time setup (recommended)    |
-| `python run.py wizard --fresh`   | Reset wizard state and start over             |
-| `python run.py preflight`        | Validate prerequisites, config, and SSH key   |
-| `python run.py create`           | Create Hetzner VPS only                       |
-| `python run.py provision`        | Provision server (Docker, firewall, SSH)      |
-| `python run.py deploy`           | Deploy app (sync code, env template, compose) |
-| `python run.py deploy --dry-run` | Show what would happen without executing      |
-| `python run.py full`             | create → provision → deploy (non-interactive) |
-| `python run.py secrets`          | Generate secrets into `.env.infra`            |
-| `python run.py health`           | Check running service status on the server    |
+| Command                           | Description                                               |
+| --------------------------------- | --------------------------------------------------------- |
+| `python run.py wizard`            | Interactive first-time setup (recommended)                |
+| `python run.py wizard --fresh`    | Reset wizard state and start over                         |
+| `python run.py preflight`         | Validate prerequisites, config, and SSH key               |
+| `python run.py create`            | Create Hetzner VPS only                                   |
+| `python run.py provision`         | Provision server (Docker, firewall, SSH)                  |
+| `python run.py deploy`            | Deploy app (sync code, env template, compose)             |
+| `python run.py deploy --dry-run`  | Show what would happen without executing                  |
+| `python run.py upgrade`           | Pull new images, migrate DB, restart (with auto-rollback) |
+| `python run.py upgrade --dry-run` | Show upgrade steps without executing                      |
+| `python run.py full`              | create → provision → deploy (non-interactive)             |
+| `python run.py secrets`           | Generate secrets into `.env.infra`                        |
+| `python run.py health`            | Check running service status on the server                |
 
 All commands use Rich for colored output, spinners, and formatted tables.
 

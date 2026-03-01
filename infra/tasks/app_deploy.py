@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
-from pyinfra.operations import server
+from pathlib import Path
+
+from pyinfra.operations import files, server
 
 from config import Config
+
+SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 
 
 def deploy_app(cfg: Config) -> None:
     compose = f"docker compose -f {cfg.deploy_dir}/docker-compose.prod.yml"
+
+    files.put(
+        name="Deploy auto-upgrade script",
+        src=str(SCRIPTS_DIR / "auto-upgrade.sh"),
+        dest=f"{cfg.deploy_dir}/auto-upgrade.sh",
+        user=cfg.deploy_user,
+        group=cfg.deploy_user,
+        mode="750",
+    )
 
     server.shell(
         name="Symlink .env to .env.production",
