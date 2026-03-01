@@ -65,7 +65,14 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     return this.getState();
   }
 
-  async startRound(): Promise<RoundData> {
+  async startRound(): Promise<RoundData | null> {
+    if (this.currentRound >= this.totalRounds) {
+      this.log.warn(
+        { currentRound: this.currentRound, totalRounds: this.totalRounds },
+        'startRound called past total rounds',
+      );
+      return null;
+    }
     this.currentRound++;
     const roundData = this.getRoundData(this.currentRound);
 

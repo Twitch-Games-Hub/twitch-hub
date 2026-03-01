@@ -107,6 +107,12 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
   socket.on('game:next-round', (sessionId) =>
     requireHost(async (socket, sessionId) => {
       const engine = gameRegistry.getEngine(sessionId)!;
+      const state = engine.getState();
+
+      if (state.currentRound >= state.totalRounds) {
+        log.warn({ sessionId }, 'next-round rejected: already at last round');
+        return;
+      }
 
       const results = await engine.endRound();
       broadcastToSession(io, sessionId, 'game:round-end', results);
