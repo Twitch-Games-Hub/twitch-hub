@@ -60,6 +60,47 @@ def _validate_ghcr_token(username: str, token: str) -> tuple[bool, str]:
         return False, f"Could not reach GitHub API: {e}"
 
 
+def _check_ghcr_images_exist(username: str, token: str) -> tuple[list[str], list[str]]:
+    """Return (found, missing) image names by querying the GitHub Packages API."""
+    import json
+
+    found: list[str] = []
+    missing: list[str] = []
+
+    for image_name in ("twitch-hub-server", "twitch-hub-web"):
+        located = False
+        # GitHub exposes container packages under /users/ for personal accounts
+        # and /orgs/ for organisations — try both.
+        for ns in ("users", "orgs"):
+            url = (
+                f"https://api.github.com/{ns}/{username}"
+                f"/packages/container/{image_name}"
+            )
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "Authorization": f"token {token}",
+                    "Accept": "application/vnd.github+json",
+                    "User-Agent": "twitch-hub-infra/1.0",
+                },
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        located = True
+                        break
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    continue  # try next namespace
+                break  # unexpected error — treat as missing
+            except Exception:
+                break
+
+        (found if located else missing).append(image_name)
+
+    return found, missing
+
+
 def _find_ssh_key() -> Path:
     ssh_dir = Path.home() / ".ssh"
     for name in ("id_ed25519.pub", "id_rsa.pub", "id_ecdsa.pub"):
@@ -377,6 +418,23 @@ def step_provision_and_deploy(state: WizardState) -> None:
     if not ui.confirm("Provision and deploy to this server?"):
         ui.warn("Deployment cancelled")
         sys.exit(0)
+
+    # Verify both Docker images have been published to GHCR before we touch the
+    # server — avoids a mid-deploy failure that's hard to recover from.
+    with ui.create_spinner("Checking GHCR images...") as progress:
+        progress.add_task("Querying GitHub Packages API...", total=None)
+        _, missing = _check_ghcr_images_exist(cfg.github_username, cfg.ghcr_token)
+    if missing:
+        ui.error(
+            f"Images not yet published to GHCR: {', '.join(missing)}",
+            hint=(
+                "The CI publish jobs run automatically after tests pass on main. "
+                "Wait for the GitHub Actions workflow to complete, then re-run: "
+                "python run.py wizard"
+            ),
+        )
+        sys.exit(1)
+    ui.success("Both GHCR images found — proceeding with deploy")
 
     ui.info(f"Provisioning {ip} as root...")
     subprocess.run(
