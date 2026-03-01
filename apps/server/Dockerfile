@@ -16,7 +16,7 @@ USER server
 COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./dist
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma ./prisma
 COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./package.json
-COPY --from=builder --chown=server:nodejs /app/apps/server/node_modules ./node_modules
+COPY --from=builder --chown=server:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=server:nodejs /app/packages/shared-types/dist ./node_modules/@twitch-hub/shared-types/dist
 COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.json ./node_modules/@twitch-hub/shared-types/package.json
 ENV NODE_ENV=production
