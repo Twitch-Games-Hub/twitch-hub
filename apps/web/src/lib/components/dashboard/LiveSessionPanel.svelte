@@ -2,7 +2,7 @@
   import { gameStore } from '$lib/stores/game.svelte';
   import type { ApiGameBase } from '@twitch-hub/shared-types';
   import SessionStatusBar from './SessionStatusBar.svelte';
-  import SessionShareLinks from './SessionShareLinks.svelte';
+  import PlayShareCard from './PlayShareCard.svelte';
   import SessionControls from './SessionControls.svelte';
   import ConnectedUsersTable from './ConnectedUsersTable.svelte';
   import SessionResults from './SessionResults.svelte';
@@ -44,7 +44,7 @@
   {/if}
 
   <div class="space-y-4 p-4">
-    <SessionShareLinks {sessionId} {appUrl} />
+    <PlayShareCard {sessionId} {appUrl} />
 
     {#if phase === 'lobby'}
       <!-- Lobby Phase -->
