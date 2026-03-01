@@ -58,6 +58,54 @@ uv run python run.py wizard --fresh
 
 ---
 
+## CI/CD Pipeline
+
+GitHub Actions automatically builds and publishes Docker images on every push to `main`, but only after all CI checks pass.
+
+### Pipeline
+
+```
+push to main
+    │
+    ├── lint ──────┐
+    ├── typecheck ─┤
+    ├── build ─────┼── all pass ──→ publish-server ──→ ghcr.io/<org>/twitch-hub-server
+    └── test ──────┘               publish-web    ──→ ghcr.io/<org>/twitch-hub-web
+                                   (parallel)
+```
+
+- PRs run `lint`, `typecheck`, `build`, and `test` only — no images are published.
+- Both publish jobs run in parallel once all four checks pass.
+- Images are tagged `:latest` and `:<git-sha>` for every push.
+
+### Image naming
+
+GHCR requires fully lowercase image names. The pipeline lowercases the org name via:
+
+```bash
+echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+```
+
+The `GHCR_SERVER_IMAGE` and `GHCR_WEB_IMAGE` values in `.env.production` must also be lowercase (handled automatically by the `| lower` filter in `infra/templates/env.production.j2`).
+
+### Rolling back
+
+To roll back to a previous image, pull the sha-tagged version and update your compose file:
+
+```bash
+# On the VPS
+docker pull ghcr.io/<org>/twitch-hub-server:<sha>
+docker pull ghcr.io/<org>/twitch-hub-web:<sha>
+
+# Edit .env.production to pin the sha tags
+GHCR_SERVER_IMAGE=ghcr.io/<org>/twitch-hub-server:<sha>
+GHCR_WEB_IMAGE=ghcr.io/<org>/twitch-hub-web:<sha>
+
+docker compose -f docker-compose.prod.yml up -d
+```
+
+---
+
 ## CLI Commands
 
 | Command                          | Description                                   |
