@@ -5,3 +5,4 @@ build
 bun.lockb
 .vitepress/cache
 .vitepress/dist
+infra/.venv

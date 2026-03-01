@@ -16,6 +16,7 @@
     "format": "bun run --filter '*' format",
     "format:check": "prettier --check .",
     "typecheck": "bun run --filter '*' typecheck",
+    "check": "bun run lint && bun run format:check && bun run typecheck",
     "test": "bun run --filter '*' test",
     "clean": "bun run --filter '*' clean",
     "docs:dev": "bun run --filter @twitch-hub/docs dev",

@@ -12,7 +12,22 @@
   let newUserIds = new SvelteSet<string>();
   let prevSocketIds = new SvelteSet<string>();
   let countPulsing = $state(false);
-  let prevTotalCount = $state(totalCount);
+  let prevTotalCount = $state(-1);
+
+  $effect(() => {
+    if (prevTotalCount === -1) {
+      prevTotalCount = totalCount;
+      return;
+    }
+
+    if (totalCount !== prevTotalCount) {
+      prevTotalCount = totalCount;
+      countPulsing = true;
+      setTimeout(() => {
+        countPulsing = false;
+      }, 300);
+    }
+  });
 
   $effect(() => {
     const currentIds = new SvelteSet(users.map((u) => u.socketId));
@@ -27,16 +42,6 @@
       }, 400);
     }
     prevSocketIds = currentIds;
-  });
-
-  $effect(() => {
-    if (totalCount !== prevTotalCount) {
-      prevTotalCount = totalCount;
-      countPulsing = true;
-      setTimeout(() => {
-        countPulsing = false;
-      }, 300);
-    }
   });
 </script>
 
