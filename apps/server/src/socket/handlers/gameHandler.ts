@@ -6,6 +6,7 @@ import { gameRegistry } from '../../engine/GameRegistry.js';
 import { prisma } from '../../db/client.js';
 import { logger } from '../../logger.js';
 import { requireHost } from '../helpers.js';
+import { getUsers } from '../sessionUsers.js';
 import { computeSessionBudget, consumeCredit } from '../../middleware/sessionBudget.js';
 import { trackEvent } from '../../services/sentryAnalytics.js';
 import { gamificationService } from '../../services/GamificationService.js';
@@ -275,6 +276,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
       const snapshot = await engine.getSnapshot(session.id);
       socket.emit('session:rejoined', snapshot);
+      socket.emit('session:users', getUsers(session.id));
 
       log.info({ sessionId, userId: socket.data.userId }, 'Session rejoined');
     } catch (err) {
