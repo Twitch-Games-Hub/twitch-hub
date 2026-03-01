@@ -10,6 +10,5 @@ build
 .svelte-kit
 .husky
 .github
-docs
 *.log
 .DS_Store
