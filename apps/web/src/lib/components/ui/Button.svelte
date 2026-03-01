@@ -51,7 +51,7 @@
 </script>
 
 {#if href}
-  <a href={resolve(href as `/${string}`)} class={classes}>
+  <a href={resolve(href as any)} class={classes}>
     {#if loading}
       <LoaderIcon size={size === 'lg' ? 20 : 16} />
     {/if}

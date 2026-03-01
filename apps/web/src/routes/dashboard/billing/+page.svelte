@@ -8,6 +8,6 @@
     let target = '/dashboard/profile?tab=billing';
     if ($page.url.searchParams.has('success')) target += '&success=true';
     if ($page.url.searchParams.has('canceled')) target += '&canceled=true';
-    goto(resolve(target as `/${string}`), { replaceState: true });
+    goto(resolve(target as any), { replaceState: true });
   });
 </script>

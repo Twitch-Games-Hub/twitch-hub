@@ -130,7 +130,7 @@
 
         <!-- Back button -->
         <a
-          href={resolve(backHref as `/${string}`)}
+          href={resolve(backHref as any)}
           class="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-surface-primary/80 text-text-muted backdrop-blur-sm transition-colors hover:bg-surface-primary hover:text-text-primary"
         >
           <ArrowLeftIcon size={16} />
