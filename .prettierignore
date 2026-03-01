@@ -2,7 +2,9 @@ node_modules
 dist
 build
 .svelte-kit
+bun.lock
 bun.lockb
 .vitepress/cache
 .vitepress/dist
 infra/.venv
+apps/server/src/generated
