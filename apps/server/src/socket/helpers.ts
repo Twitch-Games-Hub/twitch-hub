@@ -68,7 +68,11 @@ export function createSessionJoinHandler(log: Logger) {
     if (result.status === 'ENDED' && !engine) {
       const session = await prisma.gameSession.findUnique({
         where: { id: sessionId },
-        select: { state: true, currentRound: true, game: { select: { type: true } } },
+        select: {
+          state: true,
+          currentRound: true,
+          game: { select: { type: true, title: true, coverImageUrl: true } },
+        },
       });
       const finalResults = session?.state as FinalResults | null;
 
@@ -88,6 +92,8 @@ export function createSessionJoinHandler(log: Logger) {
           currentRound: session.currentRound,
           totalRounds: finalResults.rounds.length,
           participantCount: finalResults.totalParticipants,
+          gameTitle: session.game.title,
+          coverImageUrl: session.game.coverImageUrl ?? undefined,
         },
         currentRound: null,
         votes: null,

@@ -21,6 +21,8 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   protected roundResults: RoundResults[] = [];
   protected participantIds = new Set<string>();
   protected log;
+  protected gameTitle = '';
+  protected coverImageUrl?: string;
 
   // Throttled broadcast
   protected broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
@@ -47,6 +49,11 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
 
   setOnAutoEnd(cb: (finalResults: FinalResults) => void) {
     this.onAutoEnd = cb;
+  }
+
+  setGameMeta(title: string, coverImageUrl?: string) {
+    this.gameTitle = title;
+    this.coverImageUrl = coverImageUrl;
   }
 
   // --- Abstract methods that game types implement ---
@@ -133,6 +140,8 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
       currentRound: this.currentRound,
       totalRounds: this.totalRounds,
       participantCount: this.participantIds.size,
+      gameTitle: this.gameTitle || undefined,
+      coverImageUrl: this.coverImageUrl,
     };
   }
 

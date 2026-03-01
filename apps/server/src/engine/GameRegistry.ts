@@ -9,7 +9,13 @@ import { logger } from '../logger.js';
 
 const log = logger.child({ module: 'registry' });
 
-type GameRecord = { id: string; type: string; config: unknown };
+type GameRecord = {
+  id: string;
+  type: string;
+  config: unknown;
+  title: string;
+  coverImageUrl?: string | null;
+};
 
 const engineMap: Record<string, new (sessionId: string, config: never) => GameEngine> = {
   [GameType.HOT_TAKE]: HotTakeGame as unknown as new (
@@ -46,6 +52,7 @@ class GameRegistryClass {
     }
 
     const engine = new EngineClass(sessionId, game.config as never);
+    engine.setGameMeta(game.title, game.coverImageUrl ?? undefined);
     if (this.broadcastCallback) {
       engine.setBroadcastCallback(this.broadcastCallback);
     }

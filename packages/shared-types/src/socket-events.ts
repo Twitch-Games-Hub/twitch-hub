@@ -11,6 +11,8 @@ export interface GameState {
   totalRounds: number;
   roundData?: RoundData;
   participantCount: number;
+  gameTitle?: string;
+  coverImageUrl?: string;
 }
 
 export interface RoundData {
