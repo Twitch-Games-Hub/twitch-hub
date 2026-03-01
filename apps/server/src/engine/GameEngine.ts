@@ -193,6 +193,11 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     const results = await this.endRound();
     this.broadcastCallback?.(this.sessionId, 'game:round-end', results);
 
+    if (this.gamificationService) {
+      const leaderboard = await this.gamificationService.getSessionLeaderboard(this.sessionId);
+      this.broadcastCallback?.(this.sessionId, 'leaderboard:update', leaderboard);
+    }
+
     if (this.currentRound < this.totalRounds) {
       const roundData = await this.startRound();
       this.broadcastCallback?.(this.sessionId, 'game:round-start', roundData);

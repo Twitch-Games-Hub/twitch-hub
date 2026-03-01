@@ -164,6 +164,9 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const results = await engine.endRound();
       broadcastToSession(io, sessionId, 'game:round-end', results);
 
+      const leaderboard = await gamificationService.getSessionLeaderboard(sessionId);
+      io.of('/play').to(sessionId).emit('leaderboard:update', leaderboard);
+
       const roundData = await engine.startRound();
       if (roundData) {
         broadcastToSession(io, sessionId, 'game:round-start', roundData);
@@ -192,6 +195,9 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       });
 
       broadcastToSession(io, sessionId, 'game:ended', finalResults);
+
+      const finalLeaderboard = await gamificationService.getSessionLeaderboard(sessionId, 20);
+      io.of('/play').to(sessionId).emit('leaderboard:update', finalLeaderboard);
 
       // Finalize gamification (fire-and-forget)
       gamificationService

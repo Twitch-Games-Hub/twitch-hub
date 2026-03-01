@@ -28,7 +28,12 @@ export async function trackUser(
     }
   }
 
-  const sessionUser: SessionUser = { socketId, displayName, profileImageUrl };
+  const sessionUser: SessionUser = {
+    socketId,
+    userId: userId ?? undefined,
+    displayName,
+    profileImageUrl,
+  };
 
   if (!sessionUsersMap.has(sessionId)) {
     sessionUsersMap.set(sessionId, new Map());

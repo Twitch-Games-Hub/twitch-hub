@@ -83,8 +83,15 @@ export interface SessionSnapshot {
 
 export interface SessionUser {
   socketId: string;
+  userId?: string;
   displayName: string | null;
   profileImageUrl?: string | null;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  playerId: string;
+  xp: number;
 }
 
 // --- Socket.IO Event Contracts ---
@@ -116,4 +123,5 @@ export interface ServerToClientEvents {
   'notification:count': (data: { unreadCount: number }) => void;
   'gamification:event': (data: GamificationEvent) => void;
   'gamification:profile': (data: PlayerProfileSummary) => void;
+  'leaderboard:update': (entries: LeaderboardEntry[]) => void;
 }

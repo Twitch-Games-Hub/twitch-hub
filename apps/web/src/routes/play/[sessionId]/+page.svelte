@@ -18,6 +18,7 @@
   import GamificationToast from '$lib/components/games/GamificationToast.svelte';
   import PostRoundOutcome from '$lib/components/games/PostRoundOutcome.svelte';
   import PlayerAvatarStrip from '$lib/components/games/PlayerAvatarStrip.svelte';
+  import SessionLeaderboard from '$lib/components/games/SessionLeaderboard.svelte';
   import type { Socket } from 'socket.io-client';
 
   let socket: Socket | null = null;
@@ -179,6 +180,9 @@
           </Card>
         {/each}
       {/if}
+      {#if gameStore.leaderboard.length > 0}
+        <SessionLeaderboard entries={gameStore.leaderboard} users={gameStore.connectedUsers} />
+      {/if}
     </div>
   {:else if gameStore.currentRound}
     <div class="animate-slide-up space-y-6">
@@ -229,6 +233,9 @@
             submittedAnswer={myAnswer}
             currentRound={gameStore.currentRound}
           />
+        {/if}
+        {#if gameStore.leaderboard.length > 0}
+          <SessionLeaderboard entries={gameStore.leaderboard} users={gameStore.connectedUsers} />
         {/if}
       {:else if submitted || pending}
         <Card padding="lg" class="animate-fade-in text-center">

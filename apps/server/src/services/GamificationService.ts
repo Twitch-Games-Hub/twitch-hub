@@ -3,6 +3,7 @@ import {
   computeLevel,
   computeLoyaltyTier,
   type GamificationEvent,
+  type LeaderboardEntry,
 } from '@twitch-hub/shared-types';
 import { redis } from '../db/redis.js';
 import { prisma } from '../db/client.js';
@@ -27,6 +28,9 @@ function _completionsKey(sessionId: string) {
 }
 function roundParticipantsKey(sessionId: string, round: number) {
   return `session:${sessionId}:round:${round}:participants`;
+}
+function leaderboardKey(sessionId: string) {
+  return `session:${sessionId}:leaderboard`;
 }
 
 export class GamificationService {
@@ -77,7 +81,9 @@ export class GamificationService {
   async recordParticipation(sessionId: string, playerId: string, round: number): Promise<void> {
     const key = xpKey(sessionId, playerId);
     await redis.hincrby(key, 'ROUND_RESPONSE', XP_AWARDS.ROUND_RESPONSE);
+    await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.ROUND_RESPONSE, playerId);
     await redis.expire(key, REDIS_VOTE_TTL_SEC);
+    await redis.expire(leaderboardKey(sessionId), REDIS_VOTE_TTL_SEC);
 
     // Track round participants for session completion detection
     await redis.sadd(roundParticipantsKey(sessionId, round), playerId);
@@ -97,16 +103,20 @@ export class GamificationService {
 
     // Correct answer XP
     await redis.hincrby(key, 'CORRECT_ANSWER', XP_AWARDS.CORRECT_ANSWER);
+    await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.CORRECT_ANSWER, playerId);
 
     // Speed bonus
     const ratio = answerTimeMs / windowMs;
     if (ratio < 0.33) {
       await redis.hincrby(key, 'SPEED_BONUS', XP_AWARDS.SPEED_BONUS_FAST);
+      await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.SPEED_BONUS_FAST, playerId);
     } else if (ratio < 0.5) {
       await redis.hincrby(key, 'SPEED_BONUS', XP_AWARDS.SPEED_BONUS_MEDIUM);
+      await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.SPEED_BONUS_MEDIUM, playerId);
     }
 
     await redis.expire(key, REDIS_VOTE_TTL_SEC);
+    await redis.expire(leaderboardKey(sessionId), REDIS_VOTE_TTL_SEC);
 
     // Streak tracking
     const sKey = streakKey(sessionId, playerId);
@@ -116,6 +126,7 @@ export class GamificationService {
     // Streak bonus (3+ consecutive correct)
     if (newStreak >= 3) {
       await redis.hincrby(key, 'STREAK_BONUS', XP_AWARDS.STREAK_BONUS_PER_STEP);
+      await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.STREAK_BONUS_PER_STEP, playerId);
     }
 
     // Broadcast streak milestones
@@ -151,7 +162,9 @@ export class GamificationService {
       // Award first responder XP
       const xpK = xpKey(sessionId, playerId);
       await redis.hincrby(xpK, 'FIRST_RESPONDER', XP_AWARDS.FIRST_RESPONDER);
+      await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.FIRST_RESPONDER, playerId);
       await redis.expire(xpK, REDIS_VOTE_TTL_SEC);
+      await redis.expire(leaderboardKey(sessionId), REDIS_VOTE_TTL_SEC);
     }
   }
 
@@ -164,8 +177,22 @@ export class GamificationService {
       const key = xpKey(sessionId, playerId);
       pipeline.hincrby(key, 'MAJORITY_VOTER', XP_AWARDS.MAJORITY_VOTER);
       pipeline.expire(key, REDIS_VOTE_TTL_SEC);
+      pipeline.zincrby(leaderboardKey(sessionId), XP_AWARDS.MAJORITY_VOTER, playerId);
     }
+    pipeline.expire(leaderboardKey(sessionId), REDIS_VOTE_TTL_SEC);
     await pipeline.exec();
+  }
+
+  /**
+   * Get top-N players by session XP from the sorted set.
+   */
+  async getSessionLeaderboard(sessionId: string, topN = 10): Promise<LeaderboardEntry[]> {
+    const raw = await redis.zrevrange(leaderboardKey(sessionId), 0, topN - 1, 'WITHSCORES');
+    const entries: LeaderboardEntry[] = [];
+    for (let i = 0; i < raw.length; i += 2) {
+      entries.push({ rank: entries.length + 1, playerId: raw[i], xp: parseInt(raw[i + 1], 10) });
+    }
+    return entries;
   }
 
   /**
