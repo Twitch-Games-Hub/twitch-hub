@@ -18,6 +18,7 @@ RUN apk add --no-cache libc6-compat
 COPY package.json bun.lock ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared-types/package.json ./packages/shared-types/
+COPY docs/package.json ./docs/
 RUN mkdir -p packages/shared-types/src
 RUN bun install --production --frozen-lockfile
 
