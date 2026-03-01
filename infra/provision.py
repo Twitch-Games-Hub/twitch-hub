@@ -5,12 +5,14 @@ from tasks.app_clone import ensure_deploy_dir
 from tasks.docker import install_docker
 from tasks.firewall import configure_firewall
 from tasks.swap import configure_swap
+from tasks.system import update_system_packages
 from tasks.users import create_deploy_user
 from tasks.ssh import harden_ssh
 
 cfg = Config()
 
 # System setup
+update_system_packages()
 configure_swap()
 configure_firewall()
 install_docker()
