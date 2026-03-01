@@ -10,6 +10,9 @@ import { sessionsPlugin } from './routes/sessions.js';
 import { bookmarksPlugin } from './routes/bookmarks.js';
 import { billingPlugin } from './routes/billing.js';
 import { webhookPlugin } from './routes/webhook.js';
+import { moderatorsPlugin } from './routes/moderators.js';
+import { notificationsPlugin } from './routes/notifications.js';
+import { invitesPlugin } from './routes/invites.js';
 import { createSocketServer } from './socket/index.js';
 import { gameRegistry } from './engine/GameRegistry.js';
 import { redis } from './db/redis.js';
@@ -56,6 +59,9 @@ await app.register(profilePlugin, { prefix: '/api/profile' });
 await app.register(sessionsPlugin, { prefix: '/api/sessions' });
 await app.register(bookmarksPlugin, { prefix: '/api/bookmarks' });
 await app.register(billingPlugin, { prefix: '/api/billing' });
+await app.register(moderatorsPlugin, { prefix: '/api/moderators' });
+await app.register(notificationsPlugin, { prefix: '/api/notifications' });
+await app.register(invitesPlugin, { prefix: '/api/sessions' });
 
 // Sentry error handler (must be before custom error handler)
 Sentry.setupFastifyErrorHandler(app);

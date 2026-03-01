@@ -8,48 +8,13 @@ import {
   getFollowedStreams,
   getFollowers,
   getVideos,
-  validateToken,
-  refreshUserToken,
 } from '../twitch/api.js';
-import { logger } from '../logger.js';
+import { getValidAccessToken } from '../twitch/tokens.js';
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { ProfileData } from '@twitch-hub/shared-types';
 
-const log = logger.child({ module: 'profile' });
-
 export const profilePlugin: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', authMiddleware);
-
-  async function getValidAccessToken(
-    userId: string,
-  ): Promise<{ accessToken: string; twitchId: string } | null> {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return null;
-
-    let { accessToken } = user;
-    const { refreshToken, twitchId } = user;
-
-    const isValid = await validateToken(accessToken);
-    if (!isValid) {
-      try {
-        const refreshed = await refreshUserToken(refreshToken);
-        accessToken = refreshed.access_token;
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            accessToken: refreshed.access_token,
-            refreshToken: refreshed.refresh_token,
-            tokenExpiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
-          },
-        });
-      } catch (err) {
-        log.error({ err, userId }, 'Failed to refresh token');
-        return null;
-      }
-    }
-
-    return { accessToken, twitchId };
-  }
 
   // GET / — full profile data
   app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {

@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
     redirect_uri: env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
     response_type: 'code',
     scope:
-      'openid user:read:chat user:write:chat user:read:follows moderator:read:followers user:read:subscriptions',
+      'openid user:read:chat user:write:chat user:read:follows moderator:read:followers user:read:subscriptions moderation:read',
     state,
   });
 

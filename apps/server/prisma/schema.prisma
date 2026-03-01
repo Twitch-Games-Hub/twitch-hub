@@ -24,6 +24,8 @@ model User {
   ratings         GameRating[]
   bookmarks       GameBookmark[]
   subscription    Subscription?
+  moderatorLinks  ModeratorLink[] @relation("StreamerMods")
+  notifications   Notification[]  @relation("UserNotifications")
 }
 
 enum UserRole {
@@ -158,4 +160,44 @@ model GameBookmark {
 
   @@unique([gameId, userId])
   @@index([userId])
+}
+
+model ModeratorLink {
+  id             String   @id @default(cuid())
+  streamerId     String
+  streamer       User     @relation("StreamerMods", fields: [streamerId], references: [id], onDelete: Cascade)
+  modTwitchId    String
+  modLogin       String
+  modDisplayName String
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([streamerId, modTwitchId])
+  @@index([modTwitchId])
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  recipientId String
+  recipient   User               @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  body        String
+  data        Json               @default("{}")
+  status      NotificationStatus @default(UNREAD)
+  createdAt   DateTime           @default(now())
+
+  @@index([recipientId, status])
+  @@index([recipientId, createdAt])
+}
+
+enum NotificationType {
+  SESSION_INVITE
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  DISMISSED
 }

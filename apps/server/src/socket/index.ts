@@ -8,6 +8,7 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { createSessionJoinHandler, registerSocketLifecycleHandlers } from './helpers.js';
 import { trackUser, untrackUser } from './sessionUsers.js';
+import { notificationBroadcaster } from './notificationBroadcaster.js';
 
 export type AppSocket =
   ReturnType<typeof createSocketServer> extends Server<ClientToServerEvents, ServerToClientEvents>
@@ -39,11 +40,23 @@ export function createSocketServer(app: FastifyInstance) {
   // Overlay is fully public
   overlay.use((_socket, next) => next());
 
+  // Wire notification broadcaster
+  notificationBroadcaster.setServer(io);
+
   // Register handlers
   dashboard.on('connection', (socket) => {
     dashboardLog.debug({ socketId: socket.id }, 'Dashboard client connected');
     registerGameHandlers(socket, io);
     registerVoteHandlers(socket, io);
+
+    // Track user for real-time notifications
+    if (socket.data.userId) {
+      notificationBroadcaster.trackUser(socket.data.userId, socket.id);
+    }
+
+    socket.on('disconnect', () => {
+      notificationBroadcaster.untrackUser(socket.id);
+    });
 
     registerSocketLifecycleHandlers(socket, dashboardLog, 'Dashboard');
   });

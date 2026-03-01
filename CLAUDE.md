@@ -1,7 +1,5 @@
-when planning make sure to always split task using divid et impera approach, so that it ease the planning for creating multiple phases with parallelizabble simultanoues stream between phases
+Remember always to:
 
-use ONLY `bun`
-
-write docs if doing something new
-
-always commit feature automatically
+- use bun as node runtime
+- write docs on vitepress if doing something new
+- always commit everything automatically

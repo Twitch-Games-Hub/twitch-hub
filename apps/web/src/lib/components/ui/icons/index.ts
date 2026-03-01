@@ -15,3 +15,7 @@ export { default as GamepadIcon } from './GamepadIcon.svelte';
 export { default as BookmarkIcon } from './BookmarkIcon.svelte';
 export { default as UsersIcon } from './UsersIcon.svelte';
 export { default as PlayIcon } from './PlayIcon.svelte';
+export { default as BellIcon } from './BellIcon.svelte';
+export { default as SettingsIcon } from './SettingsIcon.svelte';
+export { default as RefreshIcon } from './RefreshIcon.svelte';
+export { default as SendIcon } from './SendIcon.svelte';

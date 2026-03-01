@@ -73,6 +73,27 @@ class GameRegistryClass {
     return this.sessionHosts.get(sessionId) === userId;
   }
 
+  async isAuthorized(sessionId: string, userId: string): Promise<boolean> {
+    // Fast path: check if user is the host (sync, no DB hit)
+    if (this.isHost(sessionId, userId)) return true;
+
+    // Slow path: check if user is an enabled moderator for the session's host
+    const hostId = this.sessionHosts.get(sessionId);
+    if (!hostId) return false;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { twitchId: true },
+    });
+    if (!user) return false;
+
+    const link = await prisma.moderatorLink.findFirst({
+      where: { streamerId: hostId, modTwitchId: user.twitchId, enabled: true },
+    });
+
+    return !!link;
+  }
+
   getEngine(sessionId: string): GameEngine | undefined {
     return this.engines.get(sessionId);
   }

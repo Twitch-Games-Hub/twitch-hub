@@ -148,3 +148,18 @@ export async function getFollowers(
   if (!res.ok) return null;
   return res.json();
 }
+
+export async function getModerators(
+  broadcasterId: string,
+  accessToken: string,
+  first = 100,
+  after?: string,
+) {
+  const params = new URLSearchParams({ broadcaster_id: broadcasterId, first: String(first) });
+  if (after) params.set('after', after);
+  const res = await fetch(`${HELIX_BASE}/moderation/moderators?${params}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}

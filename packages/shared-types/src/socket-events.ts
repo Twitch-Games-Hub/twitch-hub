@@ -1,4 +1,5 @@
 import type { GameType, SessionStatus } from './game.js';
+import type { ApiNotification } from './notification.js';
 
 // --- Game State ---
 
@@ -86,7 +87,7 @@ export interface SessionUser {
 // --- Socket.IO Event Contracts ---
 
 export interface ClientToServerEvents {
-  'game:create-session': (gameId: string) => void;
+  'game:create-session': (data: string | { gameId: string; onBehalfOf?: string }) => void;
   'game:start': (sessionId: string) => void;
   'game:next-round': (sessionId: string) => void;
   'game:end': (sessionId: string) => void;
@@ -108,4 +109,6 @@ export interface ServerToClientEvents {
   error: (message: string) => void;
   'session:created': (data: { sessionId: string }) => void;
   'session:rejoined': (snapshot: SessionSnapshot) => void;
+  'notification:received': (notification: ApiNotification) => void;
+  'notification:count': (data: { unreadCount: number }) => void;
 }

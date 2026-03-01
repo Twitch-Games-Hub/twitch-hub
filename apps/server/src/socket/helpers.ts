@@ -19,7 +19,8 @@ export function requireHost(
 ) {
   return async (socket: AppSocket, sessionId: string) => {
     try {
-      if (!gameRegistry.isHost(sessionId, socket.data.userId)) {
+      const authorized = await gameRegistry.isAuthorized(sessionId, socket.data.userId);
+      if (!authorized) {
         socket.emit('error', 'Not authorized');
         return;
       }

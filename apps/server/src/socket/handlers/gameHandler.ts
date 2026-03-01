@@ -15,7 +15,11 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 export function registerGameHandlers(socket: AppSocket, io: AppServer) {
-  socket.on('game:create-session', async (gameId) => {
+  socket.on('game:create-session', async (data) => {
+    // Support both legacy (string) and new ({ gameId, onBehalfOf? }) format
+    const gameId = typeof data === 'string' ? data : data.gameId;
+    const onBehalfOf = typeof data === 'string' ? undefined : data.onBehalfOf;
+
     try {
       const game = await prisma.game.findUnique({ where: { id: gameId } });
       if (!game) {
@@ -23,8 +27,45 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
         return;
       }
 
-      // Check session budget
-      const budget = await computeSessionBudget(socket.data.userId);
+      // Determine the effective host (streamer) for this session
+      let hostId = socket.data.userId;
+      let channelId = socket.data.twitchId || '';
+
+      if (onBehalfOf) {
+        // Verify mod authorization for the streamer
+        const modUser = await prisma.user.findUnique({
+          where: { id: socket.data.userId },
+          select: { twitchId: true },
+        });
+        if (!modUser) {
+          socket.emit('error', 'User not found');
+          return;
+        }
+
+        const link = await prisma.moderatorLink.findFirst({
+          where: { streamerId: onBehalfOf, modTwitchId: modUser.twitchId, enabled: true },
+        });
+        if (!link) {
+          socket.emit('error', 'Not authorized as moderator for this streamer');
+          return;
+        }
+
+        // Verify the game belongs to the streamer
+        if (game.ownerId !== onBehalfOf) {
+          socket.emit('error', 'Game does not belong to this streamer');
+          return;
+        }
+
+        const streamer = await prisma.user.findUnique({
+          where: { id: onBehalfOf },
+          select: { twitchId: true },
+        });
+        hostId = onBehalfOf;
+        channelId = streamer?.twitchId || '';
+      }
+
+      // Check session budget for the host (streamer)
+      const budget = await computeSessionBudget(hostId);
       if (!budget.canCreateSession) {
         socket.emit('error', 'Session limit reached. Upgrade your plan or purchase credits.');
         return;
@@ -34,7 +75,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const existing = await prisma.gameSession.findFirst({
         where: {
           gameId,
-          hostId: socket.data.userId,
+          hostId,
           status: { in: ['LOBBY', 'LIVE'] },
         },
       });
@@ -46,24 +87,31 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const session = await prisma.gameSession.create({
         data: {
           gameId: game.id,
-          hostId: socket.data.userId,
-          channelId: socket.data.twitchId || '',
+          hostId,
+          channelId,
           state: {},
         },
       });
 
       // Consume a credit if that was the budget source
       if (budget.source === 'credits') {
-        await consumeCredit(socket.data.userId);
+        await consumeCredit(hostId);
       }
 
       socket.join(session.id);
       socket.emit('session:created', { sessionId: session.id });
 
       // Initialize game engine with host tracking
-      await gameRegistry.initSession(session.id, game, socket.data.userId);
-      trackEvent(socket.data.userId, 'game_session_created', { sessionId: session.id, gameId });
-      log.info({ sessionId: session.id, gameId, userId: socket.data.userId }, 'Session created');
+      await gameRegistry.initSession(session.id, game, hostId);
+      trackEvent(socket.data.userId, 'game_session_created', {
+        sessionId: session.id,
+        gameId,
+        onBehalfOf,
+      });
+      log.info(
+        { sessionId: session.id, gameId, userId: socket.data.userId, onBehalfOf },
+        'Session created',
+      );
     } catch (err) {
       socket.emit('error', 'Failed to create session');
       log.error({ err, gameId, userId: socket.data.userId }, 'game:create-session error');
@@ -149,8 +197,8 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
   socket.on('session:rejoin', async ({ sessionId }) => {
     try {
-      // Find session by PK + host ownership
-      const session = await prisma.gameSession.findFirst({
+      // First try as host
+      let session = await prisma.gameSession.findFirst({
         where: {
           id: sessionId,
           hostId: socket.data.userId,
@@ -158,6 +206,37 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
         },
         include: { game: true },
       });
+
+      // If not host, check if authorized mod
+      if (!session) {
+        const modUser = await prisma.user.findUnique({
+          where: { id: socket.data.userId },
+          select: { twitchId: true },
+        });
+
+        if (modUser) {
+          const candidateSession = await prisma.gameSession.findFirst({
+            where: {
+              id: sessionId,
+              status: { in: ['LOBBY', 'LIVE'] },
+            },
+            include: { game: true },
+          });
+
+          if (candidateSession) {
+            const link = await prisma.moderatorLink.findFirst({
+              where: {
+                streamerId: candidateSession.hostId,
+                modTwitchId: modUser.twitchId,
+                enabled: true,
+              },
+            });
+            if (link) {
+              session = candidateSession;
+            }
+          }
+        }
+      }
 
       if (!session) {
         socket.emit('error', 'No active session found');
@@ -169,7 +248,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       // Re-init engine if missing (e.g. after server restart)
       let engine = gameRegistry.getEngine(session.id);
       if (!engine) {
-        engine = await gameRegistry.initSession(session.id, session.game, socket.data.userId);
+        engine = await gameRegistry.initSession(session.id, session.game, session.hostId);
         if (session.status === 'LIVE') {
           engine.restoreState(session.currentRound, SessionStatus.LIVE);
         }
