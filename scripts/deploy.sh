@@ -10,9 +10,10 @@ usage() {
 Usage: $0 <command>
 
 Commands:
-  deploy    Full deployment: build → up → wait for DB → migrate → restart server
+  deploy    Full deployment: build → up → wait for DB → dbsetup → restart server
   build     Build web and server images
-  migrate   Run Prisma migrations
+  dbsetup   Push database schema and run seed
+  seed      Run seed script independently
   up        Start all services
   down      Stop all services
   logs      Tail logs (pass service name to filter, e.g. $0 logs server)
@@ -68,14 +69,23 @@ cmd_down() {
   $COMPOSE down
 }
 
-cmd_migrate() {
-  echo "==> Running database migrations..."
-  if ! $COMPOSE run --rm migrate; then
-    echo "Error: Database migration failed!"
-    echo "Check the migration output above for details."
+cmd_dbsetup() {
+  echo "==> Pushing database schema and running seed..."
+  if ! $COMPOSE --profile tools run --rm dbsetup; then
+    echo "Error: Database setup failed!"
+    echo "Check the output above for details."
     exit 1
   fi
-  echo "==> Migrations completed successfully."
+  echo "==> Database setup completed successfully."
+}
+
+cmd_seed() {
+  echo "==> Running seed script..."
+  if ! $COMPOSE --profile tools run --rm dbsetup sh -c 'bun run prisma/seed.ts'; then
+    echo "Error: Seed failed!"
+    exit 1
+  fi
+  echo "==> Seed completed successfully."
 }
 
 cmd_logs() {
@@ -113,8 +123,8 @@ cmd_deploy() {
   cmd_up
   wait_for_healthy postgres 60
   wait_for_healthy redis 30
-  cmd_migrate
-  echo "==> Restarting server after migration..."
+  cmd_dbsetup
+  echo "==> Restarting server after database setup..."
   $COMPOSE restart server
   echo ""
   echo "==> Deployment complete!"
@@ -138,7 +148,8 @@ fi
 case "$COMMAND" in
   deploy)  cmd_deploy ;;
   build)   cmd_build ;;
-  migrate) cmd_migrate ;;
+  dbsetup) cmd_dbsetup ;;
+  seed)    cmd_seed ;;
   up)      cmd_up ;;
   down)    cmd_down ;;
   logs)    cmd_logs "${1:-}" ;;

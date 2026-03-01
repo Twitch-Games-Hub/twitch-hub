@@ -9,7 +9,6 @@
     "start": "node --import ./dist/instrument.js dist/index.js",
     "clean": "rm -rf dist",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
