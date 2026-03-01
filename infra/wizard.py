@@ -23,12 +23,31 @@ def _check_command(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 
 
-def _validate_ghcr_token(username: str, token: str) -> tuple[bool, str]:
+def _detect_github_owner() -> str:
+    """Infer the GitHub org/user from the git remote URL, or return empty string."""
+    import re
+
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            cwd=INFRA_DIR.parent,
+        )
+        url = result.stdout.strip()
+        # Matches both HTTPS (https://github.com/ORG/REPO) and SSH (git@github.com:ORG/REPO.git)
+        m = re.search(r"github\.com[:/]([^/]+)/", url)
+        return m.group(1).lower() if m else ""
+    except Exception:
+        return ""
+
+
+def _validate_ghcr_token(token: str) -> tuple[bool, str]:
     """Validate a GHCR PAT via the GitHub API.
 
-    Returns (ok, message). Uses X-OAuth-Scopes for classic PATs; for
-    fine-grained PATs the header is absent so we just confirm the token
-    authenticates and the username matches.
+    Returns (ok, message). The token owner doesn't have to match the image
+    org — a member of an org can pull org-scoped packages with their personal
+    PAT. We just verify the token authenticates and has read:packages scope.
     """
     req = urllib.request.Request(
         "https://api.github.com/user",
@@ -44,16 +63,13 @@ def _validate_ghcr_token(username: str, token: str) -> tuple[bool, str]:
 
             body = json.loads(resp.read())
             scopes = resp.headers.get("X-OAuth-Scopes", "")
-            login = body.get("login", "")
+            login = body.get("login", "?")
 
-            if login.lower() != username.lower():
-                return False, f"Token belongs to '{login}', expected '{username}'"
-
-            # Classic PATs expose scopes; fine-grained PATs don't
+            # Classic PATs expose scopes; fine-grained PATs don't (skip check)
             if scopes and "read:packages" not in scopes and "write:packages" not in scopes:
                 return False, f"Token scopes ({scopes!r}) don't include 'read:packages'"
 
-            return True, f"Token valid (GitHub login: {login})"
+            return True, f"Token valid (authenticated as: {login})"
     except urllib.error.HTTPError as e:
         return False, f"GitHub API returned HTTP {e.code}"
     except Exception as e:
@@ -172,13 +188,19 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
 
     # GitHub Container Registry
     ui.console.print("\n  [dim]GitHub Container Registry is used to pull pre-built Docker images.[/dim]")
+    ui.console.print("  [dim]Enter the GitHub org or user that owns the repository (image owner).[/dim]")
     ui.console.print("  [dim]The PAT needs the 'read:packages' scope.[/dim]\n")
+    detected_owner = _detect_github_owner()
+    if detected_owner:
+        ui.info(f"Detected GitHub owner from git remote: {detected_owner}")
     while True:
-        config["GITHUB_USERNAME"] = ui.prompt_input("GitHub username or org (image owner)")
+        config["GITHUB_USERNAME"] = ui.prompt_input(
+            "GitHub org or user (image owner)", default=detected_owner
+        )
         config["GHCR_TOKEN"] = ui.prompt_input("GitHub Personal Access Token (read:packages)", password=True)
         with ui.create_spinner("Validating GHCR token...") as progress:
             progress.add_task("Checking token with GitHub API...", total=None)
-            ok, msg = _validate_ghcr_token(config["GITHUB_USERNAME"], config["GHCR_TOKEN"])
+            ok, msg = _validate_ghcr_token(config["GHCR_TOKEN"])
         if ok:
             ui.success(f"GHCR token valid — {msg}")
             break
