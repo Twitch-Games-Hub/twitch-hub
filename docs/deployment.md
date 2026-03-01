@@ -93,7 +93,7 @@ All config lives in `infra/.env.infra` (gitignored). Required fields:
 
 Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx22), `HCLOUD_LOCATION` (default: nbg1), `SSH_PUBLIC_KEY_PATH`, `DEPLOY_USER` (default: deploy), `GIT_BRANCH` (default: main).
 
-Optional services: `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+Optional services: `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 ---
 
@@ -175,13 +175,18 @@ This will build images, start all services, run database setup (schema push + se
 
 Twitch Hub supports Sentry for error tracking and structured logging on both server and web.
 
-| Variable                    | Where           | Description                           |
-| --------------------------- | --------------- | ------------------------------------- |
-| `SENTRY_DSN`                | Server          | Server-side Sentry DSN                |
-| `PUBLIC_SENTRY_DSN`         | Web (SvelteKit) | Client/server-side Sentry DSN         |
-| `PUBLIC_SENTRY_ENVIRONMENT` | Web             | Environment tag (default: production) |
+| Variable                    | Where     | Description                           |
+| --------------------------- | --------- | ------------------------------------- |
+| `SENTRY_DSN`                | Server    | Server-side Sentry DSN                |
+| `PUBLIC_SENTRY_DSN`         | Web       | Client/server-side Sentry DSN         |
+| `PUBLIC_SENTRY_ENVIRONMENT` | Web       | Environment tag (default: production) |
+| `SENTRY_AUTH_TOKEN`         | Web build | Auth token for source map upload      |
+| `SENTRY_ORG`                | Web build | Sentry organization slug              |
+| `SENTRY_PROJECT`            | Web build | Sentry project slug                   |
 
 Both DSNs are optional — Sentry is disabled when the DSN is not set.
+
+To enable source map uploads (recommended for readable stack traces in production), set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` in your `.env.production`. These are passed as Docker build args during `docker compose build` so the SvelteKit build plugin can upload source maps.
 
 ---
 
