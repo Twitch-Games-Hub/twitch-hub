@@ -46,6 +46,7 @@ jobs:
         with:
           node-version: 22
       - run: bun install --frozen-lockfile
+      - run: bun run --filter @twitch-hub/server db:generate
       - run: bun run build
 
   test:

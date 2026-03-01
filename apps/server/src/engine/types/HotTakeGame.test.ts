@@ -3,6 +3,7 @@ import { GameType } from '@twitch-hub/shared-types';
 
 const mockRedis = vi.hoisted(() => ({
   hincrby: vi.fn(),
+  hset: vi.fn(),
   expire: vi.fn(),
   sadd: vi.fn(),
   del: vi.fn(),
