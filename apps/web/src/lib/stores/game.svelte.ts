@@ -9,6 +9,7 @@ import type {
   SessionUser,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
+import * as Sentry from '@sentry/sveltekit';
 
 interface GameStoreState {
   gameState: GameState | null;
@@ -68,14 +69,17 @@ function createGameStore() {
     s.on('connect', () => {
       state.connected = true;
       state.error = null;
+      Sentry.logger.info('Socket connected');
     });
 
-    s.on('disconnect', () => {
+    s.on('disconnect', (reason) => {
       state.connected = false;
+      Sentry.logger.warn('Socket disconnected', { reason });
     });
 
     s.on('game:state', (gs: GameState) => {
       state.gameState = gs;
+      Sentry.logger.info('Game state changed', { status: gs.status, sessionId: gs.sessionId });
     });
 
     s.on('game:round-start', (round: RoundData) => {
@@ -84,14 +88,17 @@ function createGameStore() {
       state.votes = null;
       state.multiVotes = null;
       state.submittedQuestionIds = [];
+      Sentry.logger.info('Round started', { round: round.round });
     });
 
     s.on('game:round-end', (results: RoundResults) => {
       state.roundResults = results;
+      Sentry.logger.info('Round ended', { round: results.round });
     });
 
     s.on('game:ended', (final: FinalResults) => {
       state.finalResults = final;
+      Sentry.logger.info('Game ended', { totalParticipants: final.totalParticipants });
     });
 
     s.on('votes:update', (agg: VoteAggregation) => {
@@ -112,11 +119,13 @@ function createGameStore() {
 
     s.on('error', (msg: string) => {
       state.error = msg;
+      Sentry.logger.error('Game error received', { message: msg });
     });
 
     s.on('connect_error', (err: Error) => {
       state.error = `Connection failed: ${err.message}`;
       state.connected = false;
+      Sentry.logger.error('Socket connection failed', { message: err.message });
     });
 
     s.on('response:ack', (data: { questionId: string }) => {
@@ -133,6 +142,10 @@ function createGameStore() {
       if (snapshot.finalResults) {
         state.finalResults = snapshot.finalResults;
       }
+      Sentry.logger.info('Session rejoined', {
+        status: snapshot.gameState.status,
+        participants: snapshot.participantCount,
+      });
     });
   }
 

@@ -2,6 +2,7 @@ import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
+import * as Sentry from '@sentry/sveltekit';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
@@ -9,6 +10,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const storedState = cookies.get('oauth_state');
 
   if (!code || !state || state !== storedState) {
+    Sentry.logger.warn('OAuth state validation failed', {
+      hasCode: !!code,
+      hasState: !!state,
+      stateMatch: state === storedState,
+    });
     error(400, 'Invalid OAuth state');
   }
 
@@ -28,6 +34,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   });
 
   if (!tokenRes.ok) {
+    Sentry.logger.error('Twitch token exchange failed', { status: tokenRes.status });
     error(500, 'Failed to exchange token with Twitch');
   }
 
@@ -42,6 +49,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   });
 
   if (!userRes.ok) {
+    Sentry.logger.error('Twitch user fetch failed', { status: userRes.status });
     error(500, 'Failed to fetch Twitch user');
   }
 
@@ -69,6 +77,10 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   });
 
   if (!upsertRes.ok) {
+    Sentry.logger.error('User upsert failed', {
+      status: upsertRes.status,
+      twitchLogin: twitchUser.login,
+    });
     error(500, 'Failed to save user');
   }
 
@@ -81,6 +93,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     secure: !dev,
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
+
+  Sentry.logger.info('User authenticated via OAuth', { twitchLogin: twitchUser.login });
 
   redirect(302, '/dashboard');
 };
