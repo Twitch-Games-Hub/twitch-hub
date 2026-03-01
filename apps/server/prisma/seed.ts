@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
@@ -8,6 +9,21 @@ const adapter = new PrismaPg({ connectionString: DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 const DEMO_TWITCH_ID = 'seed-demo-streamer';
+
+/**
+ * Generate a deterministic UUID v5-style ID from a seed string.
+ * This ensures upserts are stable across re-runs.
+ */
+function deterministicId(seed: string): string {
+  const hash = createHash('sha256').update(seed).digest('hex');
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    '4' + hash.slice(13, 16),
+    '8' + hash.slice(17, 20),
+    hash.slice(20, 32),
+  ].join('-');
+}
 
 async function main() {
   // 1. Upsert demo streamer
@@ -27,13 +43,11 @@ async function main() {
     },
   });
 
-  // 2. Clean previous seed data
-  await prisma.game.deleteMany({ where: { ownerId: user.id } });
-
-  // 3. Create example games for all 4 game types
+  // 2. Define example games for all 4 game types
   const games = [
     // --- Hot Take Meter ---
     {
+      id: deterministicId('seed:hot-take-video-games'),
       ownerId: user.id,
       type: 'HOT_TAKE' as const,
       title: 'Hot Take Meter: Video Games',
@@ -59,6 +73,7 @@ async function main() {
 
     // --- Balance Game ---
     {
+      id: deterministicId('seed:balance-superpowers'),
       ownerId: user.id,
       type: 'BALANCE' as const,
       title: 'Would You Rather: Superpowers',
@@ -81,6 +96,7 @@ async function main() {
 
     // --- Blind Test ---
     {
+      id: deterministicId('seed:blind-test-movies'),
       ownerId: user.id,
       type: 'BLIND_TEST' as const,
       title: 'Guess the Movie',
@@ -168,6 +184,7 @@ async function main() {
 
     // --- Ranking Tournament ---
     {
+      id: deterministicId('seed:ranking-video-games'),
       ownerId: user.id,
       type: 'RANKING' as const,
       title: 'Greatest Video Game of All Time',
@@ -199,7 +216,19 @@ async function main() {
     },
   ];
 
-  await prisma.game.createMany({ data: games });
+  // 3. Upsert each game for zero-downtime reseeding
+  for (const game of games) {
+    await prisma.game.upsert({
+      where: { id: game.id },
+      update: {
+        title: game.title,
+        description: game.description,
+        status: game.status,
+        config: game.config,
+      },
+      create: game,
+    });
+  }
 
   console.log(`Seeded ${games.length} games for user ${user.displayName}`);
 }
