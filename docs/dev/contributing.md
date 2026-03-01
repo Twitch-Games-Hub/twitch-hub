@@ -85,4 +85,4 @@ Husky + lint-staged runs on every commit:
 
 6. **Create overlay component** in `apps/web/src/lib/components/overlay/`
 
-7. **Run migrations**: `bun run --filter @twitch-hub/server db:migrate`
+7. **Push schema**: `bun run --filter @twitch-hub/server db:push`

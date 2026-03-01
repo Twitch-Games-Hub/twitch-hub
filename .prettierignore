@@ -3,6 +3,5 @@ dist
 build
 .svelte-kit
 bun.lockb
-prisma/migrations
 .vitepress/cache
 .vitepress/dist

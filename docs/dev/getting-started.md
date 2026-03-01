@@ -11,7 +11,7 @@
 
 ## Quick Start
 
-The `dev-init.sh` script handles everything — Docker, dependencies, database migrations, and launches a tmux session with all services:
+The `dev-init.sh` script handles everything — Docker, dependencies, database schema setup, and launches a tmux session with all services:
 
 ```bash
 # Clone
@@ -41,7 +41,7 @@ This opens a tmux session (`twitch-hub`) with three panes:
 
 | Pane         | Content                                                                |
 | ------------ | ---------------------------------------------------------------------- |
-| Top          | `bun dev` — SvelteKit (`:5173`) + Express server (`:3001`)             |
+| Top          | `bun dev` — SvelteKit (`:5173`) + Fastify server (`:3001`)             |
 | Bottom-left  | `docker compose logs -f` — PostgreSQL and Redis output                 |
 | Bottom-right | Stripe webhook listener, or a placeholder if Stripe CLI is unavailable |
 
@@ -49,7 +49,7 @@ This opens a tmux session (`twitch-hub`) with three panes:
 
 | Command                         | Description                                         |
 | ------------------------------- | --------------------------------------------------- |
-| `./scripts/dev-init.sh`         | Full setup: prereqs, Docker, install, migrate, tmux |
+| `./scripts/dev-init.sh`         | Full setup: prereqs, Docker, install, db push, tmux |
 | `./scripts/dev-init.sh init`    | Same as above (explicit)                            |
 | `./scripts/dev-init.sh reset`   | Nuke volumes + node_modules, then full init         |
 | `./scripts/dev-init.sh restart` | Restart Docker + tmux session (skip `bun install`)  |
@@ -92,13 +92,13 @@ Create a `.env` file in `apps/server/` (see `.env.example`):
 
 ## Database Seeding
 
-Populate the database with example Italian Twitch community games (9 games across all 3 types):
+Populate the database with example games (4 games across all 4 types):
 
 ```bash
 cd apps/server
 bun run db:seed
 ```
 
-This creates a demo streamer user and 9 games (8 READY + 1 DRAFT) covering Hot Take, Balance, and Blind Test types. The seed is idempotent — re-running it deletes previous seed data and recreates it.
+This creates a demo streamer user and 4 games covering Hot Take, Balance, Blind Test, and Ranking types. The seed is idempotent — re-running it replaces previous seed data.
 
 The seeded games will appear on the Explore page at `http://localhost:5173/explore`.

@@ -18,7 +18,7 @@ bun install
 docker compose up -d              # Postgres + Redis
 cp .env.example .env              # Add your Twitch app credentials
 bun run --filter @twitch-hub/server db:generate
-bun run --filter @twitch-hub/server db:migrate
+bun run --filter @twitch-hub/server db:push
 bun run dev
 ```
 
@@ -37,11 +37,11 @@ twitch-hub/
 │   │   ├── src/lib/components/ # Game & overlay components
 │   │   ├── src/lib/stores/     # Svelte 5 rune stores
 │   │   └── src/routes/         # Pages (dashboard, play, overlay)
-│   └── server/                 # Express + Socket.IO backend
-│       ├── src/engine/         # Game engine (abstract base + 3 types)
+│   └── server/                 # Fastify + Socket.IO backend
+│       ├── src/engine/         # Game engine (abstract base + 4 types)
 │       ├── src/socket/         # Socket.IO namespaces & handlers
 │       ├── src/twitch/         # Twitch EventSub + chat parser
-│       └── prisma/             # Database schema & migrations
+│       └── prisma/             # Database schema & seed
 ├── packages/
 │   └── shared-types/           # TypeScript types shared between apps
 └── docs/                       # VitePress documentation
@@ -54,6 +54,7 @@ twitch-hub/
 | **Hot Take**   | Rate statements 1-10, see live histogram | `!rate N`             |
 | **Balance**    | A/B choice with animated tug-of-war bar  | `!vote A` / `!vote B` |
 | **Blind Test** | Timed guessing with leaderboard          | `!answer text`        |
+| **Ranking**    | Bracket tournament — vote head-to-head   | `!pick A` / `!pick B` |
 
 ## Scripts
 

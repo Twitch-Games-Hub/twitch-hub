@@ -112,8 +112,8 @@ setup_db() {
   echo ""
   echo "Setting up database..."
   cd apps/server
-  bunx prisma migrate deploy
-  info "Migrations applied"
+  bunx prisma db push
+  info "Database schema pushed"
   bunx prisma generate
   info "Prisma client generated"
   cd "$ROOT_DIR"

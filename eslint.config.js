@@ -11,7 +11,6 @@ export default tseslint.config(
       '**/dist/**',
       '**/build/**',
       '**/.svelte-kit/**',
-      '**/prisma/migrations/**',
       '**/.vitepress/cache/**',
       '**/.vitepress/dist/**',
     ],
