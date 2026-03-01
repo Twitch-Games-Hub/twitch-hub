@@ -7,6 +7,8 @@ import secrets
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import ui
@@ -19,6 +21,43 @@ TOTAL_STEPS = len(STEPS)
 
 def _check_command(cmd: str) -> bool:
     return shutil.which(cmd) is not None
+
+
+def _validate_ghcr_token(username: str, token: str) -> tuple[bool, str]:
+    """Validate a GHCR PAT via the GitHub API.
+
+    Returns (ok, message). Uses X-OAuth-Scopes for classic PATs; for
+    fine-grained PATs the header is absent so we just confirm the token
+    authenticates and the username matches.
+    """
+    req = urllib.request.Request(
+        "https://api.github.com/user",
+        headers={
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "twitch-hub-infra/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            import json
+
+            body = json.loads(resp.read())
+            scopes = resp.headers.get("X-OAuth-Scopes", "")
+            login = body.get("login", "")
+
+            if login.lower() != username.lower():
+                return False, f"Token belongs to '{login}', expected '{username}'"
+
+            # Classic PATs expose scopes; fine-grained PATs don't
+            if scopes and "read:packages" not in scopes and "write:packages" not in scopes:
+                return False, f"Token scopes ({scopes!r}) don't include 'read:packages'"
+
+            return True, f"Token valid (GitHub login: {login})"
+    except urllib.error.HTTPError as e:
+        return False, f"GitHub API returned HTTP {e.code}"
+    except Exception as e:
+        return False, f"Could not reach GitHub API: {e}"
 
 
 def _find_ssh_key() -> Path:
@@ -93,8 +132,19 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
     # GitHub Container Registry
     ui.console.print("\n  [dim]GitHub Container Registry is used to pull pre-built Docker images.[/dim]")
     ui.console.print("  [dim]The PAT needs the 'read:packages' scope.[/dim]\n")
-    config["GITHUB_USERNAME"] = ui.prompt_input("GitHub username or org (image owner)")
-    config["GHCR_TOKEN"] = ui.prompt_input("GitHub Personal Access Token (read:packages)", password=True)
+    while True:
+        config["GITHUB_USERNAME"] = ui.prompt_input("GitHub username or org (image owner)")
+        config["GHCR_TOKEN"] = ui.prompt_input("GitHub Personal Access Token (read:packages)", password=True)
+        with ui.create_spinner("Validating GHCR token...") as progress:
+            progress.add_task("Checking token with GitHub API...", total=None)
+            ok, msg = _validate_ghcr_token(config["GITHUB_USERNAME"], config["GHCR_TOKEN"])
+        if ok:
+            ui.success(f"GHCR token valid — {msg}")
+            break
+        ui.error(f"GHCR token check failed: {msg}", hint="Make sure the PAT has the 'read:packages' scope")
+        if not ui.confirm("Re-enter GitHub credentials?", default=True):
+            ui.warn("Continuing with unvalidated credentials — docker pull may fail at deploy time")
+            break
 
     # Optional
     config["SENTRY_DSN"] = ui.prompt_input("Sentry DSN (server, optional)", default="")
