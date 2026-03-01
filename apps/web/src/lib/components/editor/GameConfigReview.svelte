@@ -4,6 +4,7 @@
     type HotTakeConfig,
     type BalanceConfig,
     type BlindTestConfig,
+    type RankingConfig,
   } from '@twitch-hub/shared-types';
   import { GAME_TYPE_META } from '$lib/constants';
   import Card from '$lib/components/ui/Card.svelte';
@@ -140,6 +141,35 @@
             </li>
           {/each}
         </ol>
+      </Card>
+    {/if}
+  {:else if gameType === GameType.RANKING}
+    {@const c = config as RankingConfig}
+    {#if c?.items}
+      <Card padding="md">
+        <h2 class="mb-3 text-lg font-semibold text-text-primary">
+          Items ({c.items.length}) — Bracket of {c.bracketSize}, {c.roundDurationSec}s per matchup
+        </h2>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {#each c.items as item, i (item.id || i)}
+            <div
+              class="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-tertiary p-2 text-sm"
+            >
+              {#if item.imageUrl}
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  loading="lazy"
+                  class="h-8 w-8 rounded object-cover shrink-0"
+                  onerror={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              {/if}
+              <span class="text-text-secondary truncate">{item.name}</span>
+            </div>
+          {/each}
+        </div>
       </Card>
     {/if}
   {/if}

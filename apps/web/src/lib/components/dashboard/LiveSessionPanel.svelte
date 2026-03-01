@@ -31,7 +31,9 @@
   );
 
   const isBinaryVote = $derived(
-    gameStore.votes && gameStore.votes.distribution.length === 2 && game.type === 'BALANCE',
+    gameStore.votes &&
+      gameStore.votes.distribution.length === 2 &&
+      (game.type === 'BALANCE' || game.type === 'RANKING'),
   );
 </script>
 

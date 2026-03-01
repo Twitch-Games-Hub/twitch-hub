@@ -58,7 +58,7 @@
       <!-- Live Visualization -->
       {#if gameStore.votes}
         <div class="animate-fade-in rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
-          {#if gameStore.votes.distribution.length === 2 && gameType === 'BALANCE'}
+          {#if gameStore.votes.distribution.length === 2 && (gameType === 'BALANCE' || gameType === 'RANKING')}
             {@const [pA, pB] = countsToPercents(
               gameStore.votes.distribution[0],
               gameStore.votes.distribution[1],
@@ -102,7 +102,7 @@
             }))}
             title="Leaderboard"
           />
-        {:else if gameType === 'BALANCE' && extractBinaryPercents(gameStore.roundResults)}
+        {:else if (gameType === 'BALANCE' || gameType === 'RANKING') && extractBinaryPercents(gameStore.roundResults)}
           {@const split = extractBinaryPercents(gameStore.roundResults)!}
           <TugOfWar
             percentA={split.percentA}

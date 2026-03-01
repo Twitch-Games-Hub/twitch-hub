@@ -6,6 +6,7 @@
   import RatingSlider from '$lib/components/games/hot-take/RatingSlider.svelte';
   import BalanceChoice from '$lib/components/games/balance/BalanceChoice.svelte';
   import GuessInput from '$lib/components/games/blind-test/GuessInput.svelte';
+  import RankingChoice from '$lib/components/games/ranking/RankingChoice.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
   import TugOfWar from '$lib/components/overlay/TugOfWar.svelte';
   import { countsToPercents, extractBinaryPercents } from '$lib/utils/votes';
@@ -116,27 +117,65 @@
       <p class="mb-6 text-text-secondary">
         Thanks for playing! {gameStore.finalResults.totalParticipants} participants joined.
       </p>
-      {#each gameStore.finalResults.rounds as round (round.round)}
-        <Card padding="md" class="mb-4 text-left">
-          <p class="mb-2 text-sm text-text-muted">Round {round.round}</p>
-          {#if gameType === 'BALANCE' && extractBinaryPercents(round)}
-            {@const split = extractBinaryPercents(round)!}
-            <TugOfWar
-              percentA={split.percentA}
-              percentB={split.percentB}
-              labelA="A"
-              labelB="B"
-              totalVotes={split.totalVotes}
-            />
-          {:else if round.distribution}
-            <Histogram
-              distribution={round.distribution}
-              totalVotes={round.totalResponses}
-              compact
-            />
+      {#if gameStore.finalResults.ranking}
+        {@const ranking = gameStore.finalResults.ranking}
+        <Card padding="lg" class="mb-4">
+          <div class="text-center">
+            {#if ranking.champion.imageUrl}
+              <img
+                src={ranking.champion.imageUrl}
+                alt={ranking.champion.name}
+                class="mx-auto mb-3 h-20 w-20 rounded-xl object-cover"
+              />
+            {/if}
+            <h3 class="text-2xl font-bold text-brand-400">{ranking.champion.name}</h3>
+            <p class="text-sm text-text-muted">Champion</p>
+          </div>
+          {#if ranking.rankings.length > 1}
+            <ol class="mt-4 space-y-1">
+              {#each ranking.rankings as entry (entry.item.id)}
+                <li class="flex items-center gap-2 text-sm text-text-secondary">
+                  <span
+                    class="w-6 text-right font-bold {entry.rank === 1
+                      ? 'text-brand-400'
+                      : 'text-text-muted'}">{entry.rank}</span
+                  >
+                  {#if entry.item.imageUrl}
+                    <img
+                      src={entry.item.imageUrl}
+                      alt={entry.item.name}
+                      class="h-6 w-6 rounded object-cover"
+                    />
+                  {/if}
+                  {entry.item.name}
+                </li>
+              {/each}
+            </ol>
           {/if}
         </Card>
-      {/each}
+      {:else}
+        {#each gameStore.finalResults.rounds as round (round.round)}
+          <Card padding="md" class="mb-4 text-left">
+            <p class="mb-2 text-sm text-text-muted">Round {round.round}</p>
+            {#if (gameType === 'BALANCE' || gameType === 'RANKING') && extractBinaryPercents(round)}
+              {@const split = extractBinaryPercents(round)!}
+              <TugOfWar
+                percentA={split.percentA}
+                percentB={split.percentB}
+                labelA="A"
+                labelB="B"
+                totalVotes={split.totalVotes}
+              />
+            {:else if round.distribution}
+              <Histogram
+                distribution={round.distribution}
+                totalVotes={round.totalResponses}
+                compact
+              />
+            {/if}
+          </Card>
+        {/each}
+      {/if}
     </div>
   {:else if gameStore.currentRound}
     <div class="animate-slide-up space-y-6">
@@ -155,7 +194,7 @@
       {#if gameStore.roundResults}
         <Card padding="lg" class="animate-fade-in text-center">
           <h3 class="mb-3 text-lg font-semibold text-brand-400">Results</h3>
-          {#if gameType === 'BALANCE' && extractBinaryPercents(gameStore.roundResults)}
+          {#if (gameType === 'BALANCE' || gameType === 'RANKING') && extractBinaryPercents(gameStore.roundResults)}
             {@const split = extractBinaryPercents(gameStore.roundResults)!}
             <TugOfWar
               percentA={split.percentA}
@@ -209,6 +248,17 @@
             disabled={false}
             imageUrl={gameStore.currentRound?.optionImages?.[0]}
             onsubmit={(guess: string) => submitAnswer(guess)}
+          />
+        </Card>
+      {:else if gameType === 'RANKING'}
+        <Card padding="lg">
+          <RankingChoice
+            optionA={gameStore.currentRound?.options?.[0] ?? 'A'}
+            optionB={gameStore.currentRound?.options?.[1] ?? 'B'}
+            imageUrlA={gameStore.currentRound?.optionImages?.[0]}
+            imageUrlB={gameStore.currentRound?.optionImages?.[1]}
+            levelName={gameStore.currentRound?.meta?.levelName as string | undefined}
+            onsubmit={(choice: string) => submitAnswer(choice)}
           />
         </Card>
       {/if}

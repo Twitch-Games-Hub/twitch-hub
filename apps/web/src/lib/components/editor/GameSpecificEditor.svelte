@@ -4,10 +4,12 @@
     type HotTakeConfig,
     type BalanceConfig,
     type BlindTestConfig,
+    type RankingConfig,
   } from '@twitch-hub/shared-types';
   import HotTakeEditor from './HotTakeEditor.svelte';
   import BalanceEditor from './BalanceEditor.svelte';
   import BlindTestEditor from './BlindTestEditor.svelte';
+  import RankingEditor from './RankingEditor.svelte';
 
   let {
     gameType,
@@ -29,4 +31,12 @@
 {:else if gameType === GameType.BLIND_TEST}
   {@const c = config as BlindTestConfig}
   <BlindTestEditor rounds={c.rounds} answerWindowSec={c.answerWindowSec} {onchange} />
+{:else if gameType === GameType.RANKING}
+  {@const c = config as RankingConfig}
+  <RankingEditor
+    items={c.items}
+    bracketSize={c.bracketSize}
+    roundDurationSec={c.roundDurationSec}
+    {onchange}
+  />
 {/if}

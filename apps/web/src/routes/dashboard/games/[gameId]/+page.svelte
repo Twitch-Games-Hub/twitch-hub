@@ -11,6 +11,7 @@
     type HotTakeConfig,
     type BalanceConfig,
     type BlindTestConfig,
+    type RankingConfig,
   } from '@twitch-hub/shared-types';
   import { GAME_TYPE_META } from '$lib/constants';
   import { createGameSession } from '$lib/utils/session';
@@ -235,6 +236,36 @@
               </li>
             {/each}
           </ol>
+        </Card>
+      {/if}
+    {:else if game.type === 'RANKING'}
+      {@const config = game.config as RankingConfig}
+      {#if config?.items}
+        <Card padding="md" class="mb-6">
+          <h2 class="mb-3 text-lg font-semibold text-text-primary">
+            Items ({config.items.length}) — Bracket of {config.bracketSize}, {config.roundDurationSec}s
+            per matchup
+          </h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {#each config.items as item, i (item.id || i)}
+              <div
+                class="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-tertiary p-2 text-sm"
+              >
+                {#if item.imageUrl}
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    loading="lazy"
+                    class="h-8 w-8 rounded object-cover shrink-0"
+                    onerror={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                {/if}
+                <span class="text-text-secondary truncate">{item.name}</span>
+              </div>
+            {/each}
+          </div>
         </Card>
       {/if}
     {/if}
