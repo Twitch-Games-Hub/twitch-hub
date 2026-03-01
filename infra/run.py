@@ -1,6 +1,8 @@
 """CLI entrypoint for infrastructure operations.
 
 Usage:
+    python run.py wizard      Interactive first-time setup (recommended)
+    python run.py preflight   Validate prerequisites and config
     python run.py create      Create Hetzner VPS
     python run.py provision   Provision server (as root)
     python run.py deploy      Deploy application (as deploy user)
@@ -11,13 +13,84 @@ Usage:
 from __future__ import annotations
 
 import secrets
+import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from config import Config, ENV_FILE
 
 INFRA_DIR = Path(__file__).parent
+
+
+def _wait_for_ssh(ip: str, timeout: int = 120) -> bool:
+    """Wait until SSH is reachable on the given IP."""
+    elapsed = 0
+    while elapsed < timeout:
+        try:
+            sock = socket.create_connection((ip, 22), timeout=5)
+            sock.close()
+            return True
+        except (ConnectionRefusedError, TimeoutError, OSError):
+            time.sleep(5)
+            elapsed += 5
+    return False
+
+
+def cmd_wizard() -> None:
+    from wizard import run_wizard
+
+    run_wizard()
+
+
+def cmd_preflight() -> None:
+    """Validate prerequisites, config, and SSH key."""
+    import shutil
+
+    print("==> Preflight checks\n")
+    errors: list[str] = []
+
+    # Check required tools
+    for tool in ("pyinfra", "ssh-keygen"):
+        if shutil.which(tool):
+            print(f"  {tool}: OK")
+        else:
+            print(f"  {tool}: MISSING")
+            errors.append(f"'{tool}' not found on PATH")
+
+    # Check SSH key
+    ssh_key = Path.home() / ".ssh" / "id_ed25519.pub"
+    if ssh_key.exists():
+        print(f"  SSH key: OK ({ssh_key})")
+    else:
+        print(f"  SSH key: MISSING")
+        errors.append(f"SSH public key not found at {ssh_key}")
+
+    # Validate config
+    if ENV_FILE.exists():
+        print(f"  Config file: OK ({ENV_FILE})")
+        try:
+            cfg = Config()
+            cfg_errors = cfg.validate()
+            if cfg_errors:
+                for err in cfg_errors:
+                    print(f"  Config: {err}")
+                    errors.append(err)
+            else:
+                print("  Config values: OK")
+        except RuntimeError as e:
+            print(f"  Config: {e}")
+            errors.append(str(e))
+    else:
+        print(f"  Config file: MISSING ({ENV_FILE})")
+        errors.append(f"Run 'python run.py secrets' to generate {ENV_FILE}")
+
+    if errors:
+        print(f"\nPreflight failed with {len(errors)} error(s).")
+        sys.exit(1)
+    else:
+        print("\nAll preflight checks passed.")
 
 
 def cmd_create() -> None:
@@ -36,7 +109,7 @@ def cmd_provision() -> None:
     ip = cfg.get_server_ip()
     print(f"==> Provisioning {ip} as root...")
     subprocess.run(
-        ["pyinfra", f"--user=root", ip, str(INFRA_DIR / "provision.py")],
+        ["pyinfra", "--user=root", ip, str(INFRA_DIR / "provision.py")],
         check=True,
     )
 
@@ -100,7 +173,23 @@ def cmd_secrets() -> None:
 
 
 def cmd_full() -> None:
-    cmd_create()
+    from create_server import create_server
+
+    cfg = Config()
+    ip = create_server(cfg)
+
+    print(f"\nServer IP: {ip}")
+    print(f"\nIMPORTANT: Configure DNS before continuing:")
+    print(f"  {cfg.app_domain} → {ip}")
+    print(f"  {cfg.api_domain} → {ip}")
+    print()
+
+    print("==> Waiting for SSH to become available...")
+    if not _wait_for_ssh(ip):
+        print("Error: SSH not reachable after 120s. Check the server in Hetzner console.")
+        sys.exit(1)
+    print("==> SSH is ready.")
+
     print()
     cmd_provision()
     print()
@@ -110,6 +199,8 @@ def cmd_full() -> None:
 
 def main() -> None:
     commands = {
+        "wizard": cmd_wizard,
+        "preflight": cmd_preflight,
         "create": cmd_create,
         "provision": cmd_provision,
         "deploy": cmd_deploy,

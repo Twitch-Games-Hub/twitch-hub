@@ -73,3 +73,34 @@ class Config:
 
     def save_server_ip(self, ip: str) -> None:
         self.server_ip_file.write_text(ip + "\n")
+
+    def validate(self) -> list[str]:
+        """Return a list of config validation errors (empty = valid)."""
+        errors: list[str] = []
+
+        if not self.hcloud_token:
+            errors.append("HCLOUD_TOKEN is not set")
+        if not self.app_domain:
+            errors.append("APP_DOMAIN is not set")
+        if not self.api_domain:
+            errors.append("API_DOMAIN is not set")
+        if not self.git_repo_url:
+            errors.append("GIT_REPO_URL is not set")
+        if not self.twitch_client_id:
+            errors.append("TWITCH_CLIENT_ID is not set")
+        if not self.twitch_client_secret:
+            errors.append("TWITCH_CLIENT_SECRET is not set")
+        if not self.postgres_password:
+            errors.append("POSTGRES_PASSWORD is not set (run 'python run.py secrets')")
+        if not self.redis_password:
+            errors.append("REDIS_PASSWORD is not set (run 'python run.py secrets')")
+        if not self.jwt_secret:
+            errors.append("JWT_SECRET is not set (run 'python run.py secrets')")
+        if not self.internal_api_secret:
+            errors.append("INTERNAL_API_SECRET is not set (run 'python run.py secrets')")
+
+        ssh_path = Path(self.ssh_public_key_path).expanduser()
+        if not ssh_path.exists():
+            errors.append(f"SSH public key not found at {ssh_path}")
+
+        return errors

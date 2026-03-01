@@ -16,8 +16,8 @@ def deploy_app(cfg: Config) -> None:
     )
 
     server.shell(
-        name="Start services",
-        commands=[f"{compose} up -d"],
+        name="Start core services",
+        commands=[f"{compose} up -d postgres redis caddy"],
     )
 
     server.shell(
@@ -31,11 +31,11 @@ def deploy_app(cfg: Config) -> None:
     )
 
     server.shell(
-        name="Run database migrations",
-        commands=[f"{compose} run --rm migrate"],
+        name="Run database setup (push + seed)",
+        commands=[f"{compose} --profile tools run --rm dbsetup"],
     )
 
     server.shell(
-        name="Restart server after migration",
-        commands=[f"{compose} restart server"],
+        name="Start application services",
+        commands=[f"{compose} up -d"],
     )
