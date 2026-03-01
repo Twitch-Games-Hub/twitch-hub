@@ -2,6 +2,7 @@
   import '../app.css';
   import { authStore } from '$lib/stores/auth.svelte';
   import { posthogStore } from '$lib/stores/posthog.svelte';
+  import { adStore } from '$lib/stores/ads.svelte';
   import { onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
@@ -11,6 +12,7 @@
   let { children } = $props();
   let mobileMenuOpen = $state(false);
   let onDashboard = $derived($page.url.pathname.startsWith('/dashboard'));
+  let isOverlay = $derived($page.url.pathname.startsWith('/overlay'));
 
   onMount(() => {
     posthogStore.init();
@@ -20,6 +22,14 @@
   $effect(() => {
     if (authStore.user) {
       posthogStore.identify(authStore.user);
+    }
+  });
+
+  $effect(() => {
+    if (isOverlay) {
+      adStore.disable();
+    } else {
+      adStore.enable();
     }
   });
 </script>
