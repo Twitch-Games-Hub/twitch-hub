@@ -6,4 +6,5 @@ Sentry.init({
   environment: process.env.PUBLIC_SENTRY_ENVIRONMENT || 'development',
   tracesSampleRate: 0.2,
   enableLogs: true,
+  integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
 });

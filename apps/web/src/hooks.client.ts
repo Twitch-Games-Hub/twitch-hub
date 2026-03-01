@@ -9,7 +9,10 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
   enableLogs: true,
-  integrations: [replayIntegration()],
+  integrations: [
+    replayIntegration(),
+    Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+  ],
 });
 
 export const handleError = handleErrorWithSentry();
