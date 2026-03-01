@@ -23,7 +23,7 @@ def _env(key: str, default: str | None = None, required: bool = False) -> str:
 class Config:
     # Hetzner
     hcloud_token: str = field(default_factory=lambda: _env("HCLOUD_TOKEN", required=True))
-    hcloud_server_type: str = field(default_factory=lambda: _env("HCLOUD_SERVER_TYPE", "cx22"))
+    hcloud_server_type: str = field(default_factory=lambda: _env("HCLOUD_SERVER_TYPE", "cx23"))
     hcloud_location: str = field(default_factory=lambda: _env("HCLOUD_LOCATION", "nbg1"))
     hcloud_image: str = field(default_factory=lambda: _env("HCLOUD_IMAGE", "ubuntu-24.04"))
     server_name: str = field(default_factory=lambda: _env("HCLOUD_SERVER_NAME", "twitch-hub"))
