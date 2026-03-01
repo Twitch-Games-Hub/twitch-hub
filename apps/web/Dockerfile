@@ -3,8 +3,6 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY . .
 RUN bun install --frozen-lockfile
-RUN bun run --filter @twitch-hub/shared-types build
-
 ARG SENTRY_AUTH_TOKEN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT

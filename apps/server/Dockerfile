@@ -4,7 +4,6 @@ RUN apk add --no-cache libc6-compat
 COPY . .
 RUN bun install --frozen-lockfile
 RUN bun run --filter @twitch-hub/server db:generate
-RUN bun run --filter @twitch-hub/shared-types build
 RUN bun run --filter @twitch-hub/server build
 
 FROM oven/bun:1-alpine AS runner
@@ -21,7 +20,7 @@ COPY --from=builder --chown=server:nodejs /app/apps/server/node_modules ./apps/s
 COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./apps/server/dist
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma ./apps/server/prisma
 COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./apps/server/package.json
-COPY --from=builder --chown=server:nodejs /app/packages/shared-types/dist ./packages/shared-types/dist
+COPY --from=builder --chown=server:nodejs /app/packages/shared-types/src ./packages/shared-types/src
 COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.json ./packages/shared-types/package.json
 ENV NODE_ENV=production
 ENV SERVER_PORT=3001
