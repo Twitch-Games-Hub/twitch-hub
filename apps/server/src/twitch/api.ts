@@ -120,6 +120,20 @@ export async function getFollowedStreams(userId: string, accessToken: string, fi
   return res.json();
 }
 
+export async function getVideos(userId: string, accessToken: string, type = 'archive', first = 3) {
+  const params = new URLSearchParams({
+    user_id: userId,
+    type,
+    first: String(first),
+  });
+  const res = await fetch(`${HELIX_BASE}/videos?${params}`, {
+    headers: getHeaders({ accessToken, clientId: config.twitch.clientId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.data ?? null;
+}
+
 export async function getFollowers(
   broadcasterId: string,
   accessToken: string,

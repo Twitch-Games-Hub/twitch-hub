@@ -163,6 +163,25 @@ export interface ApiSessionsResponse {
   limit: number;
 }
 
+export interface TwitchVideo {
+  id: string;
+  user_id: string;
+  user_login: string;
+  user_name: string;
+  title: string;
+  description: string;
+  created_at: string;
+  published_at: string;
+  url: string;
+  thumbnail_url: string;
+  viewable: string;
+  view_count: number;
+  language: string;
+  type: string;
+  duration: string;
+  stream_id: string | null;
+}
+
 export interface ProfileAppStats {
   games: { id: string; title: string; type: string; status: string; createdAt: string }[];
   gameCount: number;
@@ -176,4 +195,6 @@ export interface ProfileData {
   followedStreams: TwitchFollowedStreamData | null;
   followers: TwitchFollowerData | null;
   appStats: ProfileAppStats;
+  broadcasts: TwitchVideo[];
+  isStreamer: boolean;
 }

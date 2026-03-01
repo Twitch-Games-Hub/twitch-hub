@@ -7,7 +7,7 @@
   import type { GameType } from '@twitch-hub/shared-types';
   import { toastStore } from '$lib/stores/toast.svelte';
   import { authStore } from '$lib/stores/auth.svelte';
-  import { formatDate, timeAgo } from '$lib/utils/date';
+  import { formatDate, formatDuration, timeAgo } from '$lib/utils/date';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -102,14 +102,21 @@
   {:else if profile}
     <div class="space-y-6">
       <!-- Profile Header -->
-      <Card padding="lg">
+      <Card
+        padding="lg"
+        class={profile.isStreamer
+          ? 'border-brand-500/30 bg-gradient-to-br from-brand-600/5 to-transparent'
+          : ''}
+      >
         <div class="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div class="relative flex-shrink-0">
             {#if profile.twitchUser?.profile_image_url}
               <img
                 src={profile.twitchUser.profile_image_url}
                 alt={profile.twitchUser.display_name}
-                class="h-20 w-20 rounded-full border-2 border-border-default"
+                class="h-20 w-20 rounded-full border-2 {profile.isStreamer
+                  ? 'border-brand-400 shadow-[0_0_12px_rgba(139,92,246,0.3)]'
+                  : 'border-border-default'}"
               />
             {:else}
               <div
@@ -150,6 +157,12 @@
                 <span
                   class="rounded-full bg-brand-600/20 px-2.5 py-0.5 text-xs font-medium text-brand-400"
                   >Affiliate</span
+                >
+              {/if}
+              {#if profile.isStreamer}
+                <span
+                  class="rounded-full bg-brand-600/20 px-2.5 py-0.5 text-xs font-medium text-brand-400"
+                  >Streamer</span
                 >
               {/if}
               {#if profile.twitchUser?.type}
@@ -243,6 +256,53 @@
                 class="mt-2 w-full max-w-md rounded-lg border border-border-subtle"
               />
             {/if}
+          </div>
+        </Card>
+      {/if}
+
+      <!-- Past Broadcasts -->
+      {#if profile.broadcasts.length > 0}
+        <Card padding="lg">
+          <h3 class="mb-3 text-lg font-semibold text-text-primary">
+            Past Broadcasts
+            <span class="ml-2 text-sm font-normal text-text-muted">
+              {profile.broadcasts.length}
+            </span>
+          </h3>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {#each profile.broadcasts as vod}
+              <a
+                href={vod.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="group overflow-hidden rounded-lg border border-border-subtle transition-colors hover:border-border-default"
+              >
+                <div class="relative aspect-video bg-surface-elevated">
+                  <img
+                    src={vod.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180')}
+                    alt={vod.title}
+                    class="h-full w-full object-cover"
+                  />
+                  <span
+                    class="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white"
+                  >
+                    {formatDuration(vod.duration)}
+                  </span>
+                </div>
+                <div class="p-2.5">
+                  <p
+                    class="line-clamp-2 text-sm font-medium text-text-primary group-hover:text-brand-400"
+                  >
+                    {vod.title}
+                  </p>
+                  <div class="mt-1.5 flex items-center gap-2 text-xs text-text-muted">
+                    <span>{vod.view_count.toLocaleString()} views</span>
+                    <span>·</span>
+                    <span>{timeAgo(vod.created_at)} ago</span>
+                  </div>
+                </div>
+              </a>
+            {/each}
           </div>
         </Card>
       {/if}

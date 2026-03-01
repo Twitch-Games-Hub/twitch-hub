@@ -7,6 +7,7 @@ import {
   getFollowedChannels,
   getFollowedStreams,
   getFollowers,
+  getVideos,
   validateToken,
   refreshUserToken,
 } from '../twitch/api.js';
@@ -70,6 +71,7 @@ export const profilePlugin: FastifyPluginAsync = async (app) => {
       followedStreamsResult,
       followersResult,
       gamesResult,
+      videosResult,
     ] = await Promise.allSettled([
       getUserById(twitchId, accessToken),
       getChannel(twitchId, accessToken),
@@ -82,9 +84,13 @@ export const profilePlugin: FastifyPluginAsync = async (app) => {
         select: { id: true, title: true, type: true, status: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
       }),
+      getVideos(twitchId, accessToken),
     ]);
 
     const games = gamesResult.status === 'fulfilled' ? gamesResult.value : [];
+    const broadcasts = videosResult.status === 'fulfilled' ? (videosResult.value ?? []) : [];
+    const STREAMER_BROADCAST_THRESHOLD = 3;
+    const isStreamer = broadcasts.length >= STREAMER_BROADCAST_THRESHOLD;
 
     // Sync profile image URL to DB when fresh Twitch data is available
     const twitchUser = userResult.status === 'fulfilled' ? userResult.value : null;
@@ -113,6 +119,8 @@ export const profilePlugin: FastifyPluginAsync = async (app) => {
         })),
         gameCount: games.length,
       },
+      broadcasts,
+      isStreamer,
     };
 
     return profileData;
