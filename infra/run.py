@@ -17,15 +17,15 @@ from config import Config, ENV_FILE
 INFRA_DIR = Path(__file__).parent
 
 COMMANDS = {
-    "wizard": "Interactive first-time setup (recommended)",
-    "preflight": "Validate prerequisites and config",
-    "create": "Create Hetzner VPS",
-    "dns": "Configure DNS records via Namecheap API",
-    "provision": "Provision server (as root)",
-    "deploy": "Deploy application (as deploy user)",
-    "full": "create -> provision -> deploy",
-    "secrets": "Generate secrets and append to .env.infra",
-    "health": "Check running service status on the server",
+    "wizard": "Step-by-step guided deployment (resumable)",
+    "preflight": "Check that tools, SSH keys, and .env.infra are ready",
+    "create": "Spin up a new Hetzner VPS and save its IP",
+    "dns": "Set A records on Namecheap for app + API domains",
+    "provision": "Install Docker, Caddy, and users on the VPS (root)",
+    "deploy": "Rsync code and restart containers (deploy user)",
+    "full": "Run create → provision → deploy in one shot",
+    "secrets": "Generate random DB, Redis, and JWT secrets into .env.infra",
+    "health": "SSH into the server and show container + API status",
 }
 
 
