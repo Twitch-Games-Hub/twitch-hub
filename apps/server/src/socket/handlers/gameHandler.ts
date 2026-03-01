@@ -8,6 +8,7 @@ import { logger } from '../../logger.js';
 import { requireHost } from '../helpers.js';
 import { computeSessionBudget, consumeCredit } from '../../middleware/sessionBudget.js';
 import { trackEvent } from '../../services/sentryAnalytics.js';
+import { gamificationService } from '../../services/GamificationService.js';
 
 const log = logger.child({ module: 'game' });
 
@@ -103,7 +104,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       socket.emit('session:created', { sessionId: session.id });
 
       // Initialize game engine with host tracking
-      await gameRegistry.initSession(session.id, game, hostId);
+      await gameRegistry.initSession(session.id, game, hostId, channelId);
       trackEvent(socket.data.userId, 'game_session_created', {
         sessionId: session.id,
         gameId,
@@ -180,6 +181,7 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
   socket.on('game:end', (sessionId) =>
     requireHost(async (socket, sessionId) => {
       const engine = gameRegistry.getEngine(sessionId)!;
+      const channelId = gameRegistry.getChannelId(sessionId) ?? '';
 
       const finalResults = await engine.end();
 
@@ -189,6 +191,17 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       });
 
       broadcastToSession(io, sessionId, 'game:ended', finalResults);
+
+      // Finalize gamification (fire-and-forget)
+      gamificationService
+        .finalizeSession(
+          sessionId,
+          channelId,
+          [...engine.getParticipantIds()],
+          engine.getTotalRoundsCount(),
+        )
+        .catch((err) => log.error({ err, sessionId }, 'Gamification finalize failed'));
+
       gameRegistry.removeEngine(sessionId);
 
       trackEvent(socket.data.userId, 'game_ended', { sessionId });
@@ -249,7 +262,12 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       // Re-init engine if missing (e.g. after server restart)
       let engine = gameRegistry.getEngine(session.id);
       if (!engine) {
-        engine = await gameRegistry.initSession(session.id, session.game, session.hostId);
+        engine = await gameRegistry.initSession(
+          session.id,
+          session.game,
+          session.hostId,
+          session.channelId,
+        );
         if (session.status === 'LIVE') {
           engine.restoreState(session.currentRound, SessionStatus.LIVE);
         }

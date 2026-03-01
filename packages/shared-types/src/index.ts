@@ -4,3 +4,4 @@ export * from './api.js';
 export * from './subscription.js';
 export * from './moderator.js';
 export * from './notification.js';
+export * from './gamification.js';

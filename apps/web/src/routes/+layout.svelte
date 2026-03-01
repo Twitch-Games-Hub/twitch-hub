@@ -2,17 +2,12 @@
   import '../app.css';
   import { authStore } from '$lib/stores/auth.svelte';
   import { notificationStore } from '$lib/stores/notifications.svelte';
+  import { gamificationStore } from '$lib/stores/gamification.svelte';
+  import XpBar from '$lib/components/gamification/XpBar.svelte';
   import { onMount, onDestroy } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
-  import {
-    TwitchIcon,
-    MenuIcon,
-    XIcon,
-    GamepadIcon,
-    PlusIcon,
-    SettingsIcon,
-  } from '$lib/components/ui/icons';
+  import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
   import { page } from '$app/stores';
   import { getDashboardSocket } from '$lib/socket';
   import type { ApiNotification } from '@twitch-hub/shared-types';
@@ -28,11 +23,12 @@
     authStore.fetchSession();
   });
 
-  // Set up notification socket when user becomes available
+  // Set up notification socket and fetch gamification profile when user becomes available
   $effect(() => {
     if (authStore.user && !notificationSocketBound) {
       notificationSocketBound = true;
       notificationStore.fetchCount();
+      gamificationStore.fetchProfile();
       setupNotificationSocket();
     }
   });
@@ -90,7 +86,6 @@
           {:else if authStore.user}
             <Button href="/dashboard" variant="ghost" size="sm">Dashboard</Button>
             <Button href="/dashboard/sessions" variant="ghost" size="sm">Sessions</Button>
-            <Button href="/dashboard/billing" variant="ghost" size="sm">Billing</Button>
             {#if !onDashboard}
               <Button href="/dashboard/games/new" size="sm">
                 <PlusIcon size={16} />
@@ -99,13 +94,6 @@
             {/if}
             <NotificationBell />
             <a
-              href="/dashboard/settings"
-              class="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
-              aria-label="Settings"
-            >
-              <SettingsIcon size={18} />
-            </a>
-            <a
               href="/dashboard/profile"
               class="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-surface-tertiary"
             >
@@ -113,6 +101,15 @@
                 <img src={authStore.user.profileImageUrl} alt="" class="h-7 w-7 rounded-full" />
               {/if}
               <span class="text-sm text-text-secondary">{authStore.user.displayName}</span>
+              {#if gamificationStore.profile}
+                <XpBar
+                  level={gamificationStore.profile.level}
+                  currentXp={gamificationStore.profile.totalXp}
+                  xpNeededForNext={gamificationStore.profile.xpNeededForNext}
+                  xpInCurrentLevel={gamificationStore.profile.xpInCurrentLevel}
+                  compact
+                />
+              {/if}
             </a>
           {:else}
             <Button href="/auth/login" size="sm">
@@ -177,25 +174,6 @@
               onclick={() => (mobileMenuOpen = false)}
             >
               Sessions
-            </Button>
-            <Button
-              href="/dashboard/billing"
-              variant="ghost"
-              size="sm"
-              class="w-full !justify-start"
-              onclick={() => (mobileMenuOpen = false)}
-            >
-              Billing
-            </Button>
-            <Button
-              href="/dashboard/settings"
-              variant="ghost"
-              size="sm"
-              class="w-full !justify-start"
-              onclick={() => (mobileMenuOpen = false)}
-            >
-              <SettingsIcon size={14} />
-              Settings
             </Button>
             {#if !onDashboard}
               <Button

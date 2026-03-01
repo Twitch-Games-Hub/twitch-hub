@@ -10,6 +10,8 @@ import { leaderboardService } from '../../services/LeaderboardService.js';
 import { redis } from '../../db/redis.js';
 
 export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
+  private roundStartedAt = Date.now();
+
   getGameType() {
     return GameType.BLIND_TEST;
   }
@@ -19,6 +21,7 @@ export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
   }
 
   getRoundData(round: number): RoundData {
+    this.roundStartedAt = Date.now();
     const r = this.config.rounds[round - 1];
     return {
       round,
@@ -37,9 +40,21 @@ export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
 
     const isDupe = await this.isDuplicate(userId);
     if (isDupe) return;
+
+    const answerTimeMs = Date.now() - this.roundStartedAt;
+    const windowMs = this.config.answerWindowSec * 1000;
     const correctAnswer = this.config.rounds[roundIdx]?.answer?.toLowerCase();
+
     if (answer.toLowerCase().trim() === correctAnswer) {
       await leaderboardService.addScore(this.sessionId, userId, 1);
+
+      // Gamification: correct answer + speed bonus + streak
+      this.gamificationService
+        ?.recordCorrectAnswer(this.sessionId, userId, answerTimeMs, windowMs)
+        .catch(() => {});
+    } else {
+      // Reset streak on wrong answer
+      this.gamificationService?.resetStreak(this.sessionId, userId).catch(() => {});
     }
   }
 

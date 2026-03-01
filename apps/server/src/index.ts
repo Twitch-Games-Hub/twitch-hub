@@ -13,8 +13,10 @@ import { webhookPlugin } from './routes/webhook.js';
 import { moderatorsPlugin } from './routes/moderators.js';
 import { notificationsPlugin } from './routes/notifications.js';
 import { invitesPlugin } from './routes/invites.js';
+import { gamificationPlugin } from './routes/gamification.js';
 import { createSocketServer } from './socket/index.js';
 import { gameRegistry } from './engine/GameRegistry.js';
+import { gamificationService } from './services/GamificationService.js';
 import { redis } from './db/redis.js';
 import { prisma } from './db/client.js';
 
@@ -62,6 +64,7 @@ await app.register(billingPlugin, { prefix: '/api/billing' });
 await app.register(moderatorsPlugin, { prefix: '/api/moderators' });
 await app.register(notificationsPlugin, { prefix: '/api/notifications' });
 await app.register(invitesPlugin, { prefix: '/api/sessions' });
+await app.register(gamificationPlugin, { prefix: '/api/gamification' });
 
 // Sentry error handler (must be before custom error handler)
 Sentry.setupFastifyErrorHandler(app);
@@ -79,12 +82,14 @@ app.setErrorHandler((error, request, reply) => {
 const io = createSocketServer(app);
 
 // Wire game engine broadcast to Socket.IO
-gameRegistry.setBroadcastCallback((sessionId, event, data) => {
+const broadcastToSession = (sessionId: string, event: string, data: unknown) => {
   const namespaces = ['/dashboard', '/play', '/overlay'] as const;
   for (const ns of namespaces) {
     (io.of(ns).to(sessionId) as { emit: (event: string, data: unknown) => void }).emit(event, data);
   }
-});
+};
+gameRegistry.setBroadcastCallback(broadcastToSession);
+gamificationService.setBroadcastCallback(broadcastToSession);
 
 // Connect Redis
 redis.connect().catch((err: Error) => {

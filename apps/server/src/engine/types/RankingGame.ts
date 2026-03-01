@@ -7,7 +7,8 @@ import {
   type FinalResults,
   type BracketMatchupResult,
 } from '@twitch-hub/shared-types';
-import { GameEngine } from '../GameEngine.js';
+import { GameEngine, REDIS_VOTE_TTL_SEC } from '../GameEngine.js';
+import { redis } from '../../db/redis.js';
 
 interface Matchup {
   index: number;
@@ -112,7 +113,14 @@ export class RankingGame extends GameEngine<RankingConfig, string> {
     if (!isA && !isB) return;
 
     const bucket = isA ? '0' : '1';
-    await this.recordVote(userId, questionId, bucket);
+    const recorded = await this.recordVote(userId, questionId, bucket);
+
+    // Track per-user vote choice for majority voter tracking
+    if (recorded) {
+      const userVoteKey = `session:${this.sessionId}:uservotes:${questionId}`;
+      await redis.hset(userVoteKey, userId, bucket);
+      await redis.expire(userVoteKey, REDIS_VOTE_TTL_SEC);
+    }
   }
 
   async computeRoundResults(round: number): Promise<RoundResults> {
@@ -126,6 +134,21 @@ export class RankingGame extends GameEngine<RankingConfig, string> {
     matchup.winnerId = winner.id;
     matchup.voteCountA = a;
     matchup.voteCountB = b;
+
+    // Gamification: award majority voter XP
+    if (this.gamificationService && total > 0) {
+      const winnerBucket = b > a ? '1' : '0';
+      const userVoteKey = `session:${this.sessionId}:uservotes:${questionId}`;
+      const allVotes = await redis.hgetall(userVoteKey);
+      const majorityVoterIds = Object.entries(allVotes)
+        .filter(([, bucket]) => bucket === winnerBucket)
+        .map(([userId]) => userId);
+      if (majorityVoterIds.length > 0) {
+        this.gamificationService
+          .recordMajorityVoters(this.sessionId, majorityVoterIds)
+          .catch(() => {});
+      }
+    }
 
     // Populate next-level matchup with the winner
     this.advanceWinner(round - 1, winner);

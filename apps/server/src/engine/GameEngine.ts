@@ -9,6 +9,7 @@ import {
 } from '@twitch-hub/shared-types';
 import { redis } from '../db/redis.js';
 import { logger } from '../logger.js';
+import type { GamificationService } from '../services/GamificationService.js';
 
 export const REDIS_VOTE_TTL_SEC = 3600;
 
@@ -37,6 +38,9 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   // Auto-end callback (called when timer expires on last round)
   private onAutoEnd?: (finalResults: FinalResults) => void;
 
+  // Gamification service (optional dependency)
+  protected gamificationService?: GamificationService;
+
   constructor(sessionId: string, config: TConfig) {
     this.sessionId = sessionId;
     this.config = config;
@@ -49,6 +53,10 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
 
   setOnAutoEnd(cb: (finalResults: FinalResults) => void) {
     this.onAutoEnd = cb;
+  }
+
+  setGamificationService(svc: GamificationService) {
+    this.gamificationService = svc;
   }
 
   setGameMeta(title: string, coverImageUrl?: string) {
@@ -110,6 +118,16 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     // Set TTL on vote key after votes are written
     await redis.expire(this.voteKey(questionId), REDIS_VOTE_TTL_SEC);
     await this.scheduleBroadcast(questionId);
+
+    // Gamification: track participation and first responders (fire-and-forget)
+    if (this.gamificationService) {
+      this.gamificationService
+        .recordParticipation(this.sessionId, userId, this.currentRound)
+        .catch(() => {});
+      this.gamificationService
+        .recordFirstResponder(this.sessionId, this.currentRound, userId)
+        .catch(() => {});
+    }
   }
 
   async endRound(): Promise<RoundResults> {
@@ -146,6 +164,14 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   }
 
   abstract getGameType(): import('@twitch-hub/shared-types').GameType;
+
+  getParticipantIds(): Set<string> {
+    return this.participantIds;
+  }
+
+  getTotalRoundsCount(): number {
+    return this.totalRounds;
+  }
 
   // --- Timer ---
 

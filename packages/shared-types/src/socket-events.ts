@@ -1,5 +1,6 @@
 import type { GameType, SessionStatus } from './game.js';
 import type { ApiNotification } from './notification.js';
+import type { GamificationEvent, PlayerProfileSummary } from './gamification.js';
 
 // --- Game State ---
 
@@ -113,4 +114,6 @@ export interface ServerToClientEvents {
   'session:rejoined': (snapshot: SessionSnapshot) => void;
   'notification:received': (notification: ApiNotification) => void;
   'notification:count': (data: { unreadCount: number }) => void;
+  'gamification:event': (data: GamificationEvent) => void;
+  'gamification:profile': (data: PlayerProfileSummary) => void;
 }

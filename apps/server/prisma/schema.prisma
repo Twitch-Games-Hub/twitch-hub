@@ -26,6 +26,7 @@ model User {
   subscription    Subscription?
   moderatorLinks  ModeratorLink[] @relation("StreamerMods")
   notifications   Notification[]  @relation("UserNotifications")
+  playerProfile   PlayerProfile?
 }
 
 enum UserRole {
@@ -200,4 +201,114 @@ enum NotificationStatus {
   UNREAD
   READ
   DISMISSED
+}
+
+// --- Player Progression ---
+
+model PlayerProfile {
+  id              String   @id @default(cuid())
+  userId          String?  @unique
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  twitchLogin     String?  @unique
+
+  totalXp         Int      @default(0)
+  level           Int      @default(1)
+  totalSessions   Int      @default(0)
+  totalResponses  Int      @default(0)
+  correctAnswers  Int      @default(0)
+  bestStreak      Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  xpTransactions  XpTransaction[]
+  channelStats    ChannelPlayerStats[]
+  achievements    PlayerAchievement[]
+
+  @@index([totalXp])
+}
+
+model XpTransaction {
+  id              String        @id @default(cuid())
+  playerProfileId String
+  playerProfile   PlayerProfile @relation(fields: [playerProfileId], references: [id], onDelete: Cascade)
+  sessionId       String
+  channelId       String
+  amount          Int
+  reason          XpReason
+  createdAt       DateTime      @default(now())
+
+  @@index([playerProfileId, createdAt])
+  @@index([sessionId])
+}
+
+enum XpReason {
+  PARTICIPATION
+  ROUND_RESPONSE
+  CORRECT_ANSWER
+  SPEED_BONUS
+  STREAK_BONUS
+  MAJORITY_VOTER
+  SESSION_COMPLETION
+  FIRST_RESPONDER
+}
+
+model ChannelPlayerStats {
+  id              String      @id @default(cuid())
+  playerProfileId String
+  playerProfile   PlayerProfile @relation(fields: [playerProfileId], references: [id], onDelete: Cascade)
+  channelId       String
+
+  channelXp       Int         @default(0)
+  loyaltyTier     LoyaltyTier @default(NEWCOMER)
+  sessionsPlayed  Int         @default(0)
+  currentStreak   Int         @default(0)
+  bestStreak      Int         @default(0)
+  lastPlayedAt    DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([playerProfileId, channelId])
+  @@index([channelId, channelXp])
+}
+
+enum LoyaltyTier {
+  NEWCOMER
+  REGULAR
+  DEDICATED
+  SUPERFAN
+  LEGENDARY
+}
+
+model AchievementDefinition {
+  id          String              @id
+  name        String
+  description String
+  category    AchievementCategory
+  iconUrl     String?
+  xpReward    Int                 @default(0)
+  hidden      Boolean             @default(false)
+  sortOrder   Int                 @default(0)
+  players     PlayerAchievement[]
+}
+
+enum AchievementCategory {
+  PARTICIPATION
+  SKILL
+  SOCIAL
+  RARE
+}
+
+model PlayerAchievement {
+  id                String                @id @default(cuid())
+  playerProfileId   String
+  playerProfile     PlayerProfile         @relation(fields: [playerProfileId], references: [id], onDelete: Cascade)
+  achievementId     String
+  achievement       AchievementDefinition @relation(fields: [achievementId], references: [id])
+  sessionId         String?
+  earnedAt          DateTime              @default(now())
+
+  @@unique([playerProfileId, achievementId])
+  @@index([playerProfileId])
 }

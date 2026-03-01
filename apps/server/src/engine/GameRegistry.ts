@@ -6,6 +6,7 @@ import { BlindTestGame } from './types/BlindTestGame.js';
 import { RankingGame } from './types/RankingGame.js';
 import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
+import { gamificationService } from '../services/GamificationService.js';
 
 const log = logger.child({ module: 'registry' });
 
@@ -39,13 +40,19 @@ const engineMap: Record<string, new (sessionId: string, config: never) => GameEn
 class GameRegistryClass {
   private engines = new Map<string, GameEngine>();
   private sessionHosts = new Map<string, string>();
+  private sessionChannels = new Map<string, string>();
   private broadcastCallback?: (sessionId: string, event: string, data: unknown) => void;
 
   setBroadcastCallback(cb: (sessionId: string, event: string, data: unknown) => void) {
     this.broadcastCallback = cb;
   }
 
-  async initSession(sessionId: string, game: GameRecord, hostId: string): Promise<GameEngine> {
+  async initSession(
+    sessionId: string,
+    game: GameRecord,
+    hostId: string,
+    channelId?: string,
+  ): Promise<GameEngine> {
     const EngineClass = engineMap[game.type];
     if (!EngineClass) {
       throw new Error(`Unknown game type: ${game.type}`);
@@ -57,18 +64,36 @@ class GameRegistryClass {
       engine.setBroadcastCallback(this.broadcastCallback);
     }
     engine.setOnAutoEnd((finalResults) => this.handleAutoEnd(sessionId, finalResults));
+    engine.setGamificationService(gamificationService);
     this.engines.set(sessionId, engine);
     this.sessionHosts.set(sessionId, hostId);
+    if (channelId) this.sessionChannels.set(sessionId, channelId);
     log.info({ sessionId, gameType: game.type, hostId }, 'Session initialized');
     return engine;
   }
 
   private async handleAutoEnd(sessionId: string, finalResults: FinalResults) {
     try {
+      const engine = this.engines.get(sessionId);
+      const channelId = this.getChannelId(sessionId);
+
       await prisma.gameSession.update({
         where: { id: sessionId },
         data: { status: 'ENDED', endedAt: new Date(), state: finalResults as object },
       });
+
+      // Finalize gamification (fire-and-forget)
+      if (engine && channelId) {
+        gamificationService
+          .finalizeSession(
+            sessionId,
+            channelId,
+            [...engine.getParticipantIds()],
+            engine.getTotalRoundsCount(),
+          )
+          .catch((err) => log.error({ err, sessionId }, 'Auto-end: gamification finalize failed'));
+      }
+
       this.removeEngine(sessionId);
       log.info({ sessionId }, 'Auto-end: session completed');
     } catch (err) {
@@ -105,11 +130,16 @@ class GameRegistryClass {
     return this.engines.get(sessionId);
   }
 
+  getChannelId(sessionId: string): string | undefined {
+    return this.sessionChannels.get(sessionId);
+  }
+
   removeEngine(sessionId: string) {
     const engine = this.engines.get(sessionId);
     engine?.cleanup();
     this.engines.delete(sessionId);
     this.sessionHosts.delete(sessionId);
+    this.sessionChannels.delete(sessionId);
     log.info({ sessionId }, 'Engine removed');
   }
 
@@ -119,6 +149,7 @@ class GameRegistryClass {
     await Promise.allSettled(cleanups);
     this.engines.clear();
     this.sessionHosts.clear();
+    this.sessionChannels.clear();
     log.info({ count }, 'All engines cleaned up');
   }
 }
