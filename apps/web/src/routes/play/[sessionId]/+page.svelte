@@ -23,6 +23,8 @@
   import RoundCountdown from '$lib/components/games/RoundCountdown.svelte';
   import XpPopup from '$lib/components/games/XpPopup.svelte';
   import EmojiReactions from '$lib/components/games/EmojiReactions.svelte';
+  import Confetti from '$lib/components/games/Confetti.svelte';
+  import PersonalStatsSummary from '$lib/components/games/PersonalStatsSummary.svelte';
   import type { Socket } from 'socket.io-client';
   import type { FloatingEmoji } from '$lib/components/games/EmojiReactions.svelte';
   import type { XpPopupItem } from '$lib/components/games/XpPopup.svelte';
@@ -33,6 +35,7 @@
   let timeRemaining = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   let showCountdown = $state(false);
+  let showConfetti = $state(false);
   let xpPopups = $state<XpPopupItem[]>([]);
   let floatingEmojis = $state<FloatingEmoji[]>([]);
   let popupIdCounter = 0;
@@ -120,6 +123,13 @@
     if (count === 0) prevSubmittedCount = 0;
   });
 
+  // Fire confetti when game ends
+  $effect(() => {
+    if (gameStore.finalResults && !showConfetti) {
+      showConfetti = true;
+    }
+  });
+
   // Show 3-2-1 countdown on each new round
   let prevQuestionId = '';
   $effect(() => {
@@ -159,6 +169,11 @@
   <title>Play - Twitch Hub</title>
 </svelte:head>
 
+<!-- Confetti burst on game over -->
+{#if showConfetti}
+  <Confetti onDone={() => (showConfetti = false)} />
+{/if}
+
 <!-- Round countdown overlay -->
 {#if showCountdown && gameStore.currentRound}
   <RoundCountdown
@@ -192,6 +207,12 @@
       <p class="mb-6 text-text-secondary">
         Thanks for playing! {gameStore.finalResults.totalParticipants} participants joined.
       </p>
+
+      {#if gameStore.sessionSummary}
+        <div class="mb-6 text-left">
+          <PersonalStatsSummary summary={gameStore.sessionSummary} />
+        </div>
+      {/if}
       {#if gameStore.finalResults.ranking}
         {@const ranking = gameStore.finalResults.ranking}
         <Card padding="lg" class="mb-4">

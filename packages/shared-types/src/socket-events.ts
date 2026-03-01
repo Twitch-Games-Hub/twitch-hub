@@ -95,6 +95,11 @@ export interface LeaderboardEntry {
   xp: number;
 }
 
+export interface SessionXpSummary {
+  breakdown: Record<string, number>; // XpReason key → XP earned
+  total: number;
+}
+
 // --- Socket.IO Event Contracts ---
 
 export interface ClientToServerEvents {
@@ -127,4 +132,5 @@ export interface ServerToClientEvents {
   'gamification:profile': (data: PlayerProfileSummary) => void;
   'leaderboard:update': (entries: LeaderboardEntry[]) => void;
   'reaction:received': (data: { emoji: string }) => void;
+  'gamification:session-summary': (summary: SessionXpSummary) => void;
 }

@@ -9,6 +9,7 @@ import type {
   SessionUser,
   GamificationEvent,
   LeaderboardEntry,
+  SessionXpSummary,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
 import * as Sentry from '@sentry/sveltekit';
@@ -40,6 +41,7 @@ interface GameStoreState {
   gamificationQueue: GamificationEvent[];
   submittedAnswers: Record<string, unknown>;
   leaderboard: LeaderboardEntry[];
+  sessionSummary: SessionXpSummary | null;
 }
 
 function createGameStore() {
@@ -59,6 +61,7 @@ function createGameStore() {
     gamificationQueue: [],
     submittedAnswers: {},
     leaderboard: [],
+    sessionSummary: null,
   });
 
   let socket: Socket | null = null;
@@ -81,6 +84,7 @@ function createGameStore() {
     'gamification:event',
     'leaderboard:update',
     'reaction:received',
+    'gamification:session-summary',
   ];
 
   function bindSocket(s: Socket) {
@@ -194,6 +198,10 @@ function createGameStore() {
       state.leaderboard = entries;
     });
 
+    s.on('gamification:session-summary', (summary: SessionXpSummary) => {
+      state.sessionSummary = summary;
+    });
+
     s.on('session:rejoined', (snapshot: SessionSnapshot) => {
       state.gameState = snapshot.gameState;
       state.currentRound = snapshot.currentRound;
@@ -225,6 +233,7 @@ function createGameStore() {
     state.gamificationQueue = [];
     state.submittedAnswers = {};
     state.leaderboard = [];
+    state.sessionSummary = null;
   }
 
   return {
@@ -272,6 +281,9 @@ function createGameStore() {
     },
     get leaderboard() {
       return state.leaderboard;
+    },
+    get sessionSummary() {
+      return state.sessionSummary;
     },
     dequeueGamificationEvent() {
       state.gamificationQueue = state.gamificationQueue.slice(1);

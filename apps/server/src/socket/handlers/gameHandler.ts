@@ -10,6 +10,7 @@ import { getUsers } from '../sessionUsers.js';
 import { computeSessionBudget, consumeCredit } from '../../middleware/sessionBudget.js';
 import { trackEvent } from '../../services/sentryAnalytics.js';
 import { gamificationService } from '../../services/GamificationService.js';
+import { redis } from '../../db/redis.js';
 
 const log = logger.child({ module: 'game' });
 
@@ -198,6 +199,29 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
       const finalLeaderboard = await gamificationService.getSessionLeaderboard(sessionId, 20);
       io.of('/play').to(sessionId).emit('leaderboard:update', finalLeaderboard);
+
+      // Emit per-player XP summary to each connected play socket
+      try {
+        const playSockets = await io.of('/play').in(sessionId).fetchSockets();
+        for (const s of playSockets) {
+          const playerId =
+            s.data.userId || (s.data.anonId ? `anon-${s.data.anonId}` : `anon-${s.id}`);
+          const key = `session:${sessionId}:xp:${playerId}`;
+          const hash = await redis.hgetall(key);
+          if (Object.keys(hash).length > 0) {
+            const breakdown: Record<string, number> = {};
+            let total = 0;
+            for (const [reason, amount] of Object.entries(hash)) {
+              const xp = parseInt(amount, 10);
+              breakdown[reason] = xp;
+              total += xp;
+            }
+            s.emit('gamification:session-summary', { breakdown, total });
+          }
+        }
+      } catch (err) {
+        log.error({ err, sessionId }, 'Failed to emit session XP summaries');
+      }
 
       // Finalize gamification (fire-and-forget)
       gamificationService
