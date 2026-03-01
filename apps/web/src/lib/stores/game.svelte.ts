@@ -80,6 +80,7 @@ function createGameStore() {
     'response:ack',
     'gamification:event',
     'leaderboard:update',
+    'reaction:received',
   ];
 
   function bindSocket(s: Socket) {

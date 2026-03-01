@@ -30,7 +30,7 @@ function roundParticipantsKey(sessionId: string, round: number) {
   return `session:${sessionId}:round:${round}:participants`;
 }
 function leaderboardKey(sessionId: string) {
-  return `session:${sessionId}:leaderboard`;
+  return `session:${sessionId}:xp-leaderboard`;
 }
 
 export class GamificationService {

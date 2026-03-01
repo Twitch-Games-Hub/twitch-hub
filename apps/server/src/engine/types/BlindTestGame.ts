@@ -77,6 +77,7 @@ export class BlindTestGame extends GameEngine<BlindTestConfig, string> {
       questionId,
       percentages,
       totalResponses,
+      correctAnswer: this.config.rounds[round - 1]?.answer,
     };
   }
 

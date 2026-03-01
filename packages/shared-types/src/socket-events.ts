@@ -32,6 +32,7 @@ export interface RoundResults {
   distribution?: number[]; // histogram for HotTake (indices 0-9 for ratings 1-10)
   percentages?: Record<string, number>; // for Balance
   totalResponses: number;
+  correctAnswer?: string; // BlindTest: the correct answer revealed after round ends
 }
 
 export interface BracketMatchupResult {
@@ -104,6 +105,7 @@ export interface ClientToServerEvents {
   'response:submit': (data: { sessionId: string; questionId: string; answer: unknown }) => void;
   'session:join': (sessionId: string) => void;
   'session:rejoin': (data: { sessionId: string }) => void;
+  'reaction:send': (data: { sessionId: string; emoji: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -124,4 +126,5 @@ export interface ServerToClientEvents {
   'gamification:event': (data: GamificationEvent) => void;
   'gamification:profile': (data: PlayerProfileSummary) => void;
   'leaderboard:update': (entries: LeaderboardEntry[]) => void;
+  'reaction:received': (data: { emoji: string }) => void;
 }

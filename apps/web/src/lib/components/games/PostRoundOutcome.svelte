@@ -15,8 +15,28 @@
 
   const outcome = $derived(computeOutcome());
 
-  function computeOutcome(): { message: string; badge?: string; badgeClass?: string } | null {
-    if (gameType === 'BLIND_TEST') return null;
+  function computeOutcome(): {
+    message: string;
+    badge?: string;
+    badgeClass?: string;
+    answerReveal?: string;
+    correct?: boolean;
+  } | null {
+    if (gameType === 'BLIND_TEST') {
+      const correct =
+        roundResults.correctAnswer !== undefined &&
+        String(submittedAnswer).toLowerCase().trim() ===
+          roundResults.correctAnswer.toLowerCase().trim();
+      return {
+        message: roundResults.correctAnswer ? `Answer: ${roundResults.correctAnswer}` : '',
+        answerReveal: roundResults.correctAnswer,
+        correct,
+        badge: submittedAnswer !== undefined ? (correct ? '✓ Correct!' : '✗ Wrong') : undefined,
+        badgeClass: correct
+          ? 'bg-success-500/15 text-success-500'
+          : 'bg-danger-500/15 text-danger-500',
+      };
+    }
 
     if (gameType === 'HOT_TAKE') {
       const distribution = roundResults.distribution;
@@ -55,10 +75,15 @@
   <div
     class="animate-fade-in rounded-xl border border-border-subtle bg-surface-secondary px-4 py-3 text-center text-sm"
   >
-    <p class="font-medium text-text-primary">{outcome.message}</p>
+    {#if outcome.answerReveal}
+      <p class="mb-1 text-xs font-medium uppercase tracking-wide text-text-muted">The answer</p>
+      <p class="text-lg font-bold text-text-primary">{outcome.answerReveal}</p>
+    {:else}
+      <p class="font-medium text-text-primary">{outcome.message}</p>
+    {/if}
     {#if outcome.badge}
       <span
-        class="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold {outcome.badgeClass}"
+        class="mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold {outcome.badgeClass}"
       >
         {outcome.badge}
       </span>

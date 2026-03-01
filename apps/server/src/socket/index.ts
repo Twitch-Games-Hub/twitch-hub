@@ -4,6 +4,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@twitch-hub/sha
 import { socketAuthMiddleware, optionalSocketAuthMiddleware } from './middleware.js';
 import { registerGameHandlers } from './handlers/gameHandler.js';
 import { registerVoteHandlers } from './handlers/voteHandler.js';
+import { registerReactionHandlers } from './handlers/reactionHandler.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { createSessionJoinHandler, registerSocketLifecycleHandlers } from './helpers.js';
@@ -67,6 +68,7 @@ export function createSocketServer(app: FastifyInstance) {
       'Player connected',
     );
     registerVoteHandlers(socket, io);
+    registerReactionHandlers(socket, io);
 
     const playJoinHandler = createSessionJoinHandler(playLog);
     socket.on('session:join', async (sessionId) => {

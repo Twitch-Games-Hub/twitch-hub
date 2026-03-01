@@ -3,6 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { getPlaySocket, disconnectPlay } from '$lib/socket';
   import { gameStore } from '$lib/stores/game.svelte';
+  import { XP_AWARDS } from '@twitch-hub/shared-types';
   import RatingSlider from '$lib/components/games/hot-take/RatingSlider.svelte';
   import BalanceChoice from '$lib/components/games/balance/BalanceChoice.svelte';
   import GuessInput from '$lib/components/games/blind-test/GuessInput.svelte';
@@ -19,17 +20,51 @@
   import PostRoundOutcome from '$lib/components/games/PostRoundOutcome.svelte';
   import PlayerAvatarStrip from '$lib/components/games/PlayerAvatarStrip.svelte';
   import SessionLeaderboard from '$lib/components/games/SessionLeaderboard.svelte';
+  import RoundCountdown from '$lib/components/games/RoundCountdown.svelte';
+  import XpPopup from '$lib/components/games/XpPopup.svelte';
+  import EmojiReactions from '$lib/components/games/EmojiReactions.svelte';
   import type { Socket } from 'socket.io-client';
+  import type { FloatingEmoji } from '$lib/components/games/EmojiReactions.svelte';
+  import type { XpPopupItem } from '$lib/components/games/XpPopup.svelte';
 
   let socket: Socket | null = null;
   let rating = $state(5);
   let pending = $state(false);
   let timeRemaining = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
+  let showCountdown = $state(false);
+  let xpPopups = $state<XpPopupItem[]>([]);
+  let floatingEmojis = $state<FloatingEmoji[]>([]);
+  let popupIdCounter = 0;
+  let emojiIdCounter = 0;
+
   const sessionId = $derived($page.params.sessionId!);
   const gameType = $derived(gameStore.gameState?.gameType);
   const questionId = $derived(gameStore.currentRound?.questionId);
   const submitted = $derived(questionId ? gameStore.isQuestionSubmitted(questionId) : false);
+
+  function spawnXpPopup(text: string) {
+    const id = ++popupIdCounter;
+    xpPopups = [...xpPopups, { id, text }];
+    setTimeout(() => {
+      xpPopups = xpPopups.filter((p) => p.id !== id);
+    }, 1500);
+  }
+
+  function spawnFloatingEmoji(emoji: string) {
+    const id = ++emojiIdCounter;
+    const x = Math.round((Math.random() - 0.5) * 160);
+    floatingEmojis = [...floatingEmojis, { id, emoji, x }];
+    setTimeout(() => {
+      floatingEmojis = floatingEmojis.filter((e) => e.id !== id);
+    }, 2200);
+  }
+
+  function sendReaction(emoji: string) {
+    if (!socket || !sessionId) return;
+    socket.emit('reaction:send', { sessionId, emoji });
+    spawnFloatingEmoji(emoji);
+  }
 
   onMount(async () => {
     let token: string | undefined;
@@ -45,6 +80,10 @@
     socket = getPlaySocket(token);
     gameStore.bindSocket(socket);
     if (sessionId) gameStore.joinSession(sessionId);
+
+    socket.on('reaction:received', ({ emoji }: { emoji: string }) => {
+      spawnFloatingEmoji(emoji);
+    });
   });
 
   onDestroy(() => {
@@ -70,12 +109,32 @@
     }
   });
 
+  // Spawn +XP popup when a new answer is acknowledged
+  let prevSubmittedCount = 0;
+  $effect(() => {
+    const count = gameStore.submittedQuestionIds.length;
+    if (count > prevSubmittedCount) {
+      prevSubmittedCount = count;
+      setTimeout(() => spawnXpPopup(`+${XP_AWARDS.ROUND_RESPONSE} XP`), 100);
+    }
+    if (count === 0) prevSubmittedCount = 0;
+  });
+
+  // Show 3-2-1 countdown on each new round
+  let prevQuestionId = '';
+  $effect(() => {
+    const qid = gameStore.currentRound?.questionId ?? '';
+    if (qid && qid !== prevQuestionId) {
+      prevQuestionId = qid;
+      showCountdown = true;
+    }
+  });
+
   $effect(() => {
     if (gameStore.currentRound) {
       pending = false;
       rating = 5;
 
-      // Start countdown for BlindTest
       if (timerInterval) clearInterval(timerInterval);
       if (gameStore.currentRound.endsAt) {
         const updateTimer = () => {
@@ -99,6 +158,18 @@
 <svelte:head>
   <title>Play - Twitch Hub</title>
 </svelte:head>
+
+<!-- Round countdown overlay -->
+{#if showCountdown && gameStore.currentRound}
+  <RoundCountdown
+    round={gameStore.gameState?.currentRound ?? 1}
+    totalRounds={gameStore.gameState?.totalRounds ?? 1}
+    onDone={() => (showCountdown = false)}
+  />
+{/if}
+
+<!-- Floating +XP popups -->
+<XpPopup popups={xpPopups} />
 
 <div class="mx-auto max-w-lg px-4 py-8">
   <!-- Connection status -->
@@ -226,7 +297,7 @@
           {/if}
         </Card>
         {@const myAnswer = gameStore.submittedAnswers[gameStore.currentRound?.questionId ?? '']}
-        {#if myAnswer !== undefined && gameType && gameStore.currentRound}
+        {#if gameType && gameStore.currentRound && (myAnswer !== undefined || gameStore.roundResults.correctAnswer)}
           <PostRoundOutcome
             {gameType}
             roundResults={gameStore.roundResults}
@@ -303,6 +374,9 @@
           />
         </Card>
       {/if}
+
+      <!-- Emoji reaction bar -->
+      <EmojiReactions onReact={sendReaction} {floatingEmojis} />
 
       <div class="text-center text-sm text-text-muted" role="status" aria-live="polite">
         {gameStore.participantCount} participants
