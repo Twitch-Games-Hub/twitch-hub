@@ -59,12 +59,18 @@ def cmd_preflight() -> None:
             print(f"  {tool}: MISSING")
             errors.append(f"'{tool}' not found on PATH")
 
-    # Check SSH key
-    ssh_key = Path.home() / ".ssh" / "id_ed25519.pub"
+    # Check SSH key (use config path if .env.infra exists, otherwise default)
+    if ENV_FILE.exists():
+        try:
+            ssh_key = Path(Config().ssh_public_key_path).expanduser()
+        except RuntimeError:
+            ssh_key = Path.home() / ".ssh" / "id_ed25519.pub"
+    else:
+        ssh_key = Path.home() / ".ssh" / "id_ed25519.pub"
     if ssh_key.exists():
         print(f"  SSH key: OK ({ssh_key})")
     else:
-        print(f"  SSH key: MISSING")
+        print(f"  SSH key: MISSING ({ssh_key})")
         errors.append(f"SSH public key not found at {ssh_key}")
 
     # Validate config

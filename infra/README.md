@@ -32,19 +32,19 @@ infra/
 
 ```bash
 cd infra
-pip install -e .    # or: uv pip install -e .
+uv sync
 ```
 
 ## Available Commands
 
 ```bash
-python run.py wizard      # Interactive setup (recommended for first deploy)
-python run.py preflight   # Validate prerequisites and config
-python run.py secrets     # Generate secrets → .env.infra
-python run.py create      # Create Hetzner VPS
-python run.py provision   # Provision server (Docker, firewall, SSH)
-python run.py deploy      # Deploy application
-python run.py full        # create → provision → deploy
+uv run python run.py wizard      # Interactive setup (recommended for first deploy)
+uv run python run.py preflight   # Validate prerequisites and config
+uv run python run.py secrets     # Generate secrets → .env.infra
+uv run python run.py create      # Create Hetzner VPS
+uv run python run.py provision   # Provision server (Docker, firewall, SSH)
+uv run python run.py deploy      # Deploy application
+uv run python run.py full        # create → provision → deploy
 ```
 
 ## First-Time Deployment
@@ -52,7 +52,7 @@ python run.py full        # create → provision → deploy
 The easiest way to deploy for the first time:
 
 ```bash
-python run.py wizard
+uv run python run.py wizard
 ```
 
 The wizard walks through every step interactively: prerequisite checks, config collection, secret generation, server creation, DNS setup, and deployment.
@@ -62,13 +62,13 @@ The wizard walks through every step interactively: prerequisite checks, config c
 After code changes, re-deploy with:
 
 ```bash
-python run.py deploy
+uv run python run.py deploy
 ```
 
 This is idempotent — it rebuilds Docker images and restarts services. Database schema is pushed and seed data is applied each time (both are idempotent operations).
 
 ## Configuration
 
-All configuration is stored in `infra/.env.infra` (gitignored). Use `python run.py secrets` to generate one with placeholder values, or `python run.py wizard` to fill it in interactively.
+All configuration is stored in `infra/.env.infra` (gitignored). Use `uv run python run.py secrets` to generate one with placeholder values, or `uv run python run.py wizard` to fill it in interactively.
 
-Run `python run.py preflight` to validate your config before deploying.
+Run `uv run python run.py preflight` to validate your config before deploying.

@@ -28,12 +28,21 @@ def _prompt(label: str, default: str = "", required: bool = True) -> str:
         print(f"  Error: {label} is required.")
 
 
-def step_prerequisites() -> None:
-    """Step 1: Check prerequisites."""
+def _find_ssh_key() -> Path:
+    """Find an existing SSH public key, preferring ed25519."""
+    ssh_dir = Path.home() / ".ssh"
+    for name in ("id_ed25519.pub", "id_rsa.pub", "id_ecdsa.pub"):
+        candidate = ssh_dir / name
+        if candidate.exists():
+            return candidate
+    return ssh_dir / "id_ed25519.pub"  # fallback for error message
+
+
+def step_prerequisites() -> Path:
+    """Step 1: Check prerequisites. Returns the SSH key path."""
     print("\n=== Step 1/6: Checking prerequisites ===\n")
     checks = {
         "pyinfra": _check_command("pyinfra"),
-        "hcloud": _check_command("hcloud"),
         "ssh-keygen": _check_command("ssh-keygen"),
     }
 
@@ -44,7 +53,13 @@ def step_prerequisites() -> None:
         if not found:
             all_ok = False
 
-    ssh_key = Path.home() / ".ssh" / "id_ed25519.pub"
+    default_key = _find_ssh_key()
+    ssh_key_input = _prompt(
+        f"SSH public key path",
+        default=str(default_key),
+    )
+    ssh_key = Path(ssh_key_input).expanduser()
+
     if ssh_key.exists():
         print(f"  SSH key: OK ({ssh_key})")
     else:
@@ -54,18 +69,20 @@ def step_prerequisites() -> None:
 
     if not all_ok:
         print("\nPlease install missing prerequisites and re-run the wizard.")
-        print("  pip install pyinfra hcloud")
+        print("  uv sync")
         sys.exit(1)
 
     print("\n  All prerequisites satisfied.")
+    return ssh_key
 
 
-def step_collect_config() -> dict[str, str]:
+def step_collect_config(ssh_key: Path) -> dict[str, str]:
     """Step 2: Collect configuration from user."""
     print("\n=== Step 2/6: Configuration ===\n")
 
     config: dict[str, str] = {}
 
+    config["SSH_PUBLIC_KEY_PATH"] = str(ssh_key)
     config["HCLOUD_TOKEN"] = _prompt("Hetzner Cloud API token")
     config["APP_DOMAIN"] = _prompt("App domain (e.g. twitchhub.example.com)")
     config["API_DOMAIN"] = _prompt("API domain (e.g. api.twitchhub.example.com)")
@@ -168,8 +185,8 @@ def run_wizard() -> None:
     print("=" * 50)
 
     try:
-        step_prerequisites()
-        config = step_collect_config()
+        ssh_key = step_prerequisites()
+        config = step_collect_config(ssh_key)
         step_generate_secrets(config)
         ip = step_create_server()
         step_dns_wait(ip)
