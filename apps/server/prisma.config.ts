@@ -1,4 +1,5 @@
-import 'dotenv/config';
+// Dynamic import: dotenv may not be available in production Docker images
+await import('dotenv/config').catch(() => {});
 import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
