@@ -143,6 +143,9 @@ export class EventSubClient {
           case 'answer':
             answer = command.value;
             break;
+          case 'pick':
+            answer = command.value;
+            break;
         }
 
         await voteService.submitVote({

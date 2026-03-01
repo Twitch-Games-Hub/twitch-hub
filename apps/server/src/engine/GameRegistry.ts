@@ -3,6 +3,7 @@ import type { GameEngine } from './GameEngine.js';
 import { HotTakeGame } from './types/HotTakeGame.js';
 import { BalanceGame } from './types/BalanceGame.js';
 import { BlindTestGame } from './types/BlindTestGame.js';
+import { RankingGame } from './types/RankingGame.js';
 import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
 
@@ -20,6 +21,10 @@ const engineMap: Record<string, new (sessionId: string, config: never) => GameEn
     config: never,
   ) => GameEngine,
   [GameType.BLIND_TEST]: BlindTestGame as unknown as new (
+    sessionId: string,
+    config: never,
+  ) => GameEngine,
+  [GameType.RANKING]: RankingGame as unknown as new (
     sessionId: string,
     config: never,
   ) => GameEngine,

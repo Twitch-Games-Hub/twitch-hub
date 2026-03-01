@@ -1,5 +1,5 @@
 export interface ParsedCommand {
-  type: 'rate' | 'vote' | 'answer';
+  type: 'rate' | 'vote' | 'answer' | 'pick';
   value: string | number;
   raw: string;
 }
@@ -27,6 +27,14 @@ export function parseChatCommand(message: string): ParsedCommand | null {
   const answerMatch = trimmed.match(/^!(?:answer|guess)\s+(.+)$/i);
   if (answerMatch) {
     return { type: 'answer', value: answerMatch[1].trim(), raw: trimmed };
+  }
+
+  // !pick A/B or !pick 1/2 — Ranking Game
+  const pickMatch = trimmed.match(/^!pick\s+([AB12])$/i);
+  if (pickMatch) {
+    const raw_val = pickMatch[1].toUpperCase();
+    const value = raw_val === '1' ? 'A' : raw_val === '2' ? 'B' : raw_val;
+    return { type: 'pick', value, raw: trimmed };
   }
 
   return null;
