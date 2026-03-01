@@ -2,6 +2,7 @@ export enum GameType {
   HOT_TAKE = 'HOT_TAKE',
   BALANCE = 'BALANCE',
   BLIND_TEST = 'BLIND_TEST',
+  RANKING = 'RANKING',
 }
 
 export enum GameStatus {
@@ -38,4 +39,16 @@ export interface BlindTestConfig {
   answerWindowSec: number;
 }
 
-export type GameConfig = HotTakeConfig | BalanceConfig | BlindTestConfig;
+export interface RankingItem {
+  id: string;
+  name: string;
+  imageUrl?: string;
+}
+
+export interface RankingConfig {
+  items: RankingItem[];
+  bracketSize: 8 | 16 | 32;
+  roundDurationSec: number;
+}
+
+export type GameConfig = HotTakeConfig | BalanceConfig | BlindTestConfig | RankingConfig;

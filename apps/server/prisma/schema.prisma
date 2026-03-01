@@ -52,6 +52,7 @@ enum GameType {
   BALANCE
   HOT_TAKE
   BLIND_TEST
+  RANKING
 }
 
 enum GameStatus {

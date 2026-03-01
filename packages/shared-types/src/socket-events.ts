@@ -19,6 +19,7 @@ export interface RoundData {
   options?: string[];
   optionImages?: (string | null)[]; // parallel array to options, null = no image
   endsAt?: string; // ISO timestamp
+  meta?: Record<string, unknown>; // extra context (e.g. bracket level)
 }
 
 export interface RoundResults {
@@ -29,10 +30,28 @@ export interface RoundResults {
   totalResponses: number;
 }
 
+export interface BracketMatchupResult {
+  matchupIndex: number;
+  bracketLevel: number;
+  itemA: { id: string; name: string; imageUrl?: string };
+  itemB: { id: string; name: string; imageUrl?: string };
+  winnerId: string;
+  voteCountA: number;
+  voteCountB: number;
+}
+
+export interface RankingFinalData {
+  bracketSize: number;
+  matchups: BracketMatchupResult[];
+  champion: { id: string; name: string; imageUrl?: string };
+  rankings: { rank: number; item: { id: string; name: string; imageUrl?: string } }[];
+}
+
 export interface FinalResults {
   sessionId: string;
   rounds: RoundResults[];
   totalParticipants: number;
+  ranking?: RankingFinalData;
 }
 
 export interface VoteAggregation {
