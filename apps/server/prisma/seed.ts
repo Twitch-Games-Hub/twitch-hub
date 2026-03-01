@@ -56,6 +56,97 @@ async function main() {
         roundDurationSec: 30,
       },
     },
+    {
+      ownerId: user.id,
+      type: 'RANKING' as const,
+      title: 'Il Miglior Film di Aldo, Giovanni e Giacomo',
+      description:
+        'Torneo a eliminazione diretta: 16 film si sfidano testa a testa. Il pubblico vota e il vincitore avanza fino alla finale!',
+      coverImageUrl: 'https://pad.mymovies.it/filmclub/2022/07/011/locandina.jpg',
+      status: 'READY' as const,
+      config: {
+        items: [
+          {
+            id: 'agg-01',
+            name: 'Tre uomini e una gamba',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2005/02/007/locandina.jpg',
+          },
+          {
+            id: 'agg-02',
+            name: "Cosi' e' la vita",
+            imageUrl: 'https://pad.mymovies.it/filmclub/2005/04/068/locandina.jpg',
+          },
+          {
+            id: 'agg-03',
+            name: 'Chiedimi se sono felice',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2005/01/060/locandina.jpg',
+          },
+          {
+            id: 'agg-04',
+            name: 'La leggenda di Al, John e Jack',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2005/01/596/locandina.jpg',
+          },
+          {
+            id: 'agg-05',
+            name: 'Tu la conosci Claudia?',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2004/09/048/locandina.jpg',
+          },
+          {
+            id: 'agg-06',
+            name: "Il cosmo sul como'",
+            imageUrl: 'https://pad.mymovies.it/filmclub/2005/07/039/locandina.jpg',
+          },
+          {
+            id: 'agg-07',
+            name: 'Anplagghed al cinema',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2006/10/107/locandina.jpg',
+          },
+          {
+            id: 'agg-08',
+            name: 'La banda dei Babbi Natale',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2010/12/072/locandina.jpg',
+          },
+          {
+            id: 'agg-09',
+            name: 'Il ricco, il povero e il maggiordomo',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2014/12/049/locandina.jpg',
+          },
+          {
+            id: 'agg-10',
+            name: 'Fuga da Reuma Park',
+            imageUrl: 'https://pad.mymovies.it/filmclub/2016/11/236/locandina.jpg',
+          },
+          {
+            id: 'agg-11',
+            name: "Odio l'estate",
+            imageUrl: 'https://pad.mymovies.it/filmclub/2020/01/068/locandina.jpg',
+          },
+          {
+            id: 'agg-12',
+            name: "Il 7 e l'8",
+            imageUrl: 'https://pad.mymovies.it/filmclub/2007/12/072/locandina.jpg',
+          },
+          {
+            id: 'agg-13',
+            name: 'Ammutta Muddica',
+          },
+          {
+            id: 'agg-14',
+            name: 'Pdor',
+          },
+          {
+            id: 'agg-15',
+            name: 'I corti',
+          },
+          {
+            id: 'agg-16',
+            name: 'Deejay Television (sketch)',
+          },
+        ],
+        bracketSize: 16,
+        roundDurationSec: 30,
+      },
+    },
   ];
 
   await prisma.game.createMany({ data: games });
