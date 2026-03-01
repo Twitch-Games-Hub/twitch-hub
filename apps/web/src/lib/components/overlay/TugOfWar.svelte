@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TweenedNumber from '$lib/components/ui/TweenedNumber.svelte';
+
   let {
     percentA = 0,
     percentB = 0,
@@ -49,16 +51,18 @@
       {/if}
       <div>
         <div class="text-lg font-bold text-white">{labelA}</div>
-        <div class="tabular-nums text-sm text-brand-400">{Math.round(clampedA)}%</div>
+        <div class="tabular-nums text-sm text-brand-400"><TweenedNumber value={clampedA} />%</div>
       </div>
     </div>
 
-    <div class="tabular-nums text-sm text-white/60">Total: {totalVotes}</div>
+    <div class="tabular-nums text-sm text-white/60">
+      Total: <TweenedNumber value={totalVotes} />
+    </div>
 
     <div class="flex flex-1 items-center justify-end gap-2">
       <div class="text-right">
         <div class="text-lg font-bold text-white">{labelB}</div>
-        <div class="tabular-nums text-sm text-pink-400">{Math.round(clampedB)}%</div>
+        <div class="tabular-nums text-sm text-pink-400"><TweenedNumber value={clampedB} />%</div>
       </div>
       {#if imageB}
         <img
@@ -119,7 +123,7 @@
 
   <!-- Footer: vote counts per side -->
   <div class="flex justify-between font-mono text-xs tabular-nums text-white/40">
-    <span>{votesA} votes</span>
-    <span>{votesB} votes</span>
+    <span><TweenedNumber value={votesA} /> votes</span>
+    <span><TweenedNumber value={votesB} /> votes</span>
   </div>
 </div>

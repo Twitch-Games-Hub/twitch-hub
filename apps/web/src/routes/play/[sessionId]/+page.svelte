@@ -94,14 +94,22 @@
     if (timerInterval) clearInterval(timerInterval);
   });
 
+  function vibrate(pattern: number | number[]) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
+  }
+
   function submitRating(value: number) {
     if (!gameStore.currentRound || submitted || pending || !sessionId) return;
+    vibrate(50);
     gameStore.submitResponse(sessionId, gameStore.currentRound.questionId, value);
     pending = true;
   }
 
   function submitAnswer(answer: unknown) {
     if (!gameStore.currentRound || submitted || pending || !sessionId) return;
+    vibrate(50);
     gameStore.submitResponse(sessionId, gameStore.currentRound.questionId, answer);
     pending = true;
   }
@@ -186,7 +194,7 @@
 <!-- Floating +XP popups -->
 <XpPopup popups={xpPopups} />
 
-<div class="mx-auto max-w-lg px-4 py-8">
+<div class="mx-auto max-w-lg overscroll-none px-4 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
   <!-- Connection status -->
   <div class="mb-4 flex justify-end">
     <ConnectionIndicator connected={gameStore.connected} />
@@ -365,7 +373,7 @@
           <RatingSlider bind:value={rating} onsubmit={submitRating} />
         </Card>
       {:else if gameType === 'BALANCE'}
-        <Card padding="lg">
+        <Card padding="lg" class="touch-manipulation">
           <BalanceChoice
             optionA={gameStore.currentRound?.options?.[0] ?? 'A'}
             optionB={gameStore.currentRound?.options?.[1] ?? 'B'}
@@ -384,7 +392,7 @@
           />
         </Card>
       {:else if gameType === 'RANKING'}
-        <Card padding="lg">
+        <Card padding="lg" class="touch-manipulation">
           <RankingChoice
             optionA={gameStore.currentRound?.options?.[0] ?? 'A'}
             optionB={gameStore.currentRound?.options?.[1] ?? 'B'}

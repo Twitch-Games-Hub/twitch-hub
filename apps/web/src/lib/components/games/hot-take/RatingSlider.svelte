@@ -11,12 +11,43 @@
     onsubmit?: (value: number) => void;
   } = $props();
 
+  function vibrate(pattern: number | number[]) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
+  }
+
   function handleSubmit() {
+    vibrate(50);
     onsubmit?.(value);
+  }
+
+  function handleInput() {
+    vibrate(10);
+  }
+
+  // Swipe-up-to-submit gesture
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  function onTouchStart(e: TouchEvent) {
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    if (disabled) return;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    const elapsed = Date.now() - touchStartTime;
+    // Fast upward swipe: at least 60px up within 400ms
+    if (deltaY < -60 && elapsed < 400) {
+      handleSubmit();
+    }
   }
 </script>
 
-<div class="space-y-4">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="space-y-4 touch-pan-y" ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
   <div class="flex items-center justify-between">
     <label for="rating-slider" class="text-sm text-text-secondary">Your Rating</label>
     <span class="text-3xl font-bold tabular-nums text-brand-400" aria-live="polite">
@@ -32,12 +63,14 @@
       max="10"
       step="1"
       bind:value
+      oninput={handleInput}
       {disabled}
       aria-label="Rating from 1 to 10"
       aria-valuemin={1}
       aria-valuemax={10}
       aria-valuenow={value}
       class="rating-slider h-3 w-full cursor-pointer appearance-none rounded-lg bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
+      style="touch-action: manipulation;"
     />
   </div>
 
@@ -56,7 +89,11 @@
     <span>Hot</span>
   </div>
 
-  <Button onclick={handleSubmit} {disabled} size="lg" class="w-full">Submit Rating</Button>
+  <Button onclick={handleSubmit} {disabled} size="lg" class="w-full touch-manipulation">
+    Submit Rating
+  </Button>
+
+  <p class="text-center text-xs text-text-muted">Swipe up to submit quickly</p>
 </div>
 
 <style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TweenedNumber from '$lib/components/ui/TweenedNumber.svelte';
+
   let {
     distribution = [],
     totalVotes = 0,
@@ -29,7 +31,7 @@
         <span
           class="tabular-nums font-bold text-white drop-shadow-md {compact ? 'text-xs' : 'text-sm'}"
         >
-          {count > 0 ? count : ''}
+          {#if count > 0}<TweenedNumber value={count} />{/if}
         </span>
         <div
           class="bar {compact
@@ -49,7 +51,7 @@
 
   <div class="mt-4 text-center">
     <span class="rounded-full bg-black/50 px-4 py-1 text-sm tabular-nums text-text-secondary">
-      {totalVotes} votes
+      <TweenedNumber value={totalVotes} /> votes
     </span>
   </div>
 </div>

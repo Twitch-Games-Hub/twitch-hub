@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LeaderboardEntry, SessionUser } from '@twitch-hub/shared-types';
+  import TweenedNumber from '$lib/components/ui/TweenedNumber.svelte';
 
   let { entries, users }: { entries: LeaderboardEntry[]; users: SessionUser[] } = $props();
 
@@ -55,7 +56,7 @@
           <p class="w-full truncate text-center text-xs font-medium text-text-primary">
             {resolveDisplayName(entry.playerId)}
           </p>
-          <p class="text-xs font-semibold text-brand-400">{entry.xp} XP</p>
+          <p class="text-xs font-semibold text-brand-400"><TweenedNumber value={entry.xp} /> XP</p>
           <!-- Bar -->
           <div
             class="animate-podium-rise {h} w-full origin-bottom rounded-t-md {entry.rank === 1
@@ -83,7 +84,7 @@
           <span
             class="shrink-0 rounded-full bg-brand-600/20 px-2 py-0.5 text-xs font-semibold text-brand-400"
           >
-            {entry.xp}
+            <TweenedNumber value={entry.xp} />
           </span>
         </li>
       {/each}
