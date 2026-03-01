@@ -26,6 +26,13 @@ export const GAME_TYPE_META: Record<GameType, GameTypeMeta> = {
     icon: 'blind',
     available: true,
   },
+  [GameType.RANKING]: {
+    label: 'Ranking',
+    description:
+      'Tournament bracket: items compete head-to-head, viewers vote to crown a champion.',
+    icon: 'trophy',
+    available: true,
+  },
 };
 
 export interface GameStatusStyle {

@@ -3,6 +3,7 @@ import {
   type HotTakeConfig,
   type BalanceConfig,
   type BlindTestConfig,
+  type RankingConfig,
 } from '@twitch-hub/shared-types';
 
 export function getDefaultConfig(type: GameType): unknown {
@@ -16,6 +17,15 @@ export function getDefaultConfig(type: GameType): unknown {
       };
     case GameType.BLIND_TEST:
       return { rounds: [{ answer: '', hints: [''] }], answerWindowSec: 30 };
+    case GameType.RANKING:
+      return {
+        items: [
+          { id: crypto.randomUUID(), name: '' },
+          { id: crypto.randomUUID(), name: '' },
+        ],
+        bracketSize: 8,
+        roundDurationSec: 30,
+      };
     default:
       return {};
   }
@@ -56,6 +66,20 @@ export function sanitizeConfig(type: GameType, raw: unknown): unknown {
             ...(r.imageUrl?.trim() ? { imageUrl: r.imageUrl.trim() } : {}),
           })),
         answerWindowSec: c.answerWindowSec,
+      };
+    }
+    case GameType.RANKING: {
+      const c = raw as RankingConfig;
+      return {
+        items: c.items
+          .filter((item) => item.name.trim())
+          .map((item) => ({
+            id: item.id || crypto.randomUUID(),
+            name: item.name,
+            ...(item.imageUrl?.trim() ? { imageUrl: item.imageUrl.trim() } : {}),
+          })),
+        bracketSize: c.bracketSize,
+        roundDurationSec: c.roundDurationSec,
       };
     }
     default:
