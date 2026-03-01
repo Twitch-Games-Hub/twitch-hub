@@ -78,10 +78,3 @@ export const SESSION_STATUS_STYLES: Record<SessionStatus, SessionStatusStyle> = 
 export const SESSION_COOKIE_NAME = 'session';
 export const TOAST_TIMEOUT_MS = 4000;
 export const DEFAULT_SERVER_URL = 'http://localhost:3001';
-
-// AdSense
-export const ADSENSE_SCRIPT_URL = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-export const AD_SLOT_LOBBY = 'XXXXXXX';
-export const AD_SLOT_POST_SUBMIT = 'XXXXXXX';
-export const AD_SLOT_FINAL_RESULTS = 'XXXXXXX';
-export const AD_INTERSTITIAL_MIN_DURATION_MS = 3000;

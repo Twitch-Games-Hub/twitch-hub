@@ -14,9 +14,6 @@
   import Card from '$lib/components/ui/Card.svelte';
   import ConnectionIndicator from '$lib/components/ui/ConnectionIndicator.svelte';
   import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
-  import AdSlot from '$lib/components/ui/AdSlot.svelte';
-  import AdInterstitial from '$lib/components/ui/AdInterstitial.svelte';
-  import { AD_SLOT_LOBBY, AD_SLOT_POST_SUBMIT, AD_SLOT_FINAL_RESULTS } from '$lib/constants';
   import { LoaderIcon } from '$lib/components/ui/icons';
   import type { Socket } from 'socket.io-client';
 
@@ -25,9 +22,6 @@
   let pending = $state(false);
   let timeRemaining = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
-  let showInterstitial = $state(false);
-  let previousStatus = $state<string | null>(null);
-
   const sessionId = $derived($page.params.sessionId!);
   const gameType = $derived(gameStore.gameState?.gameType);
   const questionId = $derived(gameStore.currentRound?.questionId);
@@ -70,14 +64,6 @@
     if (submitted) {
       pending = false;
     }
-  });
-
-  $effect(() => {
-    const currentStatus = gameStore.gameState?.status ?? null;
-    if (previousStatus === 'LOBBY' && currentStatus === 'LIVE') {
-      showInterstitial = true;
-    }
-    previousStatus = currentStatus;
   });
 
   $effect(() => {
@@ -190,8 +176,6 @@
           </Card>
         {/each}
       {/if}
-
-      <AdSlot slotId={AD_SLOT_FINAL_RESULTS} format="rectangle" class="mt-4" />
     </div>
   {:else if gameStore.currentRound}
     <div class="animate-slide-up space-y-6">
@@ -257,8 +241,6 @@
               />
             </div>
           {/if}
-
-          <AdSlot slotId={AD_SLOT_POST_SUBMIT} format="horizontal" class="mt-4" />
         </Card>
       {:else if gameType === 'HOT_TAKE'}
         <Card padding="lg">
@@ -310,8 +292,6 @@
       <div class="mt-6 tabular-nums text-sm text-text-muted" role="status" aria-live="polite">
         {gameStore.participantCount} participants waiting
       </div>
-
-      <AdSlot slotId={AD_SLOT_LOBBY} format="rectangle" class="mt-6" />
     </div>
   {:else if gameStore.error}
     <div class="animate-fade-in py-12 text-center">
@@ -342,9 +322,3 @@
     </div>
   {/if}
 </div>
-
-<AdInterstitial
-  visible={showInterstitial}
-  slotId={AD_SLOT_LOBBY}
-  ondismiss={() => (showInterstitial = false)}
-/>
