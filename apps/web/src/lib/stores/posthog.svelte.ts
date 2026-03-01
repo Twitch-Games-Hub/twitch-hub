@@ -47,11 +47,6 @@ function createPostHogStore() {
       if (!initialized) return;
       posthog.capture(event, properties);
     },
-
-    capturePageview(path: string) {
-      if (!initialized) return;
-      posthog.capture('$pageview', { $current_url: path });
-    },
   };
 }
 
