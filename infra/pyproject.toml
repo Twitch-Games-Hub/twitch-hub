@@ -8,6 +8,7 @@ dependencies = [
     "hcloud>=2,<3",
     "python-dotenv>=1,<2",
     "jinja2>=3,<4",
+    "rich>=13,<14",
 ]
 
 [build-system]

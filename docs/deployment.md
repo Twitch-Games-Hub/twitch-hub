@@ -13,26 +13,67 @@ Internet
 
 Caddy handles TLS certificates automatically via Let's Encrypt.
 
+### Resource Limits (cx23: 2 vCPU / 4 GB RAM)
+
+| Service  | Memory | CPU  |
+| -------- | ------ | ---- |
+| postgres | 1 GB   | 1.0  |
+| redis    | 256 MB | 0.5  |
+| server   | 1 GB   | 1.5  |
+| web      | 512 MB | 1.0  |
+| caddy    | 128 MB | 0.25 |
+
 ---
 
 ## Quick Start: Interactive Wizard (Recommended)
 
-The wizard guides you through the entire setup interactively:
+The wizard guides you through the entire setup interactively with colored output, progress spinners, and confirmation prompts:
 
 ```bash
 cd infra
-pip install -e .
-python run.py wizard
+uv sync           # install dependencies (including rich for UI)
+uv run python run.py wizard
 ```
 
 The wizard will:
 
-1. Check prerequisites (pyinfra, SSH key)
-2. Collect your configuration (Hetzner token, domains, Twitch creds)
-3. Generate secrets automatically
-4. Create the Hetzner server
-5. Guide DNS setup and verify propagation
-6. Provision and deploy
+1. Check prerequisites (pyinfra, ssh-keygen, rsync, SSH key)
+2. Collect your configuration (Hetzner token, domains, Twitch creds) — secrets are masked during input
+3. Generate secrets automatically (min 32 chars) and write `.env.infra` with mode 600
+4. Create the Hetzner server (with confirmation prompt and config summary)
+5. Guide DNS setup and **verify propagation** (hard stop on failure — no silent continuation)
+6. Provision and deploy (with confirmation prompt)
+
+### Resumability
+
+The wizard saves progress to `.wizard_state.json`. If interrupted (Ctrl+C) or if a step fails:
+
+```bash
+# Resume from where you left off
+uv run python run.py wizard
+
+# Or start fresh
+uv run python run.py wizard --fresh
+```
+
+---
+
+## CLI Commands
+
+| Command                          | Description                                   |
+| -------------------------------- | --------------------------------------------- |
+| `python run.py wizard`           | Interactive first-time setup (recommended)    |
+| `python run.py wizard --fresh`   | Reset wizard state and start over             |
+| `python run.py preflight`        | Validate prerequisites, config, and SSH key   |
+| `python run.py create`           | Create Hetzner VPS only                       |
+| `python run.py provision`        | Provision server (Docker, firewall, SSH)      |
+| `python run.py deploy`           | Deploy app (sync code, env template, compose) |
+| `python run.py deploy --dry-run` | Show what would happen without executing      |
+| `python run.py full`             | create → provision → deploy (non-interactive) |
+| `python run.py secrets`          | Generate secrets into `.env.infra`            |
+| `python run.py health`           | Check running service status on the server    |
+
+All commands use Rich for colored output, spinners, and formatted tables.
 
 ---
 
@@ -40,58 +81,57 @@ The wizard will:
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.10+ with [uv](https://docs.astral.sh/uv/)
 - A Hetzner Cloud account with an API token
 - An SSH key pair (ed25519 recommended)
+- `rsync` installed locally
 - DNS records ready to point at the new server
 
 ### Step-by-step
 
 ```bash
 cd infra
-pip install -e .
+uv sync
 
-python run.py preflight    # validate prerequisites and config
-python run.py secrets      # generate passwords → .env.infra
-vim .env.infra             # fill in HCLOUD_TOKEN, domains, Twitch creds
+uv run python run.py preflight    # validate prerequisites and config
+uv run python run.py secrets      # generate passwords → .env.infra
+vim .env.infra                    # fill in HCLOUD_TOKEN, domains, Twitch creds
 
-python run.py full         # create server → provision → deploy
+uv run python run.py full         # create server → provision → deploy
 ```
-
-### Individual commands
-
-| Command                   | Description                                   |
-| ------------------------- | --------------------------------------------- |
-| `python run.py wizard`    | Interactive first-time setup (recommended)    |
-| `python run.py preflight` | Validate prerequisites, config, and SSH key   |
-| `python run.py create`    | Create Hetzner VPS only                       |
-| `python run.py provision` | Provision server (Docker, firewall, SSH)      |
-| `python run.py deploy`    | Deploy app (clone, env, docker compose up)    |
-| `python run.py full`      | create → provision → deploy (non-interactive) |
-| `python run.py secrets`   | Generate secrets into .env.infra              |
 
 ### What provisioning does
 
 1. Creates 2GB swap (for small VPS instances)
-2. Configures UFW firewall (ports 22, 80, 443 only)
+2. Configures UFW firewall (ports 22, 80, 443 only) with `ufw --force enable`
 3. Installs Docker Engine + Compose plugin
 4. Creates a `deploy` user with Docker access
-5. Hardens SSH (key-only auth, root login disabled)
+5. Validates SSH config with `sshd -t` before applying hardened settings
+
+### What deployment does
+
+1. Rsyncs project code to the server
+2. Templates `.env.production` from config (validates all required keys have values)
+3. Backs up the database before schema push (non-fatal on first deploy)
+4. Builds and starts Docker containers
+5. Waits for `server` and `web` to pass health checks (90s timeout)
+6. Runs smoke tests against API `/health` and web frontend
 
 ### Configuration
 
-All config lives in `infra/.env.infra` (gitignored). Required fields:
+All config lives in `infra/.env.infra` (gitignored, mode 600). Required fields:
 
-| Variable               | Description                          |
-| ---------------------- | ------------------------------------ |
-| `HCLOUD_TOKEN`         | Hetzner Cloud API token              |
-| `APP_DOMAIN`           | Main app domain (e.g. `example.com`) |
-| `API_DOMAIN`           | API domain (e.g. `api.example.com`)  |
-| `GIT_REPO_URL`         | Git repository URL                   |
-| `TWITCH_CLIENT_ID`     | Twitch app client ID                 |
-| `TWITCH_CLIENT_SECRET` | Twitch app client secret             |
+| Variable               | Description                          | Validation           |
+| ---------------------- | ------------------------------------ | -------------------- |
+| `HCLOUD_TOKEN`         | Hetzner Cloud API token              | 64-char alphanumeric |
+| `APP_DOMAIN`           | Main app domain (e.g. `example.com`) | Valid domain format  |
+| `API_DOMAIN`           | API domain (e.g. `api.example.com`)  | Valid domain format  |
+| `TWITCH_CLIENT_ID`     | Twitch app client ID                 | Non-empty            |
+| `TWITCH_CLIENT_SECRET` | Twitch app client secret             | Non-empty            |
 
-Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx22), `HCLOUD_LOCATION` (default: nbg1), `SSH_PUBLIC_KEY_PATH`, `DEPLOY_USER` (default: deploy), `GIT_BRANCH` (default: main).
+Secrets (auto-generated, minimum 32 chars): `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, `INTERNAL_API_SECRET`.
+
+Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx23), `HCLOUD_LOCATION` (default: nbg1), `SSH_PUBLIC_KEY_PATH`, `DEPLOY_USER` (default: deploy).
 
 Optional services: `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
@@ -153,21 +193,39 @@ This will build images, start all services, run database setup (schema push + se
 
 ---
 
-## Deploy Script Commands
+## Health Monitoring
 
-| Command                           | Description                                |
-| --------------------------------- | ------------------------------------------ |
-| `./scripts/deploy.sh deploy`      | Full deployment (build + start + db setup) |
-| `./scripts/deploy.sh build`       | Build Docker images                        |
-| `./scripts/deploy.sh up`          | Start services                             |
-| `./scripts/deploy.sh down`        | Stop services                              |
-| `./scripts/deploy.sh dbsetup`     | Push database schema and run seed          |
-| `./scripts/deploy.sh seed`        | Run seed script independently              |
-| `./scripts/deploy.sh restart`     | Rebuild and restart web + server only      |
-| `./scripts/deploy.sh logs`        | Tail all logs                              |
-| `./scripts/deploy.sh logs server` | Tail server logs                           |
-| `./scripts/deploy.sh status`      | Show service status                        |
-| `./scripts/deploy.sh secrets`     | Generate random secrets                    |
+```bash
+# Remote service status (table view)
+uv run python run.py health
+
+# Service status
+./scripts/deploy.sh status
+
+# Live logs
+./scripts/deploy.sh logs
+
+# Single service
+./scripts/deploy.sh logs server
+```
+
+The `health` command connects via SSH, shows a table of container states and health, and hits the API `/health` endpoint.
+
+---
+
+## Updating
+
+```bash
+# Re-deploy (syncs code + rebuilds)
+cd infra && uv run python run.py deploy
+
+# Or manually:
+git pull
+./scripts/deploy.sh restart
+
+# If schema changed:
+./scripts/deploy.sh dbsetup
+```
 
 ---
 
@@ -190,33 +248,6 @@ To enable source map uploads (recommended for readable stack traces in productio
 
 ---
 
-## Updating
-
-```bash
-git pull
-./scripts/deploy.sh restart
-
-# If schema changed:
-./scripts/deploy.sh dbsetup
-```
-
----
-
-## Monitoring
-
-```bash
-# Service status
-./scripts/deploy.sh status
-
-# Live logs
-./scripts/deploy.sh logs
-
-# Single service
-./scripts/deploy.sh logs server
-```
-
----
-
 ## Backups
 
 ### Database
@@ -231,6 +262,8 @@ cat backup.sql | docker compose -f docker-compose.prod.yml exec -T postgres \
   psql -U twitch_hub twitch_hub
 ```
 
+Note: The automated deploy creates a database backup before running `prisma db push`.
+
 ### Volumes
 
 Persistent data is stored in Docker volumes: `pgdata`, `redisdata`, `caddy_data`, `caddy_config`.
@@ -242,13 +275,14 @@ Persistent data is stored in Docker volumes: `pgdata`, `redisdata`, `caddy_data`
 ### DNS / TLS Issues
 
 - Caddy needs DNS A records to resolve before it can issue TLS certificates
+- The wizard now shows what IP a domain resolves to when it's wrong (not just "not resolving")
 - Check DNS propagation: `dig +short your-domain.com`
 - View Caddy logs: `./scripts/deploy.sh logs caddy`
 - If certificates fail, restart Caddy after DNS propagates: `docker compose -f docker-compose.prod.yml restart caddy`
 
 ### Docker Issues
 
-- Check container health: `./scripts/deploy.sh status`
+- Check container health: `uv run python run.py health` (or `./scripts/deploy.sh status`)
 - View container logs for a specific service: `./scripts/deploy.sh logs <service>`
 - Rebuild from scratch: `./scripts/deploy.sh down && ./scripts/deploy.sh deploy`
 
@@ -257,3 +291,9 @@ Persistent data is stored in Docker volumes: `pgdata`, `redisdata`, `caddy_data`
 - Check postgres health: `./scripts/deploy.sh logs postgres`
 - Re-run schema push + seed: `./scripts/deploy.sh dbsetup`
 - Run seed independently: `./scripts/deploy.sh seed`
+
+### Wizard Issues
+
+- If the wizard fails mid-run, re-run it — it resumes from the last completed step
+- Use `--fresh` to start over: `uv run python run.py wizard --fresh`
+- State is stored in `infra/.wizard_state.json` (gitignored)

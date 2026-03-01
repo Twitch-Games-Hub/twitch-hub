@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -79,27 +80,50 @@ class Config:
         """Return a list of config validation errors (empty = valid)."""
         errors: list[str] = []
 
+        # Required fields
         if not self.hcloud_token:
             errors.append("HCLOUD_TOKEN is not set")
+        elif not self.validate_hcloud_token(self.hcloud_token):
+            errors.append("HCLOUD_TOKEN format is invalid (expected 64-char alphanumeric)")
         if not self.app_domain:
             errors.append("APP_DOMAIN is not set")
+        elif not self.validate_domain(self.app_domain):
+            errors.append(f"APP_DOMAIN '{self.app_domain}' is not a valid domain format")
         if not self.api_domain:
             errors.append("API_DOMAIN is not set")
+        elif not self.validate_domain(self.api_domain):
+            errors.append(f"API_DOMAIN '{self.api_domain}' is not a valid domain format")
         if not self.twitch_client_id:
             errors.append("TWITCH_CLIENT_ID is not set")
         if not self.twitch_client_secret:
             errors.append("TWITCH_CLIENT_SECRET is not set")
-        if not self.postgres_password:
-            errors.append("POSTGRES_PASSWORD is not set (run 'python run.py secrets')")
-        if not self.redis_password:
-            errors.append("REDIS_PASSWORD is not set (run 'python run.py secrets')")
-        if not self.jwt_secret:
-            errors.append("JWT_SECRET is not set (run 'python run.py secrets')")
-        if not self.internal_api_secret:
-            errors.append("INTERNAL_API_SECRET is not set (run 'python run.py secrets')")
 
+        # Secrets
+        for name, value in [
+            ("POSTGRES_PASSWORD", self.postgres_password),
+            ("REDIS_PASSWORD", self.redis_password),
+            ("JWT_SECRET", self.jwt_secret),
+            ("INTERNAL_API_SECRET", self.internal_api_secret),
+        ]:
+            if not value:
+                errors.append(f"{name} is not set (run 'python run.py secrets')")
+            elif len(value) < 32:
+                errors.append(f"{name} is too short ({len(value)} chars, minimum 32)")
+
+        # SSH key
         ssh_path = Path(self.ssh_public_key_path).expanduser()
         if not ssh_path.exists():
             errors.append(f"SSH public key not found at {ssh_path}")
 
         return errors
+
+    @staticmethod
+    def validate_domain(domain: str) -> bool:
+        """Check that a string looks like a valid domain name."""
+        pattern = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,}$"
+        return bool(re.match(pattern, domain))
+
+    @staticmethod
+    def validate_hcloud_token(token: str) -> bool:
+        """Check that a Hetzner token has the expected format."""
+        return bool(re.match(r"^[A-Za-z0-9]{64}$", token))

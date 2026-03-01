@@ -22,6 +22,11 @@ def harden_ssh(cfg: Config) -> None:
         group="root",
     )
 
+    server.shell(
+        name="Validate sshd config before restart",
+        commands=["sshd -t"],
+    )
+
     server.service(
         name="Restart sshd",
         service="ssh",

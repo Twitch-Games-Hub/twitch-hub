@@ -29,5 +29,5 @@ def configure_firewall() -> None:
 
     server.shell(
         name="Enable UFW",
-        commands=["echo 'y' | ufw enable"],
+        commands=["ufw --force enable"],
     )

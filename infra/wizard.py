@@ -2,112 +2,118 @@
 
 from __future__ import annotations
 
+import os
 import secrets
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import ui
 from config import ENV_FILE
+from state import STEPS, WizardState
 
 INFRA_DIR = Path(__file__).parent
+TOTAL_STEPS = len(STEPS)
 
 
 def _check_command(cmd: str) -> bool:
-    """Check if a command is available on PATH."""
     return shutil.which(cmd) is not None
 
 
-def _prompt(label: str, default: str = "", required: bool = True) -> str:
-    """Prompt the user for input with an optional default."""
-    suffix = f" [{default}]" if default else ""
-    while True:
-        value = input(f"  {label}{suffix}: ").strip() or default
-        if value or not required:
-            return value
-        print(f"  Error: {label} is required.")
-
-
 def _find_ssh_key() -> Path:
-    """Find an existing SSH public key, preferring ed25519."""
     ssh_dir = Path.home() / ".ssh"
     for name in ("id_ed25519.pub", "id_rsa.pub", "id_ecdsa.pub"):
         candidate = ssh_dir / name
         if candidate.exists():
             return candidate
-    return ssh_dir / "id_ed25519.pub"  # fallback for error message
+    return ssh_dir / "id_ed25519.pub"
 
 
-def step_prerequisites() -> Path:
-    """Step 1: Check prerequisites. Returns the SSH key path."""
-    print("\n=== Step 1/6: Checking prerequisites ===\n")
+def step_prerequisites(state: WizardState) -> Path:
+    """Step 1: Check prerequisites."""
+    ui.step_header(1, TOTAL_STEPS, "Checking prerequisites")
+
+    if state.is_complete("prerequisites"):
+        ssh_key = Path(state.data.get("ssh_key", str(_find_ssh_key())))
+        ui.info("Prerequisites already verified (skipping)")
+        return ssh_key
+
     checks = {
         "pyinfra": _check_command("pyinfra"),
         "ssh-keygen": _check_command("ssh-keygen"),
+        "rsync": _check_command("rsync"),
     }
 
     all_ok = True
     for tool, found in checks.items():
-        status = "OK" if found else "MISSING"
-        print(f"  {tool}: {status}")
-        if not found:
+        if found:
+            ui.success(tool)
+        else:
+            ui.error(tool, hint=f"Install '{tool}' and re-run the wizard")
             all_ok = False
 
     default_key = _find_ssh_key()
-    ssh_key_input = _prompt(
-        f"SSH public key path",
-        default=str(default_key),
-    )
+    ssh_key_input = ui.prompt_input("SSH public key path", default=str(default_key))
     ssh_key = Path(ssh_key_input).expanduser()
 
     if ssh_key.exists():
-        print(f"  SSH key: OK ({ssh_key})")
+        ui.success(f"SSH key ({ssh_key})")
     else:
-        print(f"  SSH key: MISSING ({ssh_key})")
-        print("  Hint: Generate one with: ssh-keygen -t ed25519")
+        ui.error(f"SSH key not found ({ssh_key})", hint="Generate one with: ssh-keygen -t ed25519")
         all_ok = False
 
     if not all_ok:
-        print("\nPlease install missing prerequisites and re-run the wizard.")
-        print("  uv sync")
+        ui.error("Please install missing prerequisites and re-run the wizard.")
+        state.mark_failed("prerequisites", "Missing prerequisites")
         sys.exit(1)
 
-    print("\n  All prerequisites satisfied.")
+    ui.success("All prerequisites satisfied")
+    state.data["ssh_key"] = str(ssh_key)
+    state.mark_complete("prerequisites")
     return ssh_key
 
 
-def step_collect_config(ssh_key: Path) -> dict[str, str]:
+def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
     """Step 2: Collect configuration from user."""
-    print("\n=== Step 2/6: Configuration ===\n")
+    ui.step_header(2, TOTAL_STEPS, "Configuration")
+
+    if state.is_complete("config"):
+        ui.info("Configuration already collected (skipping)")
+        return {}  # config already in .env.infra
 
     config: dict[str, str] = {}
-
     config["SSH_PUBLIC_KEY_PATH"] = str(ssh_key)
-    config["HCLOUD_TOKEN"] = _prompt("Hetzner Cloud API token")
-    config["APP_DOMAIN"] = _prompt("App domain (e.g. twitchhub.example.com)")
-    config["API_DOMAIN"] = _prompt("API domain (e.g. api.twitchhub.example.com)")
-    config["TWITCH_CLIENT_ID"] = _prompt("Twitch Client ID")
-    config["TWITCH_CLIENT_SECRET"] = _prompt("Twitch Client Secret")
+    config["HCLOUD_TOKEN"] = ui.prompt_input("Hetzner Cloud API token", password=True)
+    config["APP_DOMAIN"] = ui.prompt_input("App domain (e.g. twitchhub.example.com)")
+    config["API_DOMAIN"] = ui.prompt_input("API domain (e.g. api.twitchhub.example.com)")
+    config["TWITCH_CLIENT_ID"] = ui.prompt_input("Twitch Client ID")
+    config["TWITCH_CLIENT_SECRET"] = ui.prompt_input("Twitch Client Secret", password=True)
 
     # Optional
-    config["SENTRY_DSN"] = _prompt("Sentry DSN (server, optional)", required=False)
-    config["PUBLIC_SENTRY_DSN"] = _prompt("Sentry DSN (web, optional)", required=False)
-    config["SENTRY_AUTH_TOKEN"] = _prompt("Sentry Auth Token (source map uploads, optional)", required=False)
-    config["SENTRY_ORG"] = _prompt("Sentry Organization slug (optional)", required=False)
-    config["SENTRY_PROJECT"] = _prompt("Sentry Project slug (optional)", required=False)
-    config["STRIPE_SECRET_KEY"] = _prompt("Stripe Secret Key (optional)", required=False)
+    config["SENTRY_DSN"] = ui.prompt_input("Sentry DSN (server, optional)", default="")
+    config["PUBLIC_SENTRY_DSN"] = ui.prompt_input("Sentry DSN (web, optional)", default="")
+    config["SENTRY_AUTH_TOKEN"] = ui.prompt_input("Sentry Auth Token (optional)", default="")
+    config["SENTRY_ORG"] = ui.prompt_input("Sentry Organization slug (optional)", default="")
+    config["SENTRY_PROJECT"] = ui.prompt_input("Sentry Project slug (optional)", default="")
+    config["STRIPE_SECRET_KEY"] = ui.prompt_input("Stripe Secret Key (optional)", default="")
 
+    state.mark_complete("config")
     return config
 
 
-def step_generate_secrets(config: dict[str, str]) -> None:
+def step_generate_secrets(state: WizardState, config: dict[str, str]) -> None:
     """Step 3: Generate secrets and write .env.infra."""
-    print("\n=== Step 3/6: Generating secrets ===\n")
+    ui.step_header(3, TOTAL_STEPS, "Generating secrets")
 
-    config["POSTGRES_PASSWORD"] = secrets.token_urlsafe(24)
-    config["REDIS_PASSWORD"] = secrets.token_urlsafe(24)
-    config["JWT_SECRET"] = secrets.token_urlsafe(32)
-    config["INTERNAL_API_SECRET"] = secrets.token_urlsafe(32)
+    if state.is_complete("secrets"):
+        ui.info("Secrets already generated (skipping)")
+        return
+
+    config["POSTGRES_PASSWORD"] = secrets.token_urlsafe(32)
+    config["REDIS_PASSWORD"] = secrets.token_urlsafe(32)
+    config["JWT_SECRET"] = secrets.token_urlsafe(48)
+    config["INTERNAL_API_SECRET"] = secrets.token_urlsafe(48)
 
     with open(ENV_FILE, "w") as f:
         f.write("# Twitch Hub Infrastructure Config (generated by wizard)\n\n")
@@ -115,56 +121,125 @@ def step_generate_secrets(config: dict[str, str]) -> None:
             if value:
                 f.write(f"{key}={value}\n")
 
-    print(f"  Wrote config to {ENV_FILE}")
+    os.chmod(ENV_FILE, 0o600)
+    ui.success(f"Wrote config to {ENV_FILE} (mode 600)")
+    state.mark_complete("secrets")
 
 
-def step_create_server() -> str:
+def step_create_server(state: WizardState) -> str:
     """Step 4: Create the Hetzner server."""
-    print("\n=== Step 4/6: Creating Hetzner server ===\n")
+    ui.step_header(4, TOTAL_STEPS, "Creating Hetzner server")
+
+    if state.is_complete("create_server"):
+        from config import Config
+
+        cfg = Config()
+        ip = cfg.get_server_ip()
+        ui.info(f"Server already created at {ip} (skipping)")
+        return ip
 
     from config import Config
     from create_server import create_server
 
     cfg = Config()
-    return create_server(cfg)
+
+    ui.summary_table(
+        [
+            ("Server type", cfg.hcloud_server_type),
+            ("Location", cfg.hcloud_location),
+            ("Image", cfg.hcloud_image),
+            ("Name", cfg.server_name),
+        ],
+        title="Server Configuration",
+    )
+
+    if not ui.confirm("Create this server?"):
+        ui.warn("Server creation cancelled")
+        sys.exit(0)
+
+    ip = create_server(cfg)
+
+    # Wait for SSH with spinner
+    from run import _wait_for_ssh
+
+    with ui.create_spinner("Waiting for SSH...") as progress:
+        progress.add_task("Waiting for SSH to become available...", total=None)
+        if not _wait_for_ssh(ip):
+            state.mark_failed("create_server", "SSH not reachable after 120s")
+            ui.error("SSH not reachable after 120s", hint="Check the server in Hetzner console")
+            sys.exit(1)
+
+    ui.success(f"Server ready at {ip}")
+    state.data["server_ip"] = ip
+    state.mark_complete("create_server")
+    return ip
 
 
-def step_dns_wait(ip: str) -> None:
-    """Step 5: Prompt for DNS configuration and wait for propagation."""
-    print("\n=== Step 5/6: DNS Configuration ===\n")
+def step_dns_wait(state: WizardState, ip: str) -> None:
+    """Step 5: DNS configuration — hard stop on failure."""
+    ui.step_header(5, TOTAL_STEPS, "DNS Configuration")
+
+    if state.is_complete("dns"):
+        ui.info("DNS already verified (skipping)")
+        return
 
     from config import Config
 
     cfg = Config()
 
-    print(f"  Point your DNS A records to: {ip}")
-    print(f"    {cfg.app_domain} → {ip}")
-    print(f"    {cfg.api_domain} → {ip}")
-    print()
+    ui.console.print(f"\n  Point your DNS A records to: [bold]{ip}[/bold]")
+    ui.console.print(f"    {cfg.app_domain} -> {ip}")
+    ui.console.print(f"    {cfg.api_domain} -> {ip}")
+    ui.console.print()
 
-    input("  Press Enter when DNS records are configured...")
+    ui.prompt_input("Press Enter when DNS records are configured", default="ok")
 
     from dns import wait_for_dns
 
-    print("\n  Checking DNS propagation...")
+    ui.info("Checking DNS propagation...")
     domains = [cfg.app_domain, cfg.api_domain]
     if wait_for_dns(domains, ip, timeout=300, interval=10):
-        print("  DNS records verified!")
+        ui.success("DNS records verified")
+        state.mark_complete("dns")
     else:
-        print("  Warning: DNS not fully propagated yet. Continuing anyway...")
-        print("  TLS certificates may fail until DNS resolves. You can re-run deploy later.")
+        state.mark_failed("dns", "DNS not propagated within timeout")
+        ui.error(
+            "DNS not propagated within timeout",
+            hint="Fix your DNS records and re-run: python run.py wizard",
+        )
+        ui.info("The wizard will resume from this step on next run")
+        sys.exit(1)
 
 
-def step_provision_and_deploy() -> None:
+def step_provision_and_deploy(state: WizardState) -> None:
     """Step 6: Provision and deploy."""
-    print("\n=== Step 6/6: Provisioning and deploying ===\n")
+    ui.step_header(6, TOTAL_STEPS, "Provisioning and deploying")
+
+    if state.is_complete("provision_deploy"):
+        ui.info("Already provisioned and deployed (skipping)")
+        return
 
     from config import Config
 
     cfg = Config()
     ip = cfg.get_server_ip()
 
-    print(f"==> Provisioning {ip} as root...")
+    ui.summary_table(
+        [
+            ("Server IP", ip),
+            ("Deploy user", cfg.deploy_user),
+            ("Deploy dir", cfg.deploy_dir),
+            ("App domain", cfg.app_domain),
+            ("API domain", cfg.api_domain),
+        ],
+        title="Deployment Target",
+    )
+
+    if not ui.confirm("Provision and deploy to this server?"):
+        ui.warn("Deployment cancelled")
+        sys.exit(0)
+
+    ui.info(f"Provisioning {ip} as root...")
     subprocess.run(
         ["pyinfra", "--user=root", ip, str(INFRA_DIR / "provision.py")],
         check=True,
@@ -174,50 +249,84 @@ def step_provision_and_deploy() -> None:
 
     _rsync_code(cfg)
 
-    print(f"\n==> Deploying to {ip} as {cfg.deploy_user}...")
+    ui.info(f"Deploying to {ip} as {cfg.deploy_user}...")
     subprocess.run(
         ["pyinfra", f"--user={cfg.deploy_user}", ip, str(INFRA_DIR / "deploy.py")],
         check=True,
     )
 
+    state.mark_complete("provision_deploy")
 
-def run_wizard() -> None:
+
+def run_wizard(fresh: bool = False) -> None:
     """Run the full interactive setup wizard."""
-    print("=" * 50)
-    print("  Twitch Hub — Production Setup Wizard")
-    print("=" * 50)
+    state = WizardState.load()
+
+    if fresh:
+        state.reset()
+        state = WizardState()
+
+    ui.banner("Twitch Hub — Production Setup Wizard")
+
+    # Show resume status if any steps completed
+    if state.completed:
+        ui.info(f"Resuming wizard — completed steps: {', '.join(state.completed)}")
+    if state.failed:
+        for step, err in state.failed.items():
+            ui.warn(f"Previously failed at '{step}': {err}")
+        ui.info("Retrying from failed step...")
+        ui.console.print()
 
     try:
-        ssh_key = step_prerequisites()
-        config = step_collect_config(ssh_key)
-        step_generate_secrets(config)
-        ip = step_create_server()
-        step_dns_wait(ip)
-        step_provision_and_deploy()
+        ssh_key = step_prerequisites(state)
+        config = step_collect_config(state, ssh_key)
+        step_generate_secrets(state, config)
+        ip = step_create_server(state)
+        step_dns_wait(state, ip)
+        step_provision_and_deploy(state)
     except KeyboardInterrupt:
-        print("\n\nWizard cancelled by user.")
+        state.save()
+        ui.console.print()
+        ui.warn("Wizard interrupted. Your progress has been saved.")
+        ui.info("Re-run [bold]python run.py wizard[/bold] to resume.")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"\n  Error: Command failed with exit code {e.returncode}")
-        print(f"  Command: {e.cmd}")
-        print("\n  Fix the issue above and re-run: python run.py wizard")
+        state.mark_failed(
+            _current_step(state),
+            f"Command failed (exit {e.returncode}): {' '.join(str(a) for a in e.cmd)}",
+        )
+        ui.error(f"Command failed with exit code {e.returncode}")
+        ui.info("Re-run [bold]python run.py wizard[/bold] to resume from this step.")
         sys.exit(1)
     except Exception as e:
-        print(f"\n  Error: {e}")
-        print("\n  If this is unexpected, check your config in .env.infra")
-        print("  Re-run: python run.py wizard")
+        state.mark_failed(_current_step(state), str(e))
+        ui.error(str(e), hint="Check your config in .env.infra")
+        ui.info("Re-run [bold]python run.py wizard[/bold] to resume.")
         sys.exit(1)
+
+    # Clean up state file on success
+    state.delete()
 
     from config import Config
 
     cfg = Config()
-    print("\n" + "=" * 50)
-    print("  Deployment complete!")
-    print("=" * 50)
-    print(f"\n  App: https://{cfg.app_domain}")
-    print(f"  API: https://{cfg.api_domain}")
-    print(f"  Server IP: {ip}")
-    print()
+    ui.console.print()
+    ui.banner("Deployment Complete!")
+    ui.summary_table(
+        [
+            ("App", f"https://{cfg.app_domain}"),
+            ("API", f"https://{cfg.api_domain}"),
+            ("Server IP", ip),
+        ],
+    )
+
+
+def _current_step(state: WizardState) -> str:
+    """Determine the current (in-progress) step based on what's completed."""
+    for step in STEPS:
+        if not state.is_complete(step):
+            return step
+    return STEPS[-1]
 
 
 if __name__ == "__main__":

@@ -16,5 +16,6 @@ apps/server/src/generated/
 # Infrastructure
 infra/.env.infra
 infra/.server_ip
+infra/.wizard_state.json
 infra/__pycache__/
 infra/**/__pycache__/
