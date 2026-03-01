@@ -41,11 +41,26 @@ def confirm(prompt: str, default: bool = False) -> bool:
     return Confirm.ask(f"  {prompt}", default=default)
 
 
+def _mask_value(value: str) -> str:
+    """Mask a secret, showing only the last 4 characters."""
+    if len(value) <= 4:
+        return "****"
+    return "****" + value[-4:]
+
+
 def prompt_input(label: str, default: str = "", *, password: bool = False) -> str:
     kw: dict = {}
+    original_default = default
     if default:
-        kw["default"] = default
-    return Prompt.ask(f"  {label}", password=password, **kw)
+        if password:
+            kw["default"] = _mask_value(default)
+        else:
+            kw["default"] = default
+    result = Prompt.ask(f"  {label}", password=password, **kw)
+    # If user accepted the masked default, return the real value
+    if password and original_default and result == _mask_value(original_default):
+        return original_default
+    return result
 
 
 def create_spinner(desc: str) -> Progress:

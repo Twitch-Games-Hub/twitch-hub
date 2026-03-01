@@ -115,6 +115,7 @@ cmd_secrets() {
   echo "REDIS_PASSWORD=$(openssl rand -hex 16)"
   echo "JWT_SECRET=$(openssl rand -hex 24)"
   echo "INTERNAL_API_SECRET=$(openssl rand -hex 24)"
+  echo "WEBHOOK_SECRET=$(openssl rand -hex 24)"
 }
 
 cmd_deploy() {

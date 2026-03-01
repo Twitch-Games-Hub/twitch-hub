@@ -20,6 +20,7 @@ infra/.wizard_state.json
 infra/__pycache__/
 infra/**/__pycache__/
 infra/*.egg-info/
+webhookd/.htpasswd
 
 # Build artifacts
 .verify-bundle/

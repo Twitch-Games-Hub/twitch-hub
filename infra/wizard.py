@@ -178,13 +178,34 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
         ui.info("Configuration already collected (skipping)")
         return {}  # config already in .env.infra
 
+    existing = _read_existing_config()
+    if existing:
+        ui.info("Loaded existing config from .env.infra — press Enter to keep values")
+
     config: dict[str, str] = {}
     config["SSH_PUBLIC_KEY_PATH"] = str(ssh_key)
-    config["HCLOUD_TOKEN"] = ui.prompt_input("Hetzner Cloud API token", password=True)
-    config["APP_DOMAIN"] = ui.prompt_input("App domain (e.g. twitchhub.example.com)")
-    config["API_DOMAIN"] = ui.prompt_input("API domain (e.g. api.twitchhub.example.com)")
-    config["TWITCH_CLIENT_ID"] = ui.prompt_input("Twitch Client ID")
-    config["TWITCH_CLIENT_SECRET"] = ui.prompt_input("Twitch Client Secret", password=True)
+    config["HCLOUD_TOKEN"] = ui.prompt_input(
+        "Hetzner Cloud API token",
+        default=existing.get("HCLOUD_TOKEN", ""),
+        password=True,
+    )
+    config["APP_DOMAIN"] = ui.prompt_input(
+        "App domain (e.g. twitchhub.example.com)",
+        default=existing.get("APP_DOMAIN", ""),
+    )
+    config["API_DOMAIN"] = ui.prompt_input(
+        "API domain (e.g. api.twitchhub.example.com)",
+        default=existing.get("API_DOMAIN", ""),
+    )
+    config["TWITCH_CLIENT_ID"] = ui.prompt_input(
+        "Twitch Client ID",
+        default=existing.get("TWITCH_CLIENT_ID", ""),
+    )
+    config["TWITCH_CLIENT_SECRET"] = ui.prompt_input(
+        "Twitch Client Secret",
+        default=existing.get("TWITCH_CLIENT_SECRET", ""),
+        password=True,
+    )
 
     # GitHub Container Registry
     ui.console.print("\n  [dim]GitHub Container Registry is used to pull pre-built Docker images.[/dim]")
@@ -193,11 +214,16 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
     detected_owner = _detect_github_owner()
     if detected_owner:
         ui.info(f"Detected GitHub owner from git remote: {detected_owner}")
+    github_default = existing.get("GITHUB_USERNAME", detected_owner)
     while True:
         config["GITHUB_USERNAME"] = ui.prompt_input(
-            "GitHub org or user (image owner)", default=detected_owner
+            "GitHub org or user (image owner)", default=github_default
         )
-        config["GHCR_TOKEN"] = ui.prompt_input("GitHub Personal Access Token (read:packages)", password=True)
+        config["GHCR_TOKEN"] = ui.prompt_input(
+            "GitHub Personal Access Token (read:packages)",
+            default=existing.get("GHCR_TOKEN", ""),
+            password=True,
+        )
         with ui.create_spinner("Validating GHCR token...") as progress:
             progress.add_task("Checking token with GitHub API...", total=None)
             ok, msg = _validate_ghcr_token(config["GHCR_TOKEN"])
@@ -210,30 +236,55 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
             break
 
     # Optional
-    config["SENTRY_DSN"] = ui.prompt_input("Sentry DSN (server, optional)", default="")
-    config["PUBLIC_SENTRY_DSN"] = ui.prompt_input("Sentry DSN (web, optional)", default="")
-    config["SENTRY_AUTH_TOKEN"] = ui.prompt_input("Sentry Auth Token (optional)", default="")
-    config["SENTRY_ORG"] = ui.prompt_input("Sentry Organization slug (optional)", default="")
-    config["SENTRY_PROJECT"] = ui.prompt_input("Sentry Project slug (optional)", default="")
-    config["STRIPE_SECRET_KEY"] = ui.prompt_input("Stripe Secret Key (optional)", default="")
+    config["SENTRY_DSN"] = ui.prompt_input(
+        "Sentry DSN (server, optional)",
+        default=existing.get("SENTRY_DSN", ""),
+    )
+    config["PUBLIC_SENTRY_DSN"] = ui.prompt_input(
+        "Sentry DSN (web, optional)",
+        default=existing.get("PUBLIC_SENTRY_DSN", ""),
+    )
+    config["SENTRY_AUTH_TOKEN"] = ui.prompt_input(
+        "Sentry Auth Token (optional)",
+        default=existing.get("SENTRY_AUTH_TOKEN", ""),
+    )
+    config["SENTRY_ORG"] = ui.prompt_input(
+        "Sentry Organization slug (optional)",
+        default=existing.get("SENTRY_ORG", ""),
+    )
+    config["SENTRY_PROJECT"] = ui.prompt_input(
+        "Sentry Project slug (optional)",
+        default=existing.get("SENTRY_PROJECT", ""),
+    )
+    config["STRIPE_SECRET_KEY"] = ui.prompt_input(
+        "Stripe Secret Key (optional)",
+        default=existing.get("STRIPE_SECRET_KEY", ""),
+    )
 
     # Optional DNS automation
     ui.console.print("\n  [dim]Namecheap API credentials enable automatic DNS record creation.[/dim]")
     ui.console.print("  [dim]Leave blank to configure DNS manually later.[/dim]\n")
-    config["NAMECHEAP_API_USER"] = ui.prompt_input("Namecheap API username (optional)", default="")
+    config["NAMECHEAP_API_USER"] = ui.prompt_input(
+        "Namecheap API username (optional)",
+        default=existing.get("NAMECHEAP_API_USER", ""),
+    )
     if config["NAMECHEAP_API_USER"]:
-        config["NAMECHEAP_API_KEY"] = ui.prompt_input("Namecheap API key", password=True)
+        config["NAMECHEAP_API_KEY"] = ui.prompt_input(
+            "Namecheap API key",
+            default=existing.get("NAMECHEAP_API_KEY", ""),
+            password=True,
+        )
         config["NAMECHEAP_DOMAIN"] = ui.prompt_input(
-            "Namecheap base domain (e.g. terabyte.gg)"
+            "Namecheap base domain (e.g. terabyte.gg)",
+            default=existing.get("NAMECHEAP_DOMAIN", ""),
         )
 
     state.mark_complete("config")
     return config
 
 
-def _read_existing_secrets() -> dict[str, str]:
-    """Read generated secret values from an existing .env.infra file."""
-    secret_keys = ("POSTGRES_PASSWORD", "REDIS_PASSWORD", "JWT_SECRET", "INTERNAL_API_SECRET")
+def _read_existing_config() -> dict[str, str]:
+    """Read all key=value pairs from an existing .env.infra file."""
     found: dict[str, str] = {}
     if not ENV_FILE.exists():
         return found
@@ -242,9 +293,16 @@ def _read_existing_secrets() -> dict[str, str]:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        if key in secret_keys and value:
+        key, value = key.strip(), value.strip()
+        if key and value:
             found[key] = value
     return found
+
+
+def _read_existing_secrets() -> dict[str, str]:
+    """Read generated secret values from an existing .env.infra file."""
+    secret_keys = {"POSTGRES_PASSWORD", "REDIS_PASSWORD", "JWT_SECRET", "INTERNAL_API_SECRET"}
+    return {k: v for k, v in _read_existing_config().items() if k in secret_keys}
 
 
 def step_generate_secrets(state: WizardState, config: dict[str, str]) -> None:
