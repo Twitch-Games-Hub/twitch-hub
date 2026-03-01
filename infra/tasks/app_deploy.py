@@ -8,7 +8,12 @@ from config import Config
 
 
 def deploy_app(cfg: Config) -> None:
-    compose = f"docker compose -f {cfg.deploy_dir}/docker-compose.prod.yml --env-file {cfg.deploy_dir}/.env.production"
+    compose = f"docker compose -f {cfg.deploy_dir}/docker-compose.prod.yml"
+
+    server.shell(
+        name="Symlink .env to .env.production",
+        commands=[f"ln -sf {cfg.deploy_dir}/.env.production {cfg.deploy_dir}/.env"],
+    )
 
     server.shell(
         name="Build Docker images",

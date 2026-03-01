@@ -6,6 +6,8 @@ RUN bun install --frozen-lockfile
 RUN bun run --filter @twitch-hub/server db:generate
 RUN bun run --filter @twitch-hub/shared-types build
 RUN bun run --filter @twitch-hub/server build
+# Merge non-hoisted workspace deps into root node_modules
+RUN cp -rn apps/server/node_modules/. node_modules/ 2>/dev/null || true
 
 FROM node:22-alpine AS runner
 WORKDIR /app
