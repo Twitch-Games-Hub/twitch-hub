@@ -10,10 +10,14 @@
 
 {$APP_DOMAIN} {
 	import security_headers
-	reverse_proxy web:3000
+	reverse_proxy web:3000 {
+		lb_try_duration 30s
+	}
 }
 
 {$API_DOMAIN} {
 	import security_headers
-	reverse_proxy server:3001
+	reverse_proxy server:3001 {
+		lb_try_duration 30s
+	}
 }

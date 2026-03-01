@@ -33,8 +33,8 @@ def deploy_app(cfg: Config) -> None:
     )
 
     server.shell(
-        name="Start core services",
-        commands=[f"{compose} up -d postgres redis caddy"],
+        name="Start data stores",
+        commands=[f"{compose} up -d postgres redis"],
     )
 
     server.shell(
