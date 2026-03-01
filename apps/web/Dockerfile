@@ -4,6 +4,14 @@ RUN apk add --no-cache libc6-compat
 COPY . .
 RUN bun install --frozen-lockfile
 RUN bun run --filter @twitch-hub/shared-types build
+
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+ENV SENTRY_ORG=${SENTRY_ORG}
+ENV SENTRY_PROJECT=${SENTRY_PROJECT}
+
 RUN bun run --filter @twitch-hub/web build
 
 FROM node:22-alpine AS runner

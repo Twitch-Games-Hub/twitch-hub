@@ -61,6 +61,9 @@ class Config:
     stripe_credit_pack_price_id: str = field(default_factory=lambda: _env("STRIPE_CREDIT_PACK_PRICE_ID", ""))
     sentry_dsn: str = field(default_factory=lambda: _env("SENTRY_DSN", ""))
     public_sentry_dsn: str = field(default_factory=lambda: _env("PUBLIC_SENTRY_DSN", ""))
+    sentry_auth_token: str = field(default_factory=lambda: _env("SENTRY_AUTH_TOKEN", ""))
+    sentry_org: str = field(default_factory=lambda: _env("SENTRY_ORG", ""))
+    sentry_project: str = field(default_factory=lambda: _env("SENTRY_PROJECT", ""))
 
     @property
     def server_ip_file(self) -> Path:
