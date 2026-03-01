@@ -36,8 +36,6 @@ class Config:
     # App
     app_domain: str = field(default_factory=lambda: _env("APP_DOMAIN", required=True))
     api_domain: str = field(default_factory=lambda: _env("API_DOMAIN", required=True))
-    git_repo_url: str = field(default_factory=lambda: _env("GIT_REPO_URL", required=True))
-    git_branch: str = field(default_factory=lambda: _env("GIT_BRANCH", "main"))
     deploy_user: str = field(default_factory=lambda: _env("DEPLOY_USER", "deploy"))
     deploy_dir: str = field(default_factory=lambda: _env("DEPLOY_DIR", "/opt/twitch-hub"))
 
@@ -87,8 +85,6 @@ class Config:
             errors.append("APP_DOMAIN is not set")
         if not self.api_domain:
             errors.append("API_DOMAIN is not set")
-        if not self.git_repo_url:
-            errors.append("GIT_REPO_URL is not set")
         if not self.twitch_client_id:
             errors.append("TWITCH_CLIENT_ID is not set")
         if not self.twitch_client_secret:

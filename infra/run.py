@@ -120,9 +120,31 @@ def cmd_provision() -> None:
     )
 
 
+def _rsync_code(cfg: Config) -> None:
+    """Rsync the project to the remote server."""
+    ip = cfg.get_server_ip()
+    project_root = str(INFRA_DIR.parent) + "/"
+    dest = f"{cfg.deploy_user}@{ip}:{cfg.deploy_dir}/"
+
+    print(f"==> Syncing code to {dest}...")
+    subprocess.run(
+        [
+            "rsync", "-az", "--delete",
+            "--exclude", "node_modules",
+            "--exclude", ".git",
+            "--exclude", "infra",
+            "--exclude", ".env*",
+            project_root, dest,
+        ],
+        check=True,
+    )
+    print("  Code synced.")
+
+
 def cmd_deploy() -> None:
     cfg = Config()
     ip = cfg.get_server_ip()
+    _rsync_code(cfg)
     print(f"==> Deploying to {ip} as {cfg.deploy_user}...")
     subprocess.run(
         ["pyinfra", f"--user={cfg.deploy_user}", ip, str(INFRA_DIR / "deploy.py")],
@@ -168,7 +190,6 @@ def cmd_secrets() -> None:
             f.write("HCLOUD_TOKEN=\n")
             f.write("APP_DOMAIN=\n")
             f.write("API_DOMAIN=\n")
-            f.write("GIT_REPO_URL=\n")
             f.write("TWITCH_CLIENT_ID=\n")
             f.write("TWITCH_CLIENT_SECRET=\n\n")
             f.write("# Auto-generated secrets\n")

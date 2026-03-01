@@ -86,7 +86,6 @@ def step_collect_config(ssh_key: Path) -> dict[str, str]:
     config["HCLOUD_TOKEN"] = _prompt("Hetzner Cloud API token")
     config["APP_DOMAIN"] = _prompt("App domain (e.g. twitchhub.example.com)")
     config["API_DOMAIN"] = _prompt("API domain (e.g. api.twitchhub.example.com)")
-    config["GIT_REPO_URL"] = _prompt("Git repository URL")
     config["TWITCH_CLIENT_ID"] = _prompt("Twitch Client ID")
     config["TWITCH_CLIENT_SECRET"] = _prompt("Twitch Client Secret")
 
@@ -170,6 +169,10 @@ def step_provision_and_deploy() -> None:
         ["pyinfra", "--user=root", ip, str(INFRA_DIR / "provision.py")],
         check=True,
     )
+
+    from run import _rsync_code
+
+    _rsync_code(cfg)
 
     print(f"\n==> Deploying to {ip} as {cfg.deploy_user}...")
     subprocess.run(
