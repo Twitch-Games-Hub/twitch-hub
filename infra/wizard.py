@@ -90,6 +90,12 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
     config["TWITCH_CLIENT_ID"] = ui.prompt_input("Twitch Client ID")
     config["TWITCH_CLIENT_SECRET"] = ui.prompt_input("Twitch Client Secret", password=True)
 
+    # GitHub Container Registry
+    ui.console.print("\n  [dim]GitHub Container Registry is used to pull pre-built Docker images.[/dim]")
+    ui.console.print("  [dim]The PAT needs the 'read:packages' scope.[/dim]\n")
+    config["GITHUB_USERNAME"] = ui.prompt_input("GitHub username or org (image owner)")
+    config["GHCR_TOKEN"] = ui.prompt_input("GitHub Personal Access Token (read:packages)", password=True)
+
     # Optional
     config["SENTRY_DSN"] = ui.prompt_input("Sentry DSN (server, optional)", default="")
     config["PUBLIC_SENTRY_DSN"] = ui.prompt_input("Sentry DSN (web, optional)", default="")

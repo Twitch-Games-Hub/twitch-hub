@@ -52,6 +52,10 @@ class Config:
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", required=True))
     internal_api_secret: str = field(default_factory=lambda: _env("INTERNAL_API_SECRET", required=True))
 
+    # GitHub Container Registry
+    github_username: str = field(default_factory=lambda: _env("GITHUB_USERNAME", required=True))
+    ghcr_token: str = field(default_factory=lambda: _env("GHCR_TOKEN", required=True))
+
     # Namecheap DNS (optional — enables auto-DNS in wizard)
     namecheap_api_user: str = field(default_factory=lambda: _env("NAMECHEAP_API_USER", ""))
     namecheap_api_key: str = field(default_factory=lambda: _env("NAMECHEAP_API_KEY", ""))
@@ -106,6 +110,10 @@ class Config:
             errors.append("TWITCH_CLIENT_ID is not set")
         if not self.twitch_client_secret:
             errors.append("TWITCH_CLIENT_SECRET is not set")
+        if not self.github_username:
+            errors.append("GITHUB_USERNAME is not set")
+        if not self.ghcr_token:
+            errors.append("GHCR_TOKEN is not set")
 
         # Secrets
         for name, value in [

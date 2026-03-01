@@ -13,6 +13,8 @@ TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 # Keys that must have non-empty values in .env.production
 REQUIRED_ENV_KEYS = [
+    "GHCR_SERVER_IMAGE",
+    "GHCR_WEB_IMAGE",
     "APP_DOMAIN",
     "API_DOMAIN",
     "POSTGRES_USER",

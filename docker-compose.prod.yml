@@ -55,9 +55,7 @@ services:
       - internal
 
   server:
-    build:
-      context: .
-      dockerfile: apps/server/Dockerfile
+    image: ${GHCR_SERVER_IMAGE}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -106,13 +104,7 @@ services:
       - internal
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
-        SENTRY_ORG: ${SENTRY_ORG:-}
-        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+    image: ${GHCR_WEB_IMAGE}
     restart: unless-stopped
     depends_on:
       server:
@@ -180,10 +172,7 @@ services:
       - internal
 
   dbsetup:
-    build:
-      context: .
-      dockerfile: apps/server/Dockerfile
-      target: builder
+    image: ${GHCR_SERVER_IMAGE}
     profiles:
       - tools
     working_dir: /app/apps/server

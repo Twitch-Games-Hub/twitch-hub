@@ -28,8 +28,15 @@ def deploy_app(cfg: Config) -> None:
     )
 
     server.shell(
-        name="Build Docker images",
-        commands=[f"cd {cfg.deploy_dir} && {compose} build server web"],
+        name="Log in to GitHub Container Registry",
+        commands=[
+            f"echo '{cfg.ghcr_token}' | docker login ghcr.io -u {cfg.github_username} --password-stdin",
+        ],
+    )
+
+    server.shell(
+        name="Pull Docker images",
+        commands=[f"cd {cfg.deploy_dir} && {compose} pull server web"],
     )
 
     server.shell(
