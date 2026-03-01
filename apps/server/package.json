@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch --preload ./src/instrument.ts src/index.ts | pino-pretty",
-    "build": "tsc",
+    "build": "bun build src/index.ts src/instrument.ts --target=bun --outdir=dist --sourcemap=external",
     "start": "node --import ./dist/instrument.js dist/index.js",
     "clean": "rm -rf dist",
     "db:generate": "prisma generate",

@@ -20,3 +20,6 @@ infra/.wizard_state.json
 infra/__pycache__/
 infra/**/__pycache__/
 infra/*.egg-info/
+
+# Build artifacts
+.verify-bundle/

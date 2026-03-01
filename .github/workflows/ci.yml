@@ -126,10 +126,27 @@ jobs:
           cache-from: type=gha,scope=server
           cache-to: type=gha,scope=server,mode=max
 
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [publish-server, publish-web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger deploy webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
+          curl -sf -X POST \
+            -u "deploy:${WEBHOOK_SECRET}" \
+            -H "X-Hook-Mode: buffered" \
+            --max-time 600 \
+            "${WEBHOOK_URL}"
+
   report-failure:
     name: Report Failure
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, build, test, publish-server, publish-web]
+    needs: [lint, typecheck, build, test, publish-server, publish-web, deploy]
     if: >-
       always() &&
       github.event_name == 'push' &&

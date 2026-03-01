@@ -24,6 +24,22 @@ def deploy_app(cfg: Config) -> None:
     )
 
     server.shell(
+        name="Create webhookd directory",
+        commands=[f"mkdir -p {cfg.deploy_dir}/webhookd"],
+    )
+
+    if cfg.webhook_secret:
+        server.shell(
+            name="Generate webhookd htpasswd",
+            commands=[
+                f"docker run --rm httpd:2-alpine htpasswd -nbB deploy '{cfg.webhook_secret}'"
+                f" > {cfg.deploy_dir}/webhookd/.htpasswd"
+                f" && chmod 600 {cfg.deploy_dir}/webhookd/.htpasswd"
+                f' && echo "htpasswd generated"',
+            ],
+        )
+
+    server.shell(
         name="Symlink .env to .env.production",
         commands=[f"ln -sf {cfg.deploy_dir}/.env.production {cfg.deploy_dir}/.env"],
     )

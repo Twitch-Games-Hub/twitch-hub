@@ -1,18 +1,19 @@
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
-COPY . .
-RUN bun install --frozen-lockfile
+COPY package.json bun.lock ./
+COPY packages/shared-types ./packages/shared-types
+COPY apps/server ./apps/server
+COPY docs ./docs
+RUN bun install
 RUN bun run --filter @twitch-hub/server db:generate
 # Bundle server + instrument + seeds into self-contained files (all deps inlined)
-RUN bun build apps/server/src/index.ts \
-      --target=bun --outdir=bundle --sourcemap=external && \
-    bun build apps/server/src/instrument.ts \
-      --target=bun --outdir=bundle --sourcemap=external && \
+RUN bun run --filter @twitch-hub/server build && \
     bun build apps/server/prisma/seed.ts \
       --target=bun --outdir=bundle && \
     bun build apps/server/prisma/seed-achievements.ts \
-      --target=bun --outdir=bundle
+      --target=bun --outdir=bundle && \
+    mv apps/server/dist/* bundle/
 
 FROM oven/bun:1-alpine AS runner
 WORKDIR /app
@@ -23,7 +24,7 @@ RUN apk add --no-cache libc6-compat && \
 COPY --from=builder --chown=server:nodejs /app/bundle ./
 # Prisma schema + config for dbsetup service (db push)
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma/schema.prisma ./prisma/schema.prisma
-COPY --from=builder --chown=server:nodejs /app/apps/server/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=server:nodejs /app/apps/server/prisma.config.js ./prisma.config.js
 USER server
 ENV NODE_ENV=production
 ENV SERVER_PORT=3001

@@ -60,6 +60,7 @@ def _rsync_code(cfg: Config) -> None:
                 "--exclude", ".git",
                 "--exclude", "infra",
                 "--exclude", ".env*",
+                "--exclude", "webhookd/.htpasswd",
                 project_root, dest,
             ],
             check=True,
@@ -254,6 +255,7 @@ def cmd_secrets() -> None:
         "REDIS_PASSWORD": secrets.token_urlsafe(32),
         "JWT_SECRET": secrets.token_urlsafe(48),
         "INTERNAL_API_SECRET": secrets.token_urlsafe(48),
+        "WEBHOOK_SECRET": secrets.token_urlsafe(32),
     }
 
     ui.banner("Generated Secrets")

@@ -1,8 +1,11 @@
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
-COPY . .
-RUN bun install --frozen-lockfile
+COPY package.json bun.lock ./
+COPY packages/shared-types ./packages/shared-types
+COPY apps/web ./apps/web
+COPY docs ./docs
+RUN bun install
 ARG SENTRY_AUTH_TOKEN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT

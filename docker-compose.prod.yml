@@ -137,6 +137,7 @@ services:
     depends_on:
       - web
       - server
+      - webhookd
     ports:
       - '80:80'
       - '443:443'
@@ -161,6 +162,32 @@ services:
     networks:
       - internal
 
+  webhookd:
+    image: ncarlier/webhookd:edge-distrib
+    restart: unless-stopped
+    environment:
+      WHD_HOOK_TIMEOUT: '600'
+      WHD_PASSWD_FILE: /etc/webhookd/.htpasswd
+      GHCR_TOKEN: ${GHCR_TOKEN}
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/twitch-hub:/opt/twitch-hub
+      - ./webhookd/scripts:/scripts:ro
+      - ./webhookd/.htpasswd:/etc/webhookd/.htpasswd:ro
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    networks:
+      - internal
+
   dbsetup:
     image: ${GHCR_SERVER_IMAGE}
     profiles:
@@ -170,7 +197,12 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    entrypoint: ['sh', '-c', 'bunx prisma db push --accept-data-loss && bun seed.js']
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        'bunx prisma db push --config=prisma.config.js --accept-data-loss && bun seed.js',
+      ]
     networks:
       - internal
 

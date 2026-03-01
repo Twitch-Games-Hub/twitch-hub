@@ -56,6 +56,9 @@ class Config:
     github_username: str = field(default_factory=lambda: _env("GITHUB_USERNAME", required=True))
     ghcr_token: str = field(default_factory=lambda: _env("GHCR_TOKEN", required=True))
 
+    # Webhook deploy secret (auto-generated)
+    webhook_secret: str = field(default_factory=lambda: _env("WEBHOOK_SECRET", ""))
+
     # Namecheap DNS (optional — enables auto-DNS in wizard)
     namecheap_api_user: str = field(default_factory=lambda: _env("NAMECHEAP_API_USER", ""))
     namecheap_api_key: str = field(default_factory=lambda: _env("NAMECHEAP_API_KEY", ""))

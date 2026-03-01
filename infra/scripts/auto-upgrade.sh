@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # auto-upgrade.sh — Pull latest images, migrate DB, restart app containers.
-# Called by GitHub Actions deploy job or manually on the server.
+# Called by webhookd webhook or manually on the server.
 #
 # Required env vars:
 #   GHCR_TOKEN       — GitHub token with packages:read scope
@@ -175,11 +175,11 @@ done
 # ---------------------------------------------------------------------------
 log "Step 8/8: Running smoke tests..."
 
-curl -sf http://localhost:3001/health > /dev/null \
+$COMPOSE exec -T server wget -qO /dev/null http://localhost:3001/healthz \
     && log "API health: OK" \
     || rollback
 
-curl -sf http://localhost:3000/ > /dev/null \
+$COMPOSE exec -T web wget -qO /dev/null http://localhost:3000/healthz \
     && log "Web frontend: OK" \
     || rollback
 

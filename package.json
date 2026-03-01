@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "bun run --filter './apps/*' dev",
-    "build": "bun run --filter './apps/*' build",
+    "build": "bun run --filter @twitch-hub/shared-types build && bun run --filter './apps/*' build",
     "lint": "bun run --filter '*' lint",
     "format": "bun run --filter '*' format",
     "format:check": "prettier --check .",
