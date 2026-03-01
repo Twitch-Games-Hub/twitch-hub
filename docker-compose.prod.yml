@@ -181,12 +181,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    entrypoint:
-      [
-        'sh',
-        '-c',
-        'bunx prisma db push --schema ./prisma/schema.prisma --accept-data-loss && bun run prisma/seed.ts',
-      ]
+    entrypoint: ['sh', '-c', 'bunx prisma db push --accept-data-loss && bun run prisma/seed.ts']
     networks:
       - internal
 
