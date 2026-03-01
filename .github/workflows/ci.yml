@@ -129,7 +129,11 @@ jobs:
     name: Report Failure
     runs-on: ubuntu-latest
     needs: [lint, typecheck, build, test]
-    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(needs.*.result, 'failure')
     permissions:
       issues: write
     steps:
