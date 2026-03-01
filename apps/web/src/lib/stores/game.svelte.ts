@@ -11,6 +11,17 @@ import type {
 import type { Socket } from 'socket.io-client';
 import * as Sentry from '@sentry/sveltekit';
 
+export interface CompletedMatchup {
+  matchupIndex: number;
+  bracketLevel: number;
+  bracketSize: number;
+  itemA: { name: string; imageUrl?: string };
+  itemB: { name: string; imageUrl?: string };
+  winnerName: string;
+  voteCountA: number;
+  voteCountB: number;
+}
+
 interface GameStoreState {
   gameState: GameState | null;
   currentRound: RoundData | null;
@@ -23,6 +34,7 @@ interface GameStoreState {
   connected: boolean;
   error: string | null;
   submittedQuestionIds: string[];
+  completedMatchups: CompletedMatchup[];
 }
 
 function createGameStore() {
@@ -38,6 +50,7 @@ function createGameStore() {
     connected: false,
     error: null,
     submittedQuestionIds: [],
+    completedMatchups: [],
   });
 
   let socket: Socket | null = null;
@@ -92,6 +105,33 @@ function createGameStore() {
     });
 
     s.on('game:round-end', (results: RoundResults) => {
+      if (
+        state.gameState?.gameType === 'RANKING' &&
+        state.currentRound?.meta &&
+        results.distribution?.length === 2
+      ) {
+        const [a, b] = results.distribution;
+        const winnerIdx = b > a ? 1 : 0;
+        state.completedMatchups = [
+          ...state.completedMatchups,
+          {
+            matchupIndex: state.currentRound.meta.matchupIndex as number,
+            bracketLevel: state.currentRound.meta.bracketLevel as number,
+            bracketSize: state.currentRound.meta.bracketSize as number,
+            itemA: {
+              name: state.currentRound.options?.[0] ?? 'A',
+              imageUrl: state.currentRound.optionImages?.[0] ?? undefined,
+            },
+            itemB: {
+              name: state.currentRound.options?.[1] ?? 'B',
+              imageUrl: state.currentRound.optionImages?.[1] ?? undefined,
+            },
+            winnerName: state.currentRound.options?.[winnerIdx] ?? (winnerIdx === 0 ? 'A' : 'B'),
+            voteCountA: a,
+            voteCountB: b,
+          },
+        ];
+      }
       state.roundResults = results;
       Sentry.logger.info('Round ended', { round: results.round });
     });
@@ -139,6 +179,7 @@ function createGameStore() {
       state.currentRound = snapshot.currentRound;
       state.votes = snapshot.votes;
       state.participantCount = snapshot.participantCount;
+      state.completedMatchups = [];
       if (snapshot.finalResults) {
         state.finalResults = snapshot.finalResults;
       }
@@ -160,6 +201,7 @@ function createGameStore() {
     state.participantCount = 0;
     state.error = null;
     state.submittedQuestionIds = [];
+    state.completedMatchups = [];
   }
 
   return {
@@ -196,6 +238,9 @@ function createGameStore() {
     get submittedQuestionIds() {
       return state.submittedQuestionIds;
     },
+    get completedMatchups() {
+      return state.completedMatchups;
+    },
     isQuestionSubmitted(questionId: string) {
       return state.submittedQuestionIds.includes(questionId);
     },
@@ -211,6 +256,7 @@ function createGameStore() {
       state.participantCount = snapshot.participantCount;
       state.roundResults = null;
       state.finalResults = null;
+      state.completedMatchups = [];
     },
 
     rejoinSession(sessionId: string) {

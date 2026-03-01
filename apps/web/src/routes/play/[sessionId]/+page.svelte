@@ -7,9 +7,10 @@
   import BalanceChoice from '$lib/components/games/balance/BalanceChoice.svelte';
   import GuessInput from '$lib/components/games/blind-test/GuessInput.svelte';
   import RankingChoice from '$lib/components/games/ranking/RankingChoice.svelte';
+  import PartialBracket from '$lib/components/games/ranking/PartialBracket.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';
   import TugOfWar from '$lib/components/overlay/TugOfWar.svelte';
-  import { countsToPercents, extractBinaryPercents } from '$lib/utils/votes';
+  import { extractBinaryPercents } from '$lib/utils/votes';
   import Card from '$lib/components/ui/Card.svelte';
   import ConnectionIndicator from '$lib/components/ui/ConnectionIndicator.svelte';
   import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
@@ -226,6 +227,21 @@
             </svg>
             <p>Response submitted! Waiting for results...</p>
           </div>
+          {#if gameType === 'RANKING' && gameStore.completedMatchups.length > 0}
+            <div class="mt-4 border-t border-border-subtle pt-4">
+              <PartialBracket
+                matchups={gameStore.completedMatchups}
+                bracketSize={gameStore.currentRound?.meta?.bracketSize as number}
+                currentMatchupMeta={gameStore.currentRound?.meta
+                  ? {
+                      bracketLevel: gameStore.currentRound.meta.bracketLevel as number,
+                      matchupIndex: gameStore.currentRound.meta.matchupIndex as number,
+                      levelName: gameStore.currentRound.meta.levelName as string | undefined,
+                    }
+                  : null}
+              />
+            </div>
+          {/if}
         </Card>
       {:else if gameType === 'HOT_TAKE'}
         <Card padding="lg">
