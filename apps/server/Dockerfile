@@ -6,8 +6,10 @@ RUN bun install --frozen-lockfile
 RUN bun run --filter @twitch-hub/server db:generate
 RUN bun run --filter @twitch-hub/shared-types build
 RUN bun run --filter @twitch-hub/server build
-# Merge non-hoisted workspace deps into root node_modules
-RUN cp -rn apps/server/node_modules/. node_modules/ 2>/dev/null || true
+# Bun stores packages in node_modules/.bun/ and symlinks them into each
+# workspace's node_modules/. The runner uses Node (not Bun), which can't
+# resolve these symlinks. -L dereferences them into real files Node can find.
+RUN cp -rL apps/server/node_modules/. node_modules/ 2>/dev/null || true
 
 FROM node:22-alpine AS runner
 WORKDIR /app
