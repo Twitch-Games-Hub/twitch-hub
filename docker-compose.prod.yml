@@ -80,16 +80,6 @@ services:
       STRIPE_ANNUAL_PRICE_ID: ${STRIPE_ANNUAL_PRICE_ID:-}
       STRIPE_CREDIT_PACK_PRICE_ID: ${STRIPE_CREDIT_PACK_PRICE_ID:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'bun -e "const r = await fetch(''http://localhost:3001/healthz''); process.exit(r.ok ? 0 : 1)"',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
     deploy:
       resources:
         limits:
@@ -116,16 +106,6 @@ services:
       PUBLIC_SERVER_URL: https://${API_DOMAIN}
       PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
       PUBLIC_SENTRY_ENVIRONMENT: production
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'bun -e "const r = await fetch(''http://localhost:3000/''); process.exit(r.ok ? 0 : 1)"',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     deploy:
       resources:
         limits:
