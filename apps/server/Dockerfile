@@ -22,4 +22,4 @@ COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.jso
 ENV NODE_ENV=production
 ENV SERVER_PORT=3001
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["node", "--import", "./dist/instrument.js", "dist/index.js"]

@@ -1,29 +1,34 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: twitch_hub
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-twitch_hub}
-      POSTGRES_DB: twitch_hub
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U twitch_hub']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
 
   server:
     build:
@@ -36,17 +41,33 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://twitch_hub:${POSTGRES_PASSWORD:-twitch_hub}@postgres:5432/twitch_hub
-      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      SERVER_PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      PUBLIC_SERVER_URL: https://${API_DOMAIN}
+      PUBLIC_APP_URL: https://${APP_DOMAIN}
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
-      TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      SERVER_PORT: '3001'
-    ports:
-      - '3001:3001'
+      TWITCH_REDIRECT_URI: https://${APP_DOMAIN}/api/auth/callback
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_MONTHLY_PRICE_ID: ${STRIPE_MONTHLY_PRICE_ID:-}
+      STRIPE_ANNUAL_PRICE_ID: ${STRIPE_ANNUAL_PRICE_ID:-}
+      STRIPE_CREDIT_PACK_PRICE_ID: ${STRIPE_CREDIT_PACK_PRICE_ID:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-}
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
 
   web:
     build:
@@ -54,15 +75,69 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
-      PUBLIC_SERVER_URL: http://server:3001
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      ORIGIN: ${ORIGIN:-http://localhost:3000}
-      PORT: '3000'
+      NODE_ENV: production
+      PORT: 3000
+      ORIGIN: https://${APP_DOMAIN}
+      PUBLIC_SERVER_URL: https://${API_DOMAIN}
+      PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
+      PUBLIC_SENTRY_ENVIRONMENT: production
+      PUBLIC_POSTHOG_KEY: ${PUBLIC_POSTHOG_KEY:-}
+      PUBLIC_POSTHOG_HOST: ${PUBLIC_POSTHOG_HOST:-}
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      server:
+        condition: service_healthy
     ports:
-      - '3000:3000'
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    profiles:
+      - migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    entrypoint: ['npx', 'prisma', 'migrate', 'deploy', '--schema', './prisma/schema.prisma']
+    networks:
+      - internal
 
 volumes:
   pgdata:
   redisdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge
