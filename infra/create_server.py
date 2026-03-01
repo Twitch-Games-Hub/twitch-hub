@@ -39,7 +39,21 @@ def create_server(cfg: Config) -> str:
         ssh_key = client.ssh_keys.get_by_name(ssh_key_name)
         if ssh_key is None:
             print(f"==> Uploading SSH key '{ssh_key_name}'...")
-            ssh_key = client.ssh_keys.create(name=ssh_key_name, public_key=pub_key_content)
+            try:
+                ssh_key = client.ssh_keys.create(name=ssh_key_name, public_key=pub_key_content)
+            except APIException as e:
+                if "uniqueness_error" in str(e):
+                    # Key content already exists under a different name — find it by fingerprint
+                    print("==> Key content already on Hetzner, looking up by fingerprint...")
+                    for key in client.ssh_keys.get_all():
+                        if key.public_key.strip() == pub_key_content:
+                            ssh_key = key
+                            print(f"==> Found existing key '{ssh_key.name}'.")
+                            break
+                    if ssh_key is None:
+                        raise
+                else:
+                    raise
         else:
             print(f"==> SSH key '{ssh_key_name}' already exists.")
     except APIException as e:
