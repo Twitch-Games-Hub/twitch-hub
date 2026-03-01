@@ -7,6 +7,7 @@ import type {
   MultiVoteAggregation,
   SessionSnapshot,
   SessionUser,
+  GamificationEvent,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
 import * as Sentry from '@sentry/sveltekit';
@@ -35,6 +36,8 @@ interface GameStoreState {
   error: string | null;
   submittedQuestionIds: string[];
   completedMatchups: CompletedMatchup[];
+  gamificationQueue: GamificationEvent[];
+  submittedAnswers: Record<string, unknown>;
 }
 
 function createGameStore() {
@@ -51,6 +54,8 @@ function createGameStore() {
     error: null,
     submittedQuestionIds: [],
     completedMatchups: [],
+    gamificationQueue: [],
+    submittedAnswers: {},
   });
 
   let socket: Socket | null = null;
@@ -70,6 +75,7 @@ function createGameStore() {
     'session:users',
     'session:rejoined',
     'response:ack',
+    'gamification:event',
   ];
 
   function bindSocket(s: Socket) {
@@ -101,6 +107,7 @@ function createGameStore() {
       state.votes = null;
       state.multiVotes = null;
       state.submittedQuestionIds = [];
+      state.submittedAnswers = {};
       Sentry.logger.info('Round started', { round: round.round });
     });
 
@@ -174,6 +181,10 @@ function createGameStore() {
       }
     });
 
+    s.on('gamification:event', (event: GamificationEvent) => {
+      state.gamificationQueue = [...state.gamificationQueue, event];
+    });
+
     s.on('session:rejoined', (snapshot: SessionSnapshot) => {
       state.gameState = snapshot.gameState;
       state.currentRound = snapshot.currentRound;
@@ -202,6 +213,8 @@ function createGameStore() {
     state.error = null;
     state.submittedQuestionIds = [];
     state.completedMatchups = [];
+    state.gamificationQueue = [];
+    state.submittedAnswers = {};
   }
 
   return {
@@ -241,6 +254,15 @@ function createGameStore() {
     get completedMatchups() {
       return state.completedMatchups;
     },
+    get gamificationQueue() {
+      return state.gamificationQueue;
+    },
+    get submittedAnswers() {
+      return state.submittedAnswers;
+    },
+    dequeueGamificationEvent() {
+      state.gamificationQueue = state.gamificationQueue.slice(1);
+    },
     isQuestionSubmitted(questionId: string) {
       return state.submittedQuestionIds.includes(questionId);
     },
@@ -268,6 +290,7 @@ function createGameStore() {
     },
 
     submitResponse(sessionId: string, questionId: string, answer: unknown) {
+      state.submittedAnswers = { ...state.submittedAnswers, [questionId]: answer };
       socket?.emit('response:submit', { sessionId, questionId, answer });
     },
 

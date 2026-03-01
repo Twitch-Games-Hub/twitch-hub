@@ -15,6 +15,9 @@
   import ConnectionIndicator from '$lib/components/ui/ConnectionIndicator.svelte';
   import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
   import { LoaderIcon } from '$lib/components/ui/icons';
+  import GamificationToast from '$lib/components/games/GamificationToast.svelte';
+  import PostRoundOutcome from '$lib/components/games/PostRoundOutcome.svelte';
+  import PlayerAvatarStrip from '$lib/components/games/PlayerAvatarStrip.svelte';
   import type { Socket } from 'socket.io-client';
 
   let socket: Socket | null = null;
@@ -191,6 +194,13 @@
         <h2 class="mt-2 text-2xl font-bold text-text-primary">{gameStore.currentRound.prompt}</h2>
       </div>
 
+      {#if gameStore.connectedUsers.length > 0}
+        <PlayerAvatarStrip
+          users={gameStore.connectedUsers}
+          totalCount={gameStore.participantCount}
+        />
+      {/if}
+
       {#if gameStore.roundResults}
         <Card padding="lg" class="animate-fade-in text-center">
           <h3 class="mb-3 text-lg font-semibold text-brand-400">Results</h3>
@@ -211,6 +221,15 @@
             />
           {/if}
         </Card>
+        {@const myAnswer = gameStore.submittedAnswers[gameStore.currentRound?.questionId ?? '']}
+        {#if myAnswer !== undefined && gameType && gameStore.currentRound}
+          <PostRoundOutcome
+            {gameType}
+            roundResults={gameStore.roundResults}
+            submittedAnswer={myAnswer}
+            currentRound={gameStore.currentRound}
+          />
+        {/if}
       {:else if submitted || pending}
         <Card padding="lg" class="animate-fade-in text-center">
           <div class="flex items-center justify-center gap-2 text-success-500">
@@ -292,6 +311,14 @@
       <div class="mt-6 tabular-nums text-sm text-text-muted" role="status" aria-live="polite">
         {gameStore.participantCount} participants waiting
       </div>
+      {#if gameStore.connectedUsers.length > 0}
+        <div class="mt-4 flex justify-center">
+          <PlayerAvatarStrip
+            users={gameStore.connectedUsers}
+            totalCount={gameStore.participantCount}
+          />
+        </div>
+      {/if}
     </div>
   {:else if gameStore.error}
     <div class="animate-fade-in py-12 text-center">
@@ -320,5 +347,15 @@
       <h1 class="mb-2 text-2xl font-bold text-text-primary">Joining session...</h1>
       <p class="text-text-secondary">Connecting to the game session.</p>
     </div>
+  {/if}
+</div>
+
+<!-- Fixed toast container, bottom-center, above system toasts -->
+<div class="fixed bottom-20 left-1/2 z-50 w-full max-w-xs -translate-x-1/2 px-4">
+  {#if gameStore.gamificationQueue.length > 0}
+    <GamificationToast
+      event={gameStore.gamificationQueue[0]}
+      onDismiss={() => gameStore.dequeueGamificationEvent()}
+    />
   {/if}
 </div>
