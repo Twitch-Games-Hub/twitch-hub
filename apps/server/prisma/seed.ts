@@ -30,121 +30,171 @@ async function main() {
   // 2. Clean previous seed data
   await prisma.game.deleteMany({ where: { ownerId: user.id } });
 
-  // 3. Create games
+  // 3. Create example games for all 4 game types
   const games = [
+    // --- Hot Take Meter ---
     {
       ownerId: user.id,
       type: 'HOT_TAKE' as const,
-      title: 'Hot Take Meter: Film di Aldo, Giovanni e Giacomo',
+      title: 'Hot Take Meter: Video Games',
       description:
-        "Dieci opinioni taglienti sulla filmografia di Aldo, Giovanni e Giacomo. Quanto sei d'accordo da 1 a 10?",
-      coverImageUrl: 'https://pad.mymovies.it/filmclub/2022/07/011/locandina.jpg',
+        'Ten spicy gaming opinions — rate each from 1 (strongly disagree) to 10 (strongly agree)!',
       status: 'READY' as const,
       config: {
         statements: [
-          '"Tre uomini e una gamba" e\' il loro miglior film in assoluto',
-          '"Chiedimi se sono felice" e\' sopravvalutato',
-          "I film dopo il 2010 non sono all'altezza dei classici",
-          '"La leggenda di Al, John e Jack" e\' sottovalutato',
-          'La scena del "tavolino" e\' la piu\' divertente del cinema italiano',
-          "\"Cosi' e' la vita\" e' piu' profondo di quanto sembri",
-          "Aldo e' il piu' divertente dei tre",
-          '"Il cosmo sul como\'" e\' il loro peggior film',
-          '"La banda dei Babbi Natale" e\' il miglior film di Natale italiano',
-          '"Odio l\'estate" dimostra che il trio funziona ancora',
+          'The Witcher 3 is overrated',
+          'Mobile gaming is real gaming',
+          'Single-player games are better than multiplayer',
+          'Graphics matter more than gameplay',
+          'Microtransactions have ruined modern gaming',
+          'Retro games are better than modern games',
+          'Open-world games are too bloated',
+          'PC gaming is superior to console gaming',
+          'Dark Souls difficulty is perfect and should not have an easy mode',
+          'Minecraft is the greatest game ever made',
         ],
         roundDurationSec: 30,
       },
     },
+
+    // --- Balance Game ---
+    {
+      ownerId: user.id,
+      type: 'BALANCE' as const,
+      title: 'Would You Rather: Superpowers',
+      description: 'Impossible choices between amazing superpowers. Pick your side!',
+      status: 'READY' as const,
+      config: {
+        questions: [
+          { optionA: 'Fly anywhere', optionB: 'Teleport instantly' },
+          { optionA: 'Read minds', optionB: 'Be invisible' },
+          { optionA: 'Super strength', optionB: 'Super speed' },
+          { optionA: 'Control time', optionB: 'Control weather' },
+          { optionA: 'Talk to animals', optionB: 'Speak every language' },
+          { optionA: 'Never need sleep', optionB: 'Never need food' },
+          { optionA: 'Breathe underwater', optionB: 'Survive in space' },
+          { optionA: 'See the future', optionB: 'Change the past' },
+        ],
+        roundDurationSec: 20,
+      },
+    },
+
+    // --- Blind Test ---
+    {
+      ownerId: user.id,
+      type: 'BLIND_TEST' as const,
+      title: 'Guess the Movie',
+      description:
+        'Progressive hints reveal a famous movie — type your guess before time runs out!',
+      status: 'READY' as const,
+      config: {
+        rounds: [
+          {
+            answer: 'Inception',
+            hints: [
+              'Released in 2010',
+              'Directed by Christopher Nolan',
+              'Features a spinning top',
+              'Dreams within dreams',
+            ],
+          },
+          {
+            answer: 'The Matrix',
+            hints: [
+              'Released in 1999',
+              'Features a red and blue pill',
+              'Popularized bullet-time effects',
+              '"There is no spoon"',
+            ],
+          },
+          {
+            answer: 'Jurassic Park',
+            hints: [
+              'Based on a Michael Crichton novel',
+              'Directed by Steven Spielberg',
+              'Set on a tropical island theme park',
+              '"Life finds a way"',
+            ],
+          },
+          {
+            answer: 'The Lion King',
+            hints: [
+              'Disney animated classic from 1994',
+              'Set in the African savanna',
+              'Features the song "Hakuna Matata"',
+              'A young prince must reclaim his throne',
+            ],
+          },
+          {
+            answer: 'Titanic',
+            hints: [
+              'Won 11 Academy Awards',
+              'Directed by James Cameron',
+              'Features a famous "flying" scene at the bow',
+              '"I\'m the king of the world!"',
+            ],
+          },
+          {
+            answer: 'Star Wars',
+            hints: [
+              'Created by George Lucas',
+              'Features lightsabers and the Force',
+              '"May the Force be with you"',
+              'Luke Skywalker is the main hero',
+            ],
+          },
+          {
+            answer: 'The Shawshank Redemption',
+            hints: [
+              'Based on a Stephen King novella',
+              'Set in a prison in Maine',
+              'Features Morgan Freeman as narrator',
+              '"Get busy living, or get busy dying"',
+            ],
+          },
+          {
+            answer: 'Back to the Future',
+            hints: [
+              'Features a time-traveling DeLorean',
+              'Released in 1985',
+              'Needs 1.21 gigawatts of power',
+              'Marty McFly and Doc Brown',
+            ],
+          },
+        ],
+        answerWindowSec: 20,
+      },
+    },
+
+    // --- Ranking Tournament ---
     {
       ownerId: user.id,
       type: 'RANKING' as const,
-      title: 'Il Miglior Film di Aldo, Giovanni e Giacomo',
+      title: 'Greatest Video Game of All Time',
       description:
-        'Torneo a eliminazione diretta: 16 film si sfidano testa a testa. Il pubblico vota e il vincitore avanza fino alla finale!',
-      coverImageUrl: 'https://pad.mymovies.it/filmclub/2022/07/011/locandina.jpg',
+        'Sixteen iconic games battle head-to-head in a bracket tournament. Vote for your favorite each round!',
       status: 'READY' as const,
       config: {
         items: [
-          {
-            id: 'agg-01',
-            name: 'Tre uomini e una gamba',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2005/02/007/locandina.jpg',
-          },
-          {
-            id: 'agg-02',
-            name: "Cosi' e' la vita",
-            imageUrl: 'https://pad.mymovies.it/filmclub/2005/04/068/locandina.jpg',
-          },
-          {
-            id: 'agg-03',
-            name: 'Chiedimi se sono felice',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2005/01/060/locandina.jpg',
-          },
-          {
-            id: 'agg-04',
-            name: 'La leggenda di Al, John e Jack',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2005/01/596/locandina.jpg',
-          },
-          {
-            id: 'agg-05',
-            name: 'Tu la conosci Claudia?',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2004/09/048/locandina.jpg',
-          },
-          {
-            id: 'agg-06',
-            name: "Il cosmo sul como'",
-            imageUrl: 'https://pad.mymovies.it/filmclub/2005/07/039/locandina.jpg',
-          },
-          {
-            id: 'agg-07',
-            name: 'Anplagghed al cinema',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2006/10/107/locandina.jpg',
-          },
-          {
-            id: 'agg-08',
-            name: 'La banda dei Babbi Natale',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2010/12/072/locandina.jpg',
-          },
-          {
-            id: 'agg-09',
-            name: 'Il ricco, il povero e il maggiordomo',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2014/12/049/locandina.jpg',
-          },
-          {
-            id: 'agg-10',
-            name: 'Fuga da Reuma Park',
-            imageUrl: 'https://pad.mymovies.it/filmclub/2016/11/236/locandina.jpg',
-          },
-          {
-            id: 'agg-11',
-            name: "Odio l'estate",
-            imageUrl: 'https://pad.mymovies.it/filmclub/2020/01/068/locandina.jpg',
-          },
-          {
-            id: 'agg-12',
-            name: "Il 7 e l'8",
-            imageUrl: 'https://pad.mymovies.it/filmclub/2007/12/072/locandina.jpg',
-          },
-          {
-            id: 'agg-13',
-            name: 'Ammutta Muddica',
-          },
-          {
-            id: 'agg-14',
-            name: 'Pdor',
-          },
-          {
-            id: 'agg-15',
-            name: 'I corti',
-          },
-          {
-            id: 'agg-16',
-            name: 'Deejay Television (sketch)',
-          },
+          { id: 'game-01', name: 'The Legend of Zelda: Ocarina of Time' },
+          { id: 'game-02', name: 'Super Mario Bros.' },
+          { id: 'game-03', name: 'Minecraft' },
+          { id: 'game-04', name: 'Tetris' },
+          { id: 'game-05', name: 'The Witcher 3: Wild Hunt' },
+          { id: 'game-06', name: 'Grand Theft Auto V' },
+          { id: 'game-07', name: 'Portal 2' },
+          { id: 'game-08', name: 'Dark Souls' },
+          { id: 'game-09', name: 'Half-Life 2' },
+          { id: 'game-10', name: 'Red Dead Redemption 2' },
+          { id: 'game-11', name: 'Chrono Trigger' },
+          { id: 'game-12', name: 'Super Smash Bros. Ultimate' },
+          { id: 'game-13', name: 'The Last of Us' },
+          { id: 'game-14', name: 'Elden Ring' },
+          { id: 'game-15', name: 'Halo: Combat Evolved' },
+          { id: 'game-16', name: 'Pokémon Red & Blue' },
         ],
         bracketSize: 16,
-        roundDurationSec: 30,
+        roundDurationSec: 25,
       },
     },
   ];
