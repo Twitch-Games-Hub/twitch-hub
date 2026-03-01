@@ -20,6 +20,7 @@ COMMANDS = {
     "wizard": "Interactive first-time setup (recommended)",
     "preflight": "Validate prerequisites and config",
     "create": "Create Hetzner VPS",
+    "dns": "Configure DNS records via Namecheap API",
     "provision": "Provision server (as root)",
     "deploy": "Deploy application (as deploy user)",
     "full": "create -> provision -> deploy",
@@ -127,6 +128,37 @@ def cmd_preflight() -> None:
         ui.success("All preflight checks passed")
 
 
+def cmd_dns() -> None:
+    """Configure DNS records via Namecheap API."""
+    cfg = Config()
+
+    if not cfg.namecheap_enabled:
+        ui.error(
+            "Namecheap DNS not configured",
+            hint="Set NAMECHEAP_API_USER, NAMECHEAP_API_KEY, and NAMECHEAP_DOMAIN in .env.infra",
+        )
+        sys.exit(1)
+
+    ip = cfg.get_server_ip()
+    ui.banner(f"DNS Configuration — {cfg.namecheap_domain}")
+
+    from namecheap import ensure_a_records, get_public_ip
+
+    client_ip = get_public_ip()
+    ui.info(f"Your public IP: {client_ip}")
+    ui.info(f"Server IP: {ip}")
+    ui.console.print()
+
+    ensure_a_records(
+        api_user=cfg.namecheap_api_user,
+        api_key=cfg.namecheap_api_key,
+        client_ip=client_ip,
+        base_domain=cfg.namecheap_domain,
+        domains=[cfg.app_domain, cfg.api_domain],
+        target_ip=ip,
+    )
+
+
 def cmd_create() -> None:
     from create_server import create_server
 
@@ -216,6 +248,10 @@ def cmd_secrets() -> None:
             f.write("API_DOMAIN=\n")
             f.write("TWITCH_CLIENT_ID=\n")
             f.write("TWITCH_CLIENT_SECRET=\n\n")
+            f.write("# Optional: Namecheap DNS API (enables auto-DNS)\n")
+            f.write("NAMECHEAP_API_USER=\n")
+            f.write("NAMECHEAP_API_KEY=\n")
+            f.write("NAMECHEAP_DOMAIN=\n\n")
             f.write("# Auto-generated secrets\n")
             for line in lines:
                 f.write(line + "\n")
@@ -230,11 +266,30 @@ def cmd_full() -> None:
     cfg = Config()
     ip = create_server(cfg)
     ui.success(f"Server IP: {ip}")
-
     ui.console.print()
-    ui.warn("Configure DNS before continuing:")
-    ui.console.print(f"    {cfg.app_domain} -> {ip}")
-    ui.console.print(f"    {cfg.api_domain} -> {ip}")
+
+    if cfg.namecheap_enabled:
+        from namecheap import ensure_a_records, get_public_ip
+
+        try:
+            client_ip = get_public_ip()
+            ensure_a_records(
+                api_user=cfg.namecheap_api_user,
+                api_key=cfg.namecheap_api_key,
+                client_ip=client_ip,
+                base_domain=cfg.namecheap_domain,
+                domains=[cfg.app_domain, cfg.api_domain],
+                target_ip=ip,
+            )
+        except Exception as e:
+            ui.error(f"Auto-DNS failed: {e}")
+            ui.warn("Configure DNS manually before continuing:")
+            ui.console.print(f"    {cfg.app_domain} -> {ip}")
+            ui.console.print(f"    {cfg.api_domain} -> {ip}")
+    else:
+        ui.warn("Configure DNS before continuing:")
+        ui.console.print(f"    {cfg.app_domain} -> {ip}")
+        ui.console.print(f"    {cfg.api_domain} -> {ip}")
     ui.console.print()
 
     with ui.create_spinner("Waiting for SSH...") as progress:
@@ -353,6 +408,7 @@ def main() -> None:
         "wizard": cmd_wizard,
         "preflight": cmd_preflight,
         "create": cmd_create,
+        "dns": cmd_dns,
         "provision": cmd_provision,
         "deploy": cmd_deploy,
         "full": cmd_full,

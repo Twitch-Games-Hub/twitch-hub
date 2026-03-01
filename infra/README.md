@@ -9,6 +9,7 @@ infra/
 ├── config.py          # Central config loaded from .env.infra
 ├── create_server.py   # Hetzner Cloud VPS creation
 ├── dns.py             # DNS verification utilities
+├── namecheap.py       # Namecheap DNS API (auto-DNS)
 ├── wizard.py          # Interactive first-time setup wizard
 ├── run.py             # CLI entrypoint (all commands)
 ├── inventory.py       # pyinfra inventory (server IP)
@@ -42,6 +43,7 @@ uv run python run.py wizard      # Interactive setup (recommended for first depl
 uv run python run.py preflight   # Validate prerequisites and config
 uv run python run.py secrets     # Generate secrets → .env.infra
 uv run python run.py create      # Create Hetzner VPS
+uv run python run.py dns         # Configure DNS via Namecheap API
 uv run python run.py provision   # Provision server (Docker, firewall, SSH)
 uv run python run.py deploy      # Deploy application
 uv run python run.py full        # create → provision → deploy
@@ -72,3 +74,27 @@ This is idempotent — it rebuilds Docker images and restarts services. Database
 All configuration is stored in `infra/.env.infra` (gitignored). Use `uv run python run.py secrets` to generate one with placeholder values, or `uv run python run.py wizard` to fill it in interactively.
 
 Run `uv run python run.py preflight` to validate your config before deploying.
+
+## Automatic DNS (Namecheap)
+
+If you manage your domain through Namecheap, you can automate DNS record creation. Add these to `.env.infra`:
+
+```
+NAMECHEAP_API_USER=your_username
+NAMECHEAP_API_KEY=your_api_key
+NAMECHEAP_DOMAIN=example.com
+```
+
+**Prerequisites:**
+
+- Enable API access in Namecheap (Profile > Tools > API Access)
+- Whitelist your public IP in the same section
+- Domain must use Namecheap BasicDNS (not custom nameservers like Cloudflare)
+
+When configured, the wizard and `full` command will automatically create A records pointing your app/API domains to the server. Existing DNS records are preserved — only conflicting A/AAAA/CNAME records for the target subdomains are replaced.
+
+You can also run DNS configuration standalone:
+
+```bash
+uv run python run.py dns
+```

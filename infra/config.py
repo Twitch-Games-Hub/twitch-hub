@@ -52,6 +52,11 @@ class Config:
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", required=True))
     internal_api_secret: str = field(default_factory=lambda: _env("INTERNAL_API_SECRET", required=True))
 
+    # Namecheap DNS (optional — enables auto-DNS in wizard)
+    namecheap_api_user: str = field(default_factory=lambda: _env("NAMECHEAP_API_USER", ""))
+    namecheap_api_key: str = field(default_factory=lambda: _env("NAMECHEAP_API_KEY", ""))
+    namecheap_domain: str = field(default_factory=lambda: _env("NAMECHEAP_DOMAIN", ""))
+
     # Optional services
     stripe_secret_key: str = field(default_factory=lambda: _env("STRIPE_SECRET_KEY", ""))
     stripe_webhook_secret: str = field(default_factory=lambda: _env("STRIPE_WEBHOOK_SECRET", ""))
@@ -63,6 +68,10 @@ class Config:
     sentry_auth_token: str = field(default_factory=lambda: _env("SENTRY_AUTH_TOKEN", ""))
     sentry_org: str = field(default_factory=lambda: _env("SENTRY_ORG", ""))
     sentry_project: str = field(default_factory=lambda: _env("SENTRY_PROJECT", ""))
+
+    @property
+    def namecheap_enabled(self) -> bool:
+        return bool(self.namecheap_api_user and self.namecheap_api_key and self.namecheap_domain)
 
     @property
     def server_ip_file(self) -> Path:
@@ -109,6 +118,22 @@ class Config:
                 errors.append(f"{name} is not set (run 'python run.py secrets')")
             elif len(value) < 32:
                 errors.append(f"{name} is too short ({len(value)} chars, minimum 32)")
+
+        # Namecheap (all-or-nothing: if any field is set, all must be)
+        nc_fields = {
+            "NAMECHEAP_API_USER": self.namecheap_api_user,
+            "NAMECHEAP_API_KEY": self.namecheap_api_key,
+            "NAMECHEAP_DOMAIN": self.namecheap_domain,
+        }
+        nc_set = {k for k, v in nc_fields.items() if v}
+        nc_missing = {k for k, v in nc_fields.items() if not v}
+        if nc_set and nc_missing:
+            errors.append(f"Partial Namecheap config: set {', '.join(sorted(nc_missing))} or remove all")
+        if self.namecheap_enabled:
+            if not self.app_domain.endswith(f".{self.namecheap_domain}") and self.app_domain != self.namecheap_domain:
+                errors.append(f"APP_DOMAIN '{self.app_domain}' is not under NAMECHEAP_DOMAIN '{self.namecheap_domain}'")
+            if not self.api_domain.endswith(f".{self.namecheap_domain}") and self.api_domain != self.namecheap_domain:
+                errors.append(f"API_DOMAIN '{self.api_domain}' is not under NAMECHEAP_DOMAIN '{self.namecheap_domain}'")
 
         # SSH key
         ssh_path = Path(self.ssh_public_key_path).expanduser()

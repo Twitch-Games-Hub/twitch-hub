@@ -98,6 +98,16 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
     config["SENTRY_PROJECT"] = ui.prompt_input("Sentry Project slug (optional)", default="")
     config["STRIPE_SECRET_KEY"] = ui.prompt_input("Stripe Secret Key (optional)", default="")
 
+    # Optional DNS automation
+    ui.console.print("\n  [dim]Namecheap API credentials enable automatic DNS record creation.[/dim]")
+    ui.console.print("  [dim]Leave blank to configure DNS manually later.[/dim]\n")
+    config["NAMECHEAP_API_USER"] = ui.prompt_input("Namecheap API username (optional)", default="")
+    if config["NAMECHEAP_API_USER"]:
+        config["NAMECHEAP_API_KEY"] = ui.prompt_input("Namecheap API key", password=True)
+        config["NAMECHEAP_DOMAIN"] = ui.prompt_input(
+            "Namecheap base domain (e.g. terabyte.gg)"
+        )
+
     state.mark_complete("config")
     return config
 
@@ -176,7 +186,7 @@ def step_create_server(state: WizardState) -> str:
 
 
 def step_dns_wait(state: WizardState, ip: str) -> None:
-    """Step 5: DNS configuration — hard stop on failure."""
+    """Step 5: DNS configuration — auto via Namecheap or manual fallback."""
     ui.step_header(5, TOTAL_STEPS, "DNS Configuration")
 
     if state.is_complete("dns"):
@@ -186,18 +196,16 @@ def step_dns_wait(state: WizardState, ip: str) -> None:
     from config import Config
 
     cfg = Config()
+    domains = [cfg.app_domain, cfg.api_domain]
 
-    ui.console.print(f"\n  Point your DNS A records to: [bold]{ip}[/bold]")
-    ui.console.print(f"    {cfg.app_domain} -> {ip}")
-    ui.console.print(f"    {cfg.api_domain} -> {ip}")
-    ui.console.print()
-
-    ui.prompt_input("Press Enter when DNS records are configured", default="ok")
+    if cfg.namecheap_enabled:
+        _auto_dns(cfg, domains, ip)
+    else:
+        _manual_dns_prompt(cfg, ip)
 
     from dns import wait_for_dns
 
     ui.info("Checking DNS propagation...")
-    domains = [cfg.app_domain, cfg.api_domain]
     if wait_for_dns(domains, ip, timeout=300, interval=10):
         ui.success("DNS records verified")
         state.mark_complete("dns")
@@ -209,6 +217,45 @@ def step_dns_wait(state: WizardState, ip: str) -> None:
         )
         ui.info("The wizard will resume from this step on next run")
         sys.exit(1)
+
+
+def _auto_dns(cfg, domains: list[str], ip: str) -> None:
+    """Attempt automatic DNS configuration via Namecheap API."""
+    from namecheap import ensure_a_records, get_public_ip
+
+    try:
+        client_ip = get_public_ip()
+        ui.info(f"Your public IP: {client_ip}")
+        ui.warn(
+            "This IP must be whitelisted in Namecheap > Profile > Tools > API Access"
+        )
+        ui.console.print()
+
+        if not ui.confirm("Configure DNS records automatically via Namecheap?", default=True):
+            _manual_dns_prompt(cfg, ip)
+            return
+
+        ensure_a_records(
+            api_user=cfg.namecheap_api_user,
+            api_key=cfg.namecheap_api_key,
+            client_ip=client_ip,
+            base_domain=cfg.namecheap_domain,
+            domains=domains,
+            target_ip=ip,
+        )
+    except Exception as e:
+        ui.error(f"Namecheap API failed: {e}")
+        ui.info("Falling back to manual DNS configuration")
+        _manual_dns_prompt(cfg, ip)
+
+
+def _manual_dns_prompt(cfg, ip: str) -> None:
+    """Show manual DNS instructions and wait for user confirmation."""
+    ui.console.print(f"\n  Point your DNS A records to: [bold]{ip}[/bold]")
+    ui.console.print(f"    {cfg.app_domain} -> {ip}")
+    ui.console.print(f"    {cfg.api_domain} -> {ip}")
+    ui.console.print()
+    ui.prompt_input("Press Enter when DNS records are configured", default="ok")
 
 
 def step_provision_and_deploy(state: WizardState) -> None:
