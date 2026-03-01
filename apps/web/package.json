@@ -15,7 +15,6 @@
   "dependencies": {
     "@sentry/sveltekit": "^10",
     "@twitch-hub/shared-types": "workspace:*",
-    "posthog-js": "^1.356.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {

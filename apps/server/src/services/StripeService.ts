@@ -4,7 +4,6 @@ import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
 import { CREDITS_PER_PACK } from '@twitch-hub/shared-types';
 import { withStripeSpan, setStripeUserContext } from './sentryStripe.js';
-import { trackEvent, identifyUser, setGroupProperties } from './PostHogService.js';
 
 const log = logger.child({ module: 'stripe' });
 
@@ -67,11 +66,6 @@ export async function createCheckoutSession(
       metadata: { userId, product },
     });
 
-    trackEvent(userId, 'checkout_initiated', {
-      product,
-      mode: isSubscription ? 'subscription' : 'payment',
-    });
-
     log.info({ userId, product, sessionId: session.id }, 'Checkout session created');
     return session.url!;
   });
@@ -104,7 +98,6 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session):
         create: { userId, sessionCredits: CREDITS_PER_PACK },
         update: { sessionCredits: { increment: CREDITS_PER_PACK } },
       });
-      trackEvent(userId, 'credit_pack_purchased', { credits: CREDITS_PER_PACK });
       log.info({ userId, credits: CREDITS_PER_PACK }, 'Credit pack purchased');
       return;
     }
@@ -115,7 +108,6 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session):
         typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       await syncSubscription(userId, subscription);
-      trackEvent(userId, 'subscription_created', { subscriptionId });
       log.info({ userId, subscriptionId }, 'Subscription created via checkout');
     }
   });
@@ -140,7 +132,6 @@ export async function handleSubscriptionUpdated(subscription: Stripe.Subscriptio
       }
 
       await syncSubscription(sub.userId, subscription);
-      trackEvent(sub.userId, 'subscription_updated', { status: subscription.status });
       log.info({ userId: sub.userId, status: subscription.status }, 'Subscription updated');
     },
   );
@@ -172,7 +163,6 @@ export async function handleSubscriptionDeleted(subscription: Stripe.Subscriptio
         },
       });
 
-      trackEvent(sub.userId, 'subscription_cancelled', {});
       log.info({ userId: sub.userId }, 'Subscription deleted');
     },
   );
@@ -214,9 +204,6 @@ async function syncSubscription(userId: string, subscription: Stripe.Subscriptio
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
       },
     });
-
-    identifyUser(userId, { billing_plan: billingPlan });
-    setGroupProperties('billing_plan', billingPlan, { name: billingPlan });
   });
 }
 

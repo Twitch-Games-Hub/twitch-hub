@@ -11,7 +11,6 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 TMUX_SESSION="twitch-hub"
-POSTHOG_DIR="$ROOT_DIR/.posthog"
 
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -28,7 +27,6 @@ usage() {
   echo "  restart   Restart Docker containers + tmux dev session (skip install)"
   echo "  stop      Kill tmux session and stop Docker containers"
   echo "  stripe    Start Stripe webhook listener (standalone, no tmux)"
-  echo "  posthog   Manage PostHog self-hosted [up|down|nuke] (default: up)"
   exit 0
 }
 
@@ -72,20 +70,12 @@ docker_up() {
   docker compose up -d --wait || fail "Docker services failed to start"
   info "PostgreSQL running (localhost:5432)"
   info "Redis running (localhost:6379)"
-
-  # Start PostHog if previously set up
-  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
-    posthog_up
-  fi
 }
 
 docker_down() {
   echo ""
   echo "Stopping Docker containers..."
   docker compose down
-  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
-    posthog_down
-  fi
   info "Containers stopped"
 }
 
@@ -93,171 +83,7 @@ docker_nuke() {
   echo ""
   echo "Removing Docker containers and volumes..."
   docker compose down -v
-  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
-    posthog_down_volumes
-  fi
   info "Containers and volumes removed"
-}
-
-# ── PostHog self-hosted helpers ───────────────────────────────────────
-# Uses the official PostHog hobby deployment (cloned into .posthog/).
-# Docs: https://posthog.com/docs/self-host
-
-posthog_compose() {
-  cd "$POSTHOG_DIR"
-  docker compose \
-    -f docker-compose.yml \
-    -f docker-compose.local.yml \
-    --env-file .env \
-    -p posthog "$@"
-  cd "$ROOT_DIR"
-}
-
-posthog_setup() {
-  # Clone PostHog repo (one-time) — use treeless clone per official deploy script
-  if [[ ! -d "$POSTHOG_DIR/posthog" ]]; then
-    echo "Cloning PostHog repository (one-time setup)..."
-    mkdir -p "$POSTHOG_DIR"
-    git clone --filter=blob:none https://github.com/PostHog/posthog.git "$POSTHOG_DIR/posthog"
-    info "PostHog repo cloned"
-  fi
-
-  # Copy compose files to parent dir (official layout — paths resolve correctly)
-  cp "$POSTHOG_DIR/posthog/docker-compose.base.yml" "$POSTHOG_DIR/docker-compose.base.yml"
-  cp "$POSTHOG_DIR/posthog/docker-compose.hobby.yml" "$POSTHOG_DIR/docker-compose.yml"
-
-  # Generate secrets
-  if [[ ! -f "$POSTHOG_DIR/.env" ]]; then
-    echo "Generating PostHog secrets..."
-    local secret encryption_salt
-    secret=$(head -c 28 /dev/urandom | sha224sum -b | head -c 56)
-    encryption_salt=$(openssl rand -hex 16)
-    cat > "$POSTHOG_DIR/.env" <<ENVEOF
-POSTHOG_SECRET=$secret
-ENCRYPTION_SALT_KEYS=$encryption_salt
-DOMAIN=localhost
-TLS_BLOCK=
-REGISTRY_URL=posthog/posthog
-CADDY_TLS_BLOCK=
-CADDY_HOST=http://:8333
-POSTHOG_APP_TAG=latest
-ENVEOF
-    info "PostHog secrets generated"
-  fi
-
-  # Local compose override (port 8333, no TLS)
-  cat > "$POSTHOG_DIR/docker-compose.local.yml" <<'LOCALEOF'
-services:
-  proxy:
-    ports: !reset
-      - '8333:8333'
-    environment:
-      CADDY_HOST: 'http://:8333'
-      CADDY_TLS_BLOCK: ''
-  web:
-    environment:
-      SITE_URL: http://localhost:8333
-      LIVESTREAM_HOST: http://localhost:8333/livestream
-      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
-  worker:
-    environment:
-      SITE_URL: http://localhost:8333
-      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
-  plugins:
-    environment:
-      SITE_URL: http://localhost:8333
-      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:8333
-  asyncmigrationscheck:
-    environment:
-      SITE_URL: http://localhost:8333
-  temporal-django-worker:
-    environment:
-      SITE_URL: http://localhost:8333
-LOCALEOF
-
-  # Compose entrypoint scripts (required by hobby deployment)
-  mkdir -p "$POSTHOG_DIR/compose"
-
-  cat > "$POSTHOG_DIR/compose/start" <<'STARTEOF'
-#!/bin/bash
-./compose/wait
-./bin/migrate
-./bin/docker-server
-STARTEOF
-  chmod +x "$POSTHOG_DIR/compose/start"
-
-  cat > "$POSTHOG_DIR/compose/temporal-django-worker" <<'TEOF'
-#!/bin/bash
-./bin/temporal-django-worker
-TEOF
-  chmod +x "$POSTHOG_DIR/compose/temporal-django-worker"
-
-  cat > "$POSTHOG_DIR/compose/wait" <<'WEOF'
-#!/usr/bin/env python3
-import socket, time
-
-def loop():
-    print("Waiting for ClickHouse and Postgres to be ready")
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('clickhouse', 9000))
-        print("ClickHouse is ready")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('db', 5432))
-        print("Postgres is ready")
-    except ConnectionRefusedError:
-        time.sleep(5)
-        loop()
-
-loop()
-WEOF
-  chmod +x "$POSTHOG_DIR/compose/wait"
-
-  # GeoIP database (needed for feature-flags and cymbal services)
-  mkdir -p "$POSTHOG_DIR/share"
-  if [[ ! -f "$POSTHOG_DIR/share/GeoLite2-City.mmdb" ]]; then
-    echo "Downloading GeoIP database..."
-    if command -v brotli &>/dev/null; then
-      curl -fsSL --http1.1 'https://mmdbcdn.posthog.net/' \
-        | brotli --decompress > "$POSTHOG_DIR/share/GeoLite2-City.mmdb" 2>/dev/null \
-        && info "GeoIP database downloaded" \
-        || warn "GeoIP download failed (non-critical)"
-    else
-      warn "brotli not installed — skipping GeoIP database (sudo apt install brotli)"
-    fi
-  fi
-}
-
-posthog_up() {
-  posthog_setup
-  echo ""
-  echo "Starting PostHog self-hosted (first run pulls ~4GB of images)..."
-  posthog_compose up -d || fail "PostHog services failed to start"
-  info "PostHog running (http://localhost:8333)"
-}
-
-posthog_down() {
-  echo ""
-  echo "Stopping PostHog containers..."
-  posthog_compose down
-  info "PostHog stopped"
-}
-
-posthog_down_volumes() {
-  echo ""
-  echo "Removing PostHog containers and volumes..."
-  posthog_compose down -v
-  info "PostHog volumes removed (repo kept in .posthog/)"
-}
-
-posthog_nuke() {
-  echo ""
-  echo "Removing PostHog completely..."
-  if [[ -d "$POSTHOG_DIR" ]]; then
-    posthog_compose down -v 2>/dev/null || true
-    rm -rf "$POSTHOG_DIR"
-  fi
-  info "PostHog completely removed"
 }
 
 # ── Check .env ───────────────────────────────────────────────────────
@@ -311,16 +137,12 @@ start_tmux_session() {
   echo -e "${GREEN}Launching tmux dev session...${NC}"
   echo "  Web:      http://localhost:5173"
   echo "  Server:   http://localhost:3001"
-  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
-    echo "  PostHog:  http://localhost:8333"
-  fi
   echo ""
   echo "  tmux windows:"
   echo "    0:web     — SvelteKit frontend"
   echo "    1:server  — Express API server"
   echo "    2:docker  — Docker compose logs"
-  echo "    3:posthog — PostHog logs"
-  echo "    4:stripe  — Stripe webhook listener"
+  echo "    3:stripe  — Stripe webhook listener"
   echo ""
 
   # Kill any existing session
@@ -338,16 +160,7 @@ start_tmux_session() {
   tmux new-window -t "$TMUX_SESSION" -n docker -c "$ROOT_DIR" \
     "docker compose logs -f"
 
-  # Window 3: posthog (logs or placeholder)
-  if [[ -d "$POSTHOG_DIR/posthog" ]]; then
-    tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
-      "cd '$POSTHOG_DIR' && docker compose -f docker-compose.yml -f docker-compose.local.yml --env-file .env -p posthog logs -f"
-  else
-    tmux new-window -t "$TMUX_SESSION" -n posthog -c "$ROOT_DIR" \
-      "echo -e '${YELLOW}PostHog not set up${NC}'; echo 'Run: ./scripts/dev-init.sh posthog up'; echo ''; exec bash"
-  fi
-
-  # Window 4: stripe (webhook listener or placeholder)
+  # Window 3: stripe (webhook listener or placeholder)
   if stripe_available; then
     local key
     key=$(grep '^STRIPE_SECRET_KEY=' apps/server/.env | cut -d= -f2-)
@@ -361,7 +174,7 @@ start_tmux_session() {
   # Focus on web window
   tmux select-window -t "$TMUX_SESSION:0"
 
-  info "tmux session '$TMUX_SESSION' created (5 windows: web, server, docker, posthog, stripe)"
+  info "tmux session '$TMUX_SESSION' created (4 windows: web, server, docker, stripe)"
 
   # Attach — handle nested tmux
   if [[ -n "${TMUX:-}" ]]; then
@@ -420,16 +233,6 @@ cmd_stop() {
   docker_down
 }
 
-cmd_posthog() {
-  local subcmd="${2:-up}"
-  case "$subcmd" in
-    up)   posthog_up   ;;
-    down) posthog_down ;;
-    nuke) posthog_nuke ;;
-    *) fail "Unknown posthog subcommand: $subcmd (use: up, down, nuke)" ;;
-  esac
-}
-
 cmd_stripe() {
   if ! command -v stripe &>/dev/null; then
     fail "Stripe CLI is not installed — see https://docs.stripe.com/stripe-cli"
@@ -464,7 +267,6 @@ case "$COMMAND" in
   reset)   cmd_reset   ;;
   restart) cmd_restart ;;
   stop)    cmd_stop    ;;
-  posthog) cmd_posthog "$@" ;;
   stripe)  cmd_stripe  ;;
   -h|--help|help) usage ;;
   *) fail "Unknown command: $COMMAND (run '$0 help' for usage)" ;;

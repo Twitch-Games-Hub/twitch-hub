@@ -1,7 +1,6 @@
 <script lang="ts">
   import '../app.css';
   import { authStore } from '$lib/stores/auth.svelte';
-  import { posthogStore } from '$lib/stores/posthog.svelte';
   import { adStore } from '$lib/stores/ads.svelte';
   import { onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -15,14 +14,7 @@
   let isOverlay = $derived($page.url.pathname.startsWith('/overlay'));
 
   onMount(() => {
-    posthogStore.init();
     authStore.fetchSession();
-  });
-
-  $effect(() => {
-    if (authStore.user) {
-      posthogStore.identify(authStore.user);
-    }
   });
 
   $effect(() => {

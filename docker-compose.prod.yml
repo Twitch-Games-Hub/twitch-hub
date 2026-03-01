@@ -72,8 +72,6 @@ services:
       STRIPE_ANNUAL_PRICE_ID: ${STRIPE_ANNUAL_PRICE_ID:-}
       STRIPE_CREDIT_PACK_PRICE_ID: ${STRIPE_CREDIT_PACK_PRICE_ID:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
-      POSTHOG_HOST: ${POSTHOG_HOST:-}
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
       interval: 10s
@@ -103,8 +101,6 @@ services:
       PUBLIC_SERVER_URL: https://${API_DOMAIN}
       PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
       PUBLIC_SENTRY_ENVIRONMENT: production
-      PUBLIC_POSTHOG_KEY: ${PUBLIC_POSTHOG_KEY:-}
-      PUBLIC_POSTHOG_HOST: ${PUBLIC_POSTHOG_HOST:-}
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/ || exit 1']
       interval: 10s

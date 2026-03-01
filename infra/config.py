@@ -61,10 +61,6 @@ class Config:
     stripe_credit_pack_price_id: str = field(default_factory=lambda: _env("STRIPE_CREDIT_PACK_PRICE_ID", ""))
     sentry_dsn: str = field(default_factory=lambda: _env("SENTRY_DSN", ""))
     public_sentry_dsn: str = field(default_factory=lambda: _env("PUBLIC_SENTRY_DSN", ""))
-    posthog_api_key: str = field(default_factory=lambda: _env("POSTHOG_API_KEY", ""))
-    posthog_host: str = field(default_factory=lambda: _env("POSTHOG_HOST", ""))
-    public_posthog_key: str = field(default_factory=lambda: _env("PUBLIC_POSTHOG_KEY", ""))
-    public_posthog_host: str = field(default_factory=lambda: _env("PUBLIC_POSTHOG_HOST", ""))
 
     @property
     def server_ip_file(self) -> Path:

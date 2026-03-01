@@ -7,7 +7,6 @@ import { prisma } from '../../db/client.js';
 import { logger } from '../../logger.js';
 import { requireHost } from '../helpers.js';
 import { computeSessionBudget, consumeCredit } from '../../middleware/sessionBudget.js';
-import { trackEvent } from '../../services/PostHogService.js';
 
 const log = logger.child({ module: 'game' });
 
@@ -62,11 +61,6 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
 
       // Initialize game engine with host tracking
       await gameRegistry.initSession(session.id, game, socket.data.userId);
-      trackEvent(socket.data.userId, 'game_session_created', {
-        gameId,
-        sessionId: session.id,
-        budgetSource: budget.source,
-      });
       log.info({ sessionId: session.id, gameId, userId: socket.data.userId }, 'Session created');
     } catch (err) {
       socket.emit('error', 'Failed to create session');
@@ -99,7 +93,6 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
         data: { currentRound: engine.getState().currentRound },
       });
 
-      trackEvent(socket.data.userId, 'game_started', { sessionId });
       log.info({ sessionId, userId: socket.data.userId }, 'Game started');
     }, 'game:start')(socket, sessionId),
   );
@@ -146,7 +139,6 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       broadcastToSession(io, sessionId, 'game:ended', finalResults);
       gameRegistry.removeEngine(sessionId);
 
-      trackEvent(socket.data.userId, 'game_ended', { sessionId });
       log.info({ sessionId, userId: socket.data.userId }, 'Game ended');
     }, 'game:end')(socket, sessionId),
   );

@@ -24,7 +24,7 @@ export const AD_SLOT_FINAL_RESULTS = 'your-final-results-slot-id';
 
 ### Ad Store (`$lib/stores/ads.svelte.ts`)
 
-Singleton store following the same factory pattern as `posthog.svelte.ts`:
+Singleton store using the factory pattern:
 
 - **`enable()` / `disable()`** — master switch, controlled by route (overlay pages disable ads)
 - **`shouldShowAds`** — derived getter that returns `true` only when:

@@ -5,7 +5,6 @@
   import { BillingPlan } from '@twitch-hub/shared-types';
   import { subscriptionStore } from '$lib/stores/subscription.svelte';
   import { toastStore } from '$lib/stores/toast.svelte';
-  import { posthogStore } from '$lib/stores/posthog.svelte';
   import { apiPost } from '$lib/api';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import Card from '$lib/components/ui/Card.svelte';
@@ -22,19 +21,16 @@
     const canceled = $page.url.searchParams.get('canceled');
     if (success) {
       toastStore.add('Payment successful! Your account has been updated.', 'success');
-      posthogStore.capture('checkout_success');
       // Refresh subscription data after Stripe redirect
       setTimeout(() => subscriptionStore.fetch(), 1000);
     }
     if (canceled) {
       toastStore.add('Payment was canceled.', 'error');
-      posthogStore.capture('checkout_cancelled');
     }
   });
 
   async function startCheckout(product: 'monthly' | 'annual' | 'credits') {
     checkoutLoading = product;
-    posthogStore.capture('checkout_started', { product });
     Sentry.addBreadcrumb({ category: 'billing', message: `Checkout started: ${product}` });
     try {
       const { checkoutUrl } = await apiPost<ApiCheckoutResponse>('/api/billing/checkout', {
@@ -50,7 +46,6 @@
 
   async function openPortal() {
     portalLoading = true;
-    posthogStore.capture('portal_opened');
     Sentry.addBreadcrumb({ category: 'billing', message: 'Portal opened' });
     try {
       const { portalUrl } = await apiPost<ApiPortalResponse>('/api/billing/portal', {});

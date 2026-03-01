@@ -21,10 +21,6 @@ export const config = {
     annualPriceId: process.env.STRIPE_ANNUAL_PRICE_ID || '',
     creditPackPriceId: process.env.STRIPE_CREDIT_PACK_PRICE_ID || '',
   },
-  posthog: {
-    apiKey: process.env.POSTHOG_API_KEY || '',
-    host: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
-  },
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
