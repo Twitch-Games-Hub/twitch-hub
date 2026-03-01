@@ -21,7 +21,7 @@ COPY apps/server/package.json ./apps/server/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY docs/package.json ./docs/
 RUN mkdir -p packages/shared-types/src
-RUN bun install --production --frozen-lockfile
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 FROM node:22-alpine AS runner
 WORKDIR /app
