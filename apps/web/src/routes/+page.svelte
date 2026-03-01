@@ -3,7 +3,7 @@
   import { GAME_TYPE_META } from '$lib/constants';
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
-  import { TwitchIcon, FireIcon } from '$lib/components/ui/icons';
+  import { TwitchIcon } from '$lib/components/ui/icons';
 
   const gameEmojis: Record<string, string> = {
     fire: '🔥',

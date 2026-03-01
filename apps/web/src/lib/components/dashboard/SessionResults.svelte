@@ -5,7 +5,6 @@
     HotTakeConfig,
     BalanceConfig,
     BlindTestConfig,
-    RankingConfig,
   } from '@twitch-hub/shared-types';
   import Card from '$lib/components/ui/Card.svelte';
   import Histogram from '$lib/components/overlay/Histogram.svelte';

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { apiGet } from '$lib/api';
   import type { ProfileData } from '@twitch-hub/shared-types';
@@ -63,6 +64,7 @@
     // Clear Stripe params when switching away from billing
     url.searchParams.delete('success');
     url.searchParams.delete('canceled');
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- url.pathname is already resolved
     goto(url.pathname + url.search, { replaceState: true });
   }
 
@@ -280,7 +282,7 @@
               {/if}
               {#if profile.channel.tags?.length}
                 <div class="flex flex-wrap gap-2 pt-1">
-                  {#each profile.channel.tags as tag}
+                  {#each profile.channel.tags as tag (tag)}
                     <span
                       class="rounded-full bg-surface-elevated px-2.5 py-0.5 text-xs text-text-muted"
                     >
@@ -335,13 +337,15 @@
               </span>
             </h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {#each profile.broadcasts as vod}
+              {#each profile.broadcasts as vod (vod.url)}
+                <!-- eslint-disable svelte/no-navigation-without-resolve -- external URL -->
                 <a
                   href={vod.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="group overflow-hidden rounded-lg border border-border-subtle transition-colors hover:border-border-default"
                 >
+                  <!-- eslint-enable svelte/no-navigation-without-resolve -->
                   <div class="relative aspect-video bg-surface-elevated">
                     <img
                       src={vod.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180')}
@@ -389,7 +393,7 @@
                 <p class="text-sm text-text-muted">Not following anyone yet.</p>
               {:else}
                 <ul class="space-y-2">
-                  {#each profile.followed.data as channel}
+                  {#each profile.followed.data as channel (channel.broadcaster_id)}
                     <li
                       class="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-surface-tertiary"
                     >
@@ -424,7 +428,9 @@
             {:else}
               <p class="text-sm text-text-muted">
                 Requires <span class="font-medium">user:read:follows</span> scope.
-                <a href="/api/auth/twitch" class="text-brand-400 hover:underline">Re-authorize</a>
+                <a href={resolve('/api/auth/twitch')} class="text-brand-400 hover:underline"
+                  >Re-authorize</a
+                >
               </p>
             {/if}
           </Card>
@@ -444,7 +450,7 @@
                 <p class="text-sm text-text-muted">No followers yet.</p>
               {:else}
                 <ul class="space-y-2">
-                  {#each profile.followers.data as follower}
+                  {#each profile.followers.data as follower (follower.user_id)}
                     <li
                       class="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-surface-tertiary"
                     >
@@ -470,7 +476,9 @@
             {:else}
               <p class="text-sm text-text-muted">
                 Requires <span class="font-medium">moderator:read:followers</span> scope.
-                <a href="/api/auth/twitch" class="text-brand-400 hover:underline">Re-authorize</a>
+                <a href={resolve('/api/auth/twitch')} class="text-brand-400 hover:underline"
+                  >Re-authorize</a
+                >
               </p>
             {/if}
           </Card>
@@ -488,9 +496,9 @@
             <p class="text-sm text-text-muted">No games created yet.</p>
           {:else}
             <div class="space-y-2">
-              {#each profile.appStats.games as game}
+              {#each profile.appStats.games as game (game.id)}
                 <a
-                  href="/dashboard/games/{game.id}"
+                  href={resolve(`/dashboard/games/${game.id}`)}
                   class="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-tertiary"
                 >
                   <div>
@@ -517,7 +525,7 @@
             class="rounded-lg border border-warning-500/20 bg-warning-900/10 px-4 py-3 text-sm text-text-muted"
           >
             Some data requires re-authorization with updated permissions.
-            <a href="/api/auth/twitch" class="ml-1 text-brand-400 hover:underline">
+            <a href={resolve('/api/auth/twitch')} class="ml-1 text-brand-400 hover:underline">
               Re-authorize with Twitch
             </a>
           </div>

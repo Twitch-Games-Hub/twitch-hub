@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { apiGet, apiPut } from '$lib/api';
@@ -53,7 +54,7 @@
 
     try {
       const sessionId = await createGameSession(gameId);
-      goto(`/dashboard/sessions/${sessionId}`);
+      goto(resolve(`/dashboard/sessions/${sessionId}`));
     } catch (err) {
       toastStore.add(err instanceof Error ? err.message : 'Failed to create session', 'error');
     } finally {

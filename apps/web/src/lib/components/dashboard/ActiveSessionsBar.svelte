@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { onMount, onDestroy } from 'svelte';
   import {
     SessionStatus,
@@ -43,7 +44,7 @@
       <div class="flex items-center gap-2">
         {#each sessions as session (session.id)}
           <a
-            href="/dashboard/sessions/{session.id}"
+            href={resolve(`/dashboard/sessions/${session.id}`)}
             class="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs transition-colors hover:border-brand-500/40 hover:bg-surface-tertiary"
           >
             <span

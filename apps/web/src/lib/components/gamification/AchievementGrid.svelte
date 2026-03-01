@@ -8,20 +8,9 @@
     earnedAt?: string;
   }
 
-  interface AchievementDef {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    hidden: boolean;
-  }
-
-  let { earned, definitions = [] } = $props<{
+  let { earned } = $props<{
     earned: Achievement[];
-    definitions?: AchievementDef[];
   }>();
-
-  let earnedIds = $derived(new Set(earned.map((a: Achievement) => a.id)));
 
   const categoryIcons: Record<string, string> = {
     PARTICIPATION: '🏅',

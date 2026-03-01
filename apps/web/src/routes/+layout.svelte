@@ -8,6 +8,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
+  import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { getDashboardSocket } from '$lib/socket';
   import type { ApiNotification } from '@twitch-hub/shared-types';
@@ -73,7 +74,7 @@
   <div class="min-h-screen bg-surface-primary text-text-primary">
     <nav class="border-b border-border-default bg-surface-secondary">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <a href="/" class="flex items-center gap-2 text-xl font-bold text-brand-400">
+        <a href={resolve('/')} class="flex items-center gap-2 text-xl font-bold text-brand-400">
           <GamepadIcon size={24} />
           Twitch Hub
         </a>
@@ -94,7 +95,7 @@
             {/if}
             <NotificationBell />
             <a
-              href="/dashboard/profile"
+              href={resolve('/dashboard/profile')}
               class="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-surface-tertiary"
             >
               {#if authStore.user.profileImageUrl}
@@ -148,7 +149,7 @@
           </Button>
           {#if authStore.user}
             <a
-              href="/dashboard/profile"
+              href={resolve('/dashboard/profile')}
               class="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-surface-tertiary"
               onclick={() => (mobileMenuOpen = false)}
             >

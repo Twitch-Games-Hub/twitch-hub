@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
   import { apiGet, apiPost, apiPut } from '$lib/api';
   import type { ApiModeratorLink } from '@twitch-hub/shared-types';
@@ -81,7 +82,7 @@
         </p>
       </div>
       <a
-        href="/api/auth/twitch"
+        href={resolve('/api/auth/twitch')}
         class="inline-flex items-center rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-500"
       >
         Re-authorize with Twitch

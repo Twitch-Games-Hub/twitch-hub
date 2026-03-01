@@ -75,7 +75,7 @@
       </div>
       <div class="h-12 rounded-lg bg-surface-elevated"></div>
       <div class="grid grid-cols-4 gap-4">
-        {#each Array(4) as _}
+        {#each Array(4) as _, i (i)}
           <div class="h-20 rounded-lg bg-surface-elevated"></div>
         {/each}
       </div>
@@ -141,7 +141,7 @@
       <div class="mt-8">
         <h2 class="mb-3 text-lg font-semibold text-text-primary">Channel Loyalty</h2>
         <div class="space-y-2">
-          {#each profile.channelStats as cs}
+          {#each profile.channelStats as cs (cs.channelId)}
             <div
               class="flex items-center justify-between rounded-lg border border-border-default bg-surface-secondary px-4 py-3"
             >

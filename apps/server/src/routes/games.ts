@@ -7,7 +7,7 @@ export const gamesPlugin: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', authMiddleware);
 
   // List user's games
-  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/', async (request: FastifyRequest, _reply: FastifyReply) => {
     const games = await prisma.game.findMany({
       where: { ownerId: request.userId },
       orderBy: { updatedAt: 'desc' },
@@ -58,7 +58,7 @@ export const gamesPlugin: FastifyPluginAsync = async (app) => {
   app.put<{ Params: { gameId: string } }>(
     '/:gameId',
     { preHandler: [requireGameOwner] },
-    async (request, reply) => {
+    async (request, _reply) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { title, description, coverImageUrl, config, status } = request.body as any;
       const game = await prisma.game.update({
@@ -80,7 +80,7 @@ export const gamesPlugin: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: { gameId: string } }>(
     '/:gameId',
     { preHandler: [requireGameOwner] },
-    async (request, reply) => {
+    async (request, _reply) => {
       await prisma.game.delete({ where: { id: request.params.gameId } });
       return { success: true };
     },

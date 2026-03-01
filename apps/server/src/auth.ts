@@ -22,7 +22,7 @@ export const authPlugin: FastifyPluginAsync = async (app) => {
         }
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, _reply: FastifyReply) => {
       const {
         twitchId,
         twitchLogin,

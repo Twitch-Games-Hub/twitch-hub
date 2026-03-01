@@ -9,7 +9,7 @@ export const bookmarksPlugin: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', authMiddleware);
 
   // List saved games for the authenticated user
-  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/', async (request: FastifyRequest, _reply: FastifyReply) => {
     const userId = request.userId!;
     const { page, limit, skip } = parsePagination(
       request.query as { page?: string; limit?: string },

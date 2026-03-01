@@ -78,7 +78,7 @@ export const moderatorsPlugin: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', authMiddleware);
 
   // GET / — list streamer's mod links (auto-sync if stale)
-  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/', async (request: FastifyRequest, _reply: FastifyReply) => {
     const userId = request.userId!;
     const lastSync = lastSyncMap.get(userId) ?? 0;
     const isStale = Date.now() - lastSync > SYNC_COOLDOWN_MS;

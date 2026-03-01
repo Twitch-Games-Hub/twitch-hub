@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import type Stripe from 'stripe';
 
 function isStripeError(
   err: unknown,

@@ -24,7 +24,7 @@
     class="flex items-end justify-center {compact ? 'gap-1' : 'gap-2'}"
     style="height: {barHeight + 20}px;"
   >
-    {#each distribution as count, i}
+    {#each distribution as count, i (i)}
       <div class="flex flex-col items-center gap-1">
         <span
           class="tabular-nums font-bold text-white drop-shadow-md {compact ? 'text-xs' : 'text-sm'}"

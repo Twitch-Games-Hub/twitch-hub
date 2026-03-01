@@ -17,7 +17,7 @@ export const billingPlugin: FastifyPluginAsync = async (app) => {
   app.get(
     '/subscription',
     { preHandler: [attachSessionBudget] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, _reply: FastifyReply) => {
       const sub = await prisma.subscription.findUnique({
         where: { userId: request.userId! },
       });
@@ -75,7 +75,7 @@ export const billingPlugin: FastifyPluginAsync = async (app) => {
   });
 
   // POST /portal — create Stripe Customer Portal session
-  app.post('/portal', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post('/portal', async (request: FastifyRequest, _reply: FastifyReply) => {
     const returnUrl = `${config.appUrl}/dashboard/profile?tab=billing`;
     const portalUrl = await createPortalSession(request.userId!, returnUrl);
     return { portalUrl };

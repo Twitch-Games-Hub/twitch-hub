@@ -4,31 +4,13 @@
     score: number;
   }
 
-  interface Props {
-    entries: Entry[];
-    title: string;
-  }
-
-  let { entries, title } = $props();
-
-  const medalColors = {
-    0: 'from-yellow-400 to-yellow-600',
-    1: 'from-gray-300 to-gray-500',
-    2: 'from-orange-400 to-orange-600',
-  };
+  let { entries, title }: { entries: Entry[]; title: string } = $props();
 
   const medalEmojis = {
     0: '🥇',
     1: '🥈',
     2: '🥉',
   };
-
-  function getMedalClass(index: number): string {
-    if (index === 0) return medalColors[0];
-    if (index === 1) return medalColors[1];
-    if (index === 2) return medalColors[2];
-    return '';
-  }
 
   function getMedal(index: number): string {
     if (index === 0) return medalEmojis[0];

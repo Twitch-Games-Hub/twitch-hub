@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { apiPost } from '$lib/api';
   import { toastStore } from '$lib/stores/toast.svelte';
@@ -19,7 +20,7 @@
     submitting = true;
     try {
       const game = await apiPost<{ id: string }>('/api/games', data);
-      goto(`/dashboard/games/${game.id}`);
+      goto(resolve(`/dashboard/games/${game.id}`));
     } catch (err) {
       toastStore.add(err instanceof Error ? err.message : 'Failed to create game', 'error');
     } finally {

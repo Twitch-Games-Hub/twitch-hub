@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { GameType, type ApiPublicGame, type RateGameResponse } from '@twitch-hub/shared-types';
   import { GAME_TYPE_META } from '$lib/constants';
@@ -141,7 +142,7 @@
     creatingGameId = gameId;
     try {
       const sessionId = await createGameSession(gameId);
-      goto(`/dashboard/sessions/${sessionId}?source=explore`);
+      goto(resolve(`/dashboard/sessions/${sessionId}?source=explore`));
     } catch {
       toastStore.add('Failed to create session', 'error');
     } finally {

@@ -12,7 +12,7 @@ export const notificationsPlugin: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', authMiddleware);
 
   // GET / — paginated list, optional ?status=UNREAD filter
-  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/', async (request: FastifyRequest, _reply: FastifyReply) => {
     const userId = request.userId!;
     const query = request.query as Record<string, string>;
     const status = query.status;

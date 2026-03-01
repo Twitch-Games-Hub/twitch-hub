@@ -14,7 +14,7 @@ export const explorePlugin: FastifyPluginAsync = async (app) => {
   }
 
   // List public READY games with ratings
-  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/', async (request: FastifyRequest, _reply: FastifyReply) => {
     const userId = extractUserId(request);
     const { page, limit } = parsePagination(request.query as { page?: string; limit?: string });
     const type = (request.query as Record<string, string>).type;

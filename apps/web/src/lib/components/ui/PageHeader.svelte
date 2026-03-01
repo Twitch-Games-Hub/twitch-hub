@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import type { Snippet } from 'svelte';
   import ArrowLeftIcon from './icons/ArrowLeftIcon.svelte';
 
@@ -19,7 +20,7 @@
   <div class="flex items-center gap-3">
     {#if back}
       <a
-        href={back}
+        href={resolve(back as `/${string}`)}
         class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
         aria-label="Go back"
       >

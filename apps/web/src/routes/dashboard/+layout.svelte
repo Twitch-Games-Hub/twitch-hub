@@ -1,5 +1,6 @@
 <script lang="ts">
   import { authStore } from '$lib/stores/auth.svelte';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import ActiveSessionsBar from '$lib/components/dashboard/ActiveSessionsBar.svelte';
@@ -8,7 +9,7 @@
 
   $effect(() => {
     if (!authStore.loading && !authStore.user) {
-      goto('/auth/login');
+      goto(resolve('/auth/login'));
     }
   });
 </script>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { apiGet, apiDelete } from '$lib/api';
   import {
@@ -10,7 +11,6 @@
     type RateGameResponse,
   } from '@twitch-hub/shared-types';
   import { GAME_TYPE_META } from '$lib/constants';
-  import { authStore } from '$lib/stores/auth.svelte';
   import { toastStore } from '$lib/stores/toast.svelte';
   import { createGameSession } from '$lib/utils/session';
   import { UsersIcon } from '$lib/components/ui/icons';
@@ -82,7 +82,7 @@
     creatingGameId = gameId;
     try {
       const sessionId = await createGameSession(gameId);
-      goto(`/dashboard/sessions/${sessionId}`);
+      goto(resolve(`/dashboard/sessions/${sessionId}`));
     } catch (err) {
       toastStore.add(err instanceof Error ? err.message : 'Failed to create session', 'error');
     } finally {
@@ -161,7 +161,7 @@
     creatingGameId = gameId;
     try {
       const sessionId = await createGameSession(gameId, streamerId);
-      goto(`/dashboard/sessions/${sessionId}`);
+      goto(resolve(`/dashboard/sessions/${sessionId}`));
     } catch (err) {
       toastStore.add(err instanceof Error ? err.message : 'Failed to create session', 'error');
     } finally {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { apiGet, apiPut } from '$lib/api';
@@ -38,7 +39,7 @@
       const { type: _, ...payload } = data;
       await apiPut(`/api/games/${gameId}`, payload);
       toastStore.add('Game updated successfully', 'success');
-      goto(`/dashboard/games/${gameId}`);
+      goto(resolve(`/dashboard/games/${gameId}`));
     } catch (err) {
       toastStore.add(err instanceof Error ? err.message : 'Failed to save changes', 'error');
     } finally {

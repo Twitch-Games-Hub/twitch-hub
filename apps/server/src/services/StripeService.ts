@@ -179,7 +179,7 @@ async function syncSubscription(userId: string, subscription: Stripe.Subscriptio
     const status = mapStripeStatus(subscription.status);
     const item = subscription.items.data[0];
     const priceId = item?.price.id ?? null;
-    const billingPlan = status === 'ACTIVE' ? 'SUBSCRIBER' : 'FREE';
+    const _billingPlan = status === 'ACTIVE' ? 'SUBSCRIBER' : 'FREE';
 
     const periodStart = item?.current_period_start
       ? new Date(item.current_period_start * 1000)

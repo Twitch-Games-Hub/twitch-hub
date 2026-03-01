@@ -22,7 +22,7 @@ function streakKey(sessionId: string, playerId: string) {
 function firstRespondersKey(sessionId: string, round: number) {
   return `session:${sessionId}:round:${round}:first`;
 }
-function completionsKey(sessionId: string) {
+function _completionsKey(sessionId: string) {
   return `session:${sessionId}:completions`;
 }
 function roundParticipantsKey(sessionId: string, round: number) {

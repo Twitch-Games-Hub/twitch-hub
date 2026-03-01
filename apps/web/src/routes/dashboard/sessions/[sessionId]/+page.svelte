@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
   import { apiGet } from '$lib/api';
@@ -129,7 +130,7 @@
 
         <!-- Back button -->
         <a
-          href={backHref}
+          href={resolve(backHref as `/${string}`)}
           class="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-surface-primary/80 text-text-muted backdrop-blur-sm transition-colors hover:bg-surface-primary hover:text-text-primary"
         >
           <ArrowLeftIcon size={16} />

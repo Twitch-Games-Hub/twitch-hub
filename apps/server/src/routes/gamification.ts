@@ -172,7 +172,7 @@ export const gamificationPlugin: FastifyPluginAsync = async (app) => {
   // Channel loyalty leaderboard
   app.get<{ Params: { channelId: string }; Querystring: { limit?: string } }>(
     '/channel/:channelId/leaderboard',
-    async (request, reply) => {
+    async (request, _reply) => {
       const { channelId } = request.params;
       const limit = Math.min(parseInt(request.query.limit || '20', 10), 100);
 
