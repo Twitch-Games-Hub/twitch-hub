@@ -12,3 +12,7 @@ build/
 docs/.vitepress/cache/
 docs/.vitepress/.temp/
 apps/server/src/generated/
+
+# Infrastructure
+infra/.env.infra
+infra/.server_ip

@@ -31,6 +31,28 @@ check_env() {
   fi
 }
 
+wait_for_healthy() {
+  local service="$1"
+  local timeout="${2:-60}"
+  local elapsed=0
+
+  echo "==> Waiting for $service to be healthy (timeout: ${timeout}s)..."
+  while [ $elapsed -lt "$timeout" ]; do
+    local status
+    status=$($COMPOSE ps "$service" --format '{{.Health}}' 2>/dev/null || echo "unknown")
+    if [ "$status" = "healthy" ]; then
+      echo "==> $service is healthy."
+      return 0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
+  echo "Error: $service did not become healthy within ${timeout}s."
+  echo "Check logs with: $0 logs $service"
+  exit 1
+}
+
 cmd_build() {
   echo "==> Building images..."
   $COMPOSE build server web
@@ -48,7 +70,12 @@ cmd_down() {
 
 cmd_migrate() {
   echo "==> Running database migrations..."
-  $COMPOSE run --rm migrate
+  if ! $COMPOSE run --rm migrate; then
+    echo "Error: Database migration failed!"
+    echo "Check the migration output above for details."
+    exit 1
+  fi
+  echo "==> Migrations completed successfully."
 }
 
 cmd_logs() {
@@ -74,18 +101,18 @@ cmd_restart() {
 cmd_secrets() {
   echo "# Generated secrets — paste these into $ENV_FILE"
   echo ""
-  echo "POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
-  echo "REDIS_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
-  echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '/+=' | head -c 48)"
-  echo "INTERNAL_API_SECRET=$(openssl rand -base64 48 | tr -d '/+=' | head -c 48)"
+  echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+  echo "REDIS_PASSWORD=$(openssl rand -hex 16)"
+  echo "JWT_SECRET=$(openssl rand -hex 24)"
+  echo "INTERNAL_API_SECRET=$(openssl rand -hex 24)"
 }
 
 cmd_deploy() {
   echo "==> Starting full deployment..."
   cmd_build
   cmd_up
-  echo "==> Waiting for database to be ready..."
-  sleep 5
+  wait_for_healthy postgres 60
+  wait_for_healthy redis 30
   cmd_migrate
   echo "==> Restarting server after migration..."
   $COMPOSE restart server
@@ -103,7 +130,10 @@ fi
 COMMAND="$1"
 shift
 
-check_env
+# secrets doesn't need .env.production to exist
+if [ "$COMMAND" != "secrets" ]; then
+  check_env
+fi
 
 case "$COMMAND" in
   deploy)  cmd_deploy ;;
