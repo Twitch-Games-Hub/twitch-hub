@@ -36,6 +36,11 @@ def create_deploy_user(cfg: Config) -> None:
         name="Add SSH public key to authorized_keys",
         path=f"{ssh_dir}/authorized_keys",
         line=pub_key,
+    )
+
+    files.file(
+        name="Set authorized_keys permissions",
+        path=f"{ssh_dir}/authorized_keys",
         user=cfg.deploy_user,
         group=cfg.deploy_user,
         mode="600",
