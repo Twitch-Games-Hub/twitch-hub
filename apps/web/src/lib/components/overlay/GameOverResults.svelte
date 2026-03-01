@@ -35,29 +35,58 @@
       .map(([userId, score]) => ({ userId, score }))
       .sort((a, b) => b.score - a.score);
   });
+
+  const trophySparkles = [
+    { sx: '20px', sy: '-25px' },
+    { sx: '-20px', sy: '-25px' },
+    { sx: '28px', sy: '10px' },
+    { sx: '-28px', sy: '10px' },
+    { sx: '10px', sy: '28px' },
+    { sx: '-10px', sy: '28px' },
+  ];
 </script>
 
-<div class="w-full max-w-2xl animate-scale-in">
-  <!-- Header card -->
-  <div class="mb-4 rounded-2xl bg-black/70 p-6 text-center backdrop-blur-sm">
+<div class="w-full max-w-2xl">
+  <!-- Header card - Phase 1: title (0ms delay) -->
+  <div
+    class="stagger-reveal mb-4 rounded-2xl bg-black/70 p-6 text-center backdrop-blur-sm"
+    style="animation-delay: 0ms;"
+  >
     <h2
-      class="bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-3xl font-bold text-transparent"
+      class="gradient-shimmer-text bg-gradient-to-r from-brand-400 via-brand-200 to-brand-400 bg-clip-text text-3xl font-bold text-transparent"
     >
       Game Over!
     </h2>
     {#if gameTitle}
-      <p class="mt-1 text-base text-text-secondary">{gameTitle}</p>
+      <!-- Phase 2: subtitle (400ms delay) -->
+      <div class="stagger-reveal" style="animation-delay: 400ms;">
+        <p class="mt-1 text-base text-text-secondary">{gameTitle}</p>
+      </div>
     {/if}
-    <p class="mt-2 text-sm tabular-nums text-text-muted">
-      {finalResults.totalParticipants} participants
-    </p>
+    <div class="stagger-reveal" style="animation-delay: 400ms;">
+      <p class="mt-2 text-sm tabular-nums text-text-muted">
+        {finalResults.totalParticipants} participants
+      </p>
+    </div>
   </div>
 
-  <!-- Game-type-specific results -->
-  <div class="rounded-2xl bg-black/70 p-6 backdrop-blur-sm">
+  <!-- Game-type-specific results - Phase 3: results card (800ms delay) -->
+  <div
+    class="stagger-reveal rounded-2xl bg-black/70 p-6 backdrop-blur-sm"
+    style="animation-delay: 800ms;"
+  >
     {#if gameType === 'RANKING' && finalResults.ranking}
       <div class="mb-4 flex flex-col items-center">
-        <div class="animate-trophy-bounce mb-2 text-5xl">🏆</div>
+        <div class="relative mb-2">
+          <div class="animate-trophy-bounce text-5xl">🏆</div>
+          <!-- Trophy sparkle burst -->
+          {#each trophySparkles as sparkle, i}
+            <span
+              class="sparkle-dot"
+              style="--sx: {sparkle.sx}; --sy: {sparkle.sy}; animation-delay: {300 + i * 80}ms;"
+            ></span>
+          {/each}
+        </div>
         {#if finalResults.ranking.champion.imageUrl}
           <img
             src={finalResults.ranking.champion.imageUrl}
@@ -101,3 +130,27 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .stagger-reveal {
+    opacity: 0;
+    animation: slide-up 0.4s ease-out forwards;
+  }
+
+  .gradient-shimmer-text {
+    background-size: 200% auto;
+    animation: gradient-shimmer 3s linear infinite;
+  }
+
+  .sparkle-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(145, 70, 255, 0.8);
+    animation: sparkle-burst 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+</style>

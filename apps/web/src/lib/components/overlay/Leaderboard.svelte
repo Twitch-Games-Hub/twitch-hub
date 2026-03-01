@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { fly } from 'svelte/transition';
+  import { SvelteMap } from 'svelte/reactivity';
+
   interface Entry {
     userId: string;
     score: number;
@@ -22,6 +25,36 @@
   function isMedalPosition(index: number): boolean {
     return index < 3;
   }
+
+  // Track previous positions for rank-change arrows
+  let prevPositions = new SvelteMap<string, number>();
+  let prevScores = new SvelteMap<string, number>();
+
+  function getRankDelta(userId: string, currentIndex: number): number {
+    const prev = prevPositions.get(userId);
+    if (prev === undefined) return 0;
+    return prev - currentIndex; // positive = moved up
+  }
+
+  function hasScoreChanged(userId: string, score: number): boolean {
+    const prev = prevScores.get(userId);
+    return prev !== undefined && prev !== score;
+  }
+
+  // Update previous positions after render
+  $effect(() => {
+    const newPositions = new SvelteMap<string, number>();
+    const newScores = new SvelteMap<string, number>();
+    for (let i = 0; i < entries.length; i++) {
+      newPositions.set(entries[i].userId, i);
+      newScores.set(entries[i].userId, entries[i].score);
+    }
+    // Defer update so current render uses old positions
+    queueMicrotask(() => {
+      prevPositions = newPositions;
+      prevScores = newScores;
+    });
+  });
 </script>
 
 <div class="leaderboard-container">
@@ -32,7 +65,13 @@
 
     <div class="leaderboard-content">
       {#each entries as entry, index (entry.userId)}
-        <div class="leaderboard-entry" class:medal-position={isMedalPosition(index)}>
+        {@const rankDelta = getRankDelta(entry.userId, index)}
+        {@const scoreChanged = hasScoreChanged(entry.userId, entry.score)}
+        <div
+          class="leaderboard-entry"
+          class:medal-position={isMedalPosition(index)}
+          in:fly={{ y: 20, duration: 300, delay: index * 80 }}
+        >
           <div class="entry-rank">
             {#if isMedalPosition(index)}
               <span class="medal">{getMedal(index)}</span>
@@ -45,7 +84,14 @@
             <div class="entry-userid">{entry.userId}</div>
           </div>
 
-          <div class={`entry-score medal-${index}`}>
+          <!-- Rank change arrow -->
+          {#if rankDelta > 0}
+            <span class="rank-arrow rank-up">▲</span>
+          {:else if rankDelta < 0}
+            <span class="rank-arrow rank-down">▼</span>
+          {/if}
+
+          <div class={`entry-score medal-${index}`} class:score-pop={scoreChanged}>
             {entry.score}
           </div>
         </div>
@@ -115,6 +161,22 @@
   .leaderboard-entry.medal-position {
     background: rgba(31, 41, 55, 0.8);
     border: 1px solid rgba(168, 85, 247, 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .leaderboard-entry.medal-position::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(168, 85, 247, 0.08) 50%,
+      transparent 60%
+    );
+    animation: shimmer-sweep 3s ease-in-out infinite;
+    pointer-events: none;
   }
 
   .leaderboard-entry:hover {
@@ -155,12 +217,30 @@
     word-break: break-word;
   }
 
+  .rank-arrow {
+    font-size: 10px;
+    font-weight: 700;
+    animation: rank-arrow-bounce 0.4s ease-out;
+  }
+
+  .rank-up {
+    color: #22c55e;
+  }
+
+  .rank-down {
+    color: #ef4444;
+  }
+
   .entry-score {
     font-size: 18px;
     font-weight: 700;
     min-width: 50px;
     text-align: right;
     transition: all 0.3s ease;
+  }
+
+  .entry-score.score-pop {
+    animation: count-pop 0.3s ease-out;
   }
 
   .entry-score.medal-0 {
