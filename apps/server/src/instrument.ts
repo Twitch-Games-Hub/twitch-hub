@@ -13,4 +13,5 @@ Sentry.init({
     if (typeof parentSampled === 'boolean') return parentSampled ? 1.0 : 0;
     return isProduction ? 0.2 : 1.0;
   },
+  enableLogs: true,
 });
