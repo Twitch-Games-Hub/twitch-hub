@@ -12,7 +12,15 @@ build
 .github
 *.log
 .DS_Store
-docs/node_modules
-docs/.vitepress/dist
-docs/.vitepress/cache
 packages/*/dist
+
+# Docs — only need package.json for workspace resolution
+docs/**
+!docs/package.json
+
+# Infrastructure scripts not needed in builds
+infra
+webhookd
+
+# Prisma generates inside Docker
+apps/server/src/generated

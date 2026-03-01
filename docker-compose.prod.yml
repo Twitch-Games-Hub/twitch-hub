@@ -201,7 +201,7 @@ services:
       [
         'sh',
         '-c',
-        'bunx prisma db push --config=prisma.config.js --accept-data-loss && bun seed.js',
+        'bunx prisma db push --schema=prisma/schema.prisma --accept-data-loss && bun seeds/seed.js',
       ]
     networks:
       - internal
