@@ -8,7 +8,9 @@ import { trackEvent } from './sentryAnalytics.js';
 
 const log = logger.child({ module: 'stripe' });
 
-const stripe = new Stripe(config.stripe.secretKey);
+const stripe = config.stripe.secretKey
+  ? new Stripe(config.stripe.secretKey)
+  : (null as unknown as Stripe);
 
 export async function getOrCreateCustomer(userId: string): Promise<string> {
   return withStripeSpan('stripe.customer.getOrCreate', { userId }, async () => {
