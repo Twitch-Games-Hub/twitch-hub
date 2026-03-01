@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const body = await request.json();
   const res = await fetch(`${SERVER_URL}/api/billing/checkout`, {
     method: 'POST',
-    headers,
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

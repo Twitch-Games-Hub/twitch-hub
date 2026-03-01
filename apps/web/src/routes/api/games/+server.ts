@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const body = await request.json();
   const res = await fetch(`${SERVER_URL}/api/games`, {
     method: 'POST',
-    headers,
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) error(res.status, 'Failed to create game');

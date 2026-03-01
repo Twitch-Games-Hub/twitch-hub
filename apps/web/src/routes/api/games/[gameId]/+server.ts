@@ -15,7 +15,7 @@ export const PUT: RequestHandler = async ({ params, request, cookies }) => {
   const body = await request.json();
   const res = await fetch(`${SERVER_URL}/api/games/${params.gameId}`, {
     method: 'PUT',
-    headers,
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) error(res.status, 'Failed to update game');
