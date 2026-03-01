@@ -16,9 +16,14 @@ infra/
 ├── deploy.py          # pyinfra: app deployment (deploy user)
 ├── pyproject.toml     # Python package definition
 ├── tasks/
-│   ├── system_setup.py    # OS packages, swap, firewall, Docker
-│   ├── app_deploy.py      # Docker Compose build + deploy
-│   └── ssh_hardening.py   # SSH security config
+│   ├── docker.py      # Docker Engine + Compose installation
+│   ├── firewall.py    # UFW firewall rules
+│   ├── swap.py        # Swap file creation
+│   ├── users.py       # Deploy user + SSH key setup
+│   ├── ssh.py         # SSH hardening config
+│   ├── app_clone.py   # Git clone / pull
+│   ├── app_env.py     # Production .env templating
+│   └── app_deploy.py  # Docker Compose build + deploy
 └── templates/
     └── .env.production.j2 # Production env file template
 ```

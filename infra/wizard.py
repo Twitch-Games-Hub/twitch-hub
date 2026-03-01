@@ -76,6 +76,9 @@ def step_collect_config() -> dict[str, str]:
     # Optional
     config["SENTRY_DSN"] = _prompt("Sentry DSN (server, optional)", required=False)
     config["PUBLIC_SENTRY_DSN"] = _prompt("Sentry DSN (web, optional)", required=False)
+    config["SENTRY_AUTH_TOKEN"] = _prompt("Sentry Auth Token (source map uploads, optional)", required=False)
+    config["SENTRY_ORG"] = _prompt("Sentry Organization slug (optional)", required=False)
+    config["SENTRY_PROJECT"] = _prompt("Sentry Project slug (optional)", required=False)
     config["STRIPE_SECRET_KEY"] = _prompt("Stripe Secret Key (optional)", required=False)
 
     return config
@@ -164,12 +167,26 @@ def run_wizard() -> None:
     print("  Twitch Hub — Production Setup Wizard")
     print("=" * 50)
 
-    step_prerequisites()
-    config = step_collect_config()
-    step_generate_secrets(config)
-    ip = step_create_server()
-    step_dns_wait(ip)
-    step_provision_and_deploy()
+    try:
+        step_prerequisites()
+        config = step_collect_config()
+        step_generate_secrets(config)
+        ip = step_create_server()
+        step_dns_wait(ip)
+        step_provision_and_deploy()
+    except KeyboardInterrupt:
+        print("\n\nWizard cancelled by user.")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"\n  Error: Command failed with exit code {e.returncode}")
+        print(f"  Command: {e.cmd}")
+        print("\n  Fix the issue above and re-run: python run.py wizard")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n  Error: {e}")
+        print("\n  If this is unexpected, check your config in .env.infra")
+        print("  Re-run: python run.py wizard")
+        sys.exit(1)
 
     from config import Config
 
