@@ -1,11 +1,10 @@
 import * as Sentry from '@sentry/sveltekit';
 import { handleErrorWithSentry, replayIntegration } from '@sentry/sveltekit';
-import { PUBLIC_SENTRY_DSN, PUBLIC_SENTRY_ENVIRONMENT } from '$env/static/public';
 
 Sentry.init({
-  dsn: PUBLIC_SENTRY_DSN,
-  enabled: !!PUBLIC_SENTRY_DSN,
-  environment: PUBLIC_SENTRY_ENVIRONMENT || 'development',
+  dsn: import.meta.env.PUBLIC_SENTRY_DSN,
+  enabled: !!import.meta.env.PUBLIC_SENTRY_DSN,
+  environment: import.meta.env.PUBLIC_SENTRY_ENVIRONMENT || 'development',
   tracesSampleRate: 0.2,
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
