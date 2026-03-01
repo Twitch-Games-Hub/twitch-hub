@@ -13,13 +13,17 @@ RUN apk add --no-cache libc6-compat && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 server
 USER server
-COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./dist
-COPY --from=builder --chown=server:nodejs /app/apps/server/prisma ./prisma
-COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./package.json
-COPY --from=builder --chown=server:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=server:nodejs /app/packages/shared-types/dist ./node_modules/@twitch-hub/shared-types/dist
-COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.json ./node_modules/@twitch-hub/shared-types/package.json
+# Bun workspaces stores packages in node_modules/.bun/ and symlinks them
+# into each workspace's node_modules/. Preserve the monorepo directory
+# structure so Bun's symlink-based module resolution works at runtime.
+COPY --from=builder --chown=server:nodejs /app/node_modules/.bun ./node_modules/.bun
+COPY --from=builder --chown=server:nodejs /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./apps/server/dist
+COPY --from=builder --chown=server:nodejs /app/apps/server/prisma ./apps/server/prisma
+COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder --chown=server:nodejs /app/packages/shared-types/dist ./packages/shared-types/dist
+COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.json ./packages/shared-types/package.json
 ENV NODE_ENV=production
 ENV SERVER_PORT=3001
 EXPOSE 3001
-CMD ["bun", "run", "--preload", "./dist/instrument.js", "dist/index.js"]
+CMD ["bun", "run", "--preload", "./apps/server/dist/instrument.js", "apps/server/dist/index.js"]
