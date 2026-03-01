@@ -129,7 +129,7 @@ jobs:
   report-failure:
     name: Report Failure
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, build, test]
+    needs: [lint, typecheck, build, test, publish-server, publish-web]
     if: >-
       always() &&
       github.event_name == 'push' &&
