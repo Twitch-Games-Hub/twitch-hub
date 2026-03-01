@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
   title: 'Twitch Hub',
   description: 'Interactive Twitch games and polls for streamers',
+  base: '/twitch-hub/',
   vite: {
     server: {
       port: 5174,
