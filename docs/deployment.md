@@ -13,9 +13,30 @@ Internet
 
 Caddy handles TLS certificates automatically via Let's Encrypt.
 
-## Option A: Automated Hetzner Deployment (pyinfra)
+---
 
-One-command server creation, provisioning, and deployment using pyinfra.
+## Quick Start: Interactive Wizard (Recommended)
+
+The wizard guides you through the entire setup interactively:
+
+```bash
+cd infra
+pip install -e .
+python run.py wizard
+```
+
+The wizard will:
+
+1. Check prerequisites (pyinfra, SSH key)
+2. Collect your configuration (Hetzner token, domains, Twitch creds)
+3. Generate secrets automatically
+4. Create the Hetzner server
+5. Guide DNS setup and verify propagation
+6. Provision and deploy
+
+---
+
+## Option A: Automated Hetzner Deployment (pyinfra)
 
 ### Prerequisites
 
@@ -24,26 +45,30 @@ One-command server creation, provisioning, and deployment using pyinfra.
 - An SSH key pair (ed25519 recommended)
 - DNS records ready to point at the new server
 
-### Quick start
+### Step-by-step
 
 ```bash
 cd infra
-pip install -e .          # or: uv pip install -e .
+pip install -e .
 
-python run.py secrets     # generate passwords → .env.infra
-vim .env.infra            # fill in HCLOUD_TOKEN, domains, Twitch creds
+python run.py preflight    # validate prerequisites and config
+python run.py secrets      # generate passwords → .env.infra
+vim .env.infra             # fill in HCLOUD_TOKEN, domains, Twitch creds
 
-python run.py full        # create server → provision → deploy
+python run.py full         # create server → provision → deploy
 ```
 
 ### Individual commands
 
-```bash
-python run.py create      # create Hetzner VPS only
-python run.py provision   # provision server (Docker, firewall, SSH hardening)
-python run.py deploy      # deploy app (clone, env, docker compose up)
-python run.py secrets     # generate secrets into .env.infra
-```
+| Command                   | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| `python run.py wizard`    | Interactive first-time setup (recommended)    |
+| `python run.py preflight` | Validate prerequisites, config, and SSH key   |
+| `python run.py create`    | Create Hetzner VPS only                       |
+| `python run.py provision` | Provision server (Docker, firewall, SSH)      |
+| `python run.py deploy`    | Deploy app (clone, env, docker compose up)    |
+| `python run.py full`      | create → provision → deploy (non-interactive) |
+| `python run.py secrets`   | Generate secrets into .env.infra              |
 
 ### What provisioning does
 
@@ -68,6 +93,8 @@ All config lives in `infra/.env.infra` (gitignored). Required fields:
 
 Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx22), `HCLOUD_LOCATION` (default: nbg1), `SSH_PUBLIC_KEY_PATH`, `DEPLOY_USER` (default: deploy), `GIT_BRANCH` (default: main).
 
+Optional services: `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
 ---
 
 ## Option B: Manual VPS Deployment
@@ -75,9 +102,7 @@ Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx22), `HCLOUD_LOCATION` (def
 ### Prerequisites
 
 - VPS with Docker and Docker Compose installed
-- A domain with two DNS A records pointing to your server:
-  - `example.com` → server IP
-  - `api.example.com` → server IP
+- A domain with two DNS A records pointing to your server
 - Twitch application credentials (create at [dev.twitch.tv](https://dev.twitch.tv/console))
 
 ### Setup
@@ -124,31 +149,53 @@ https://YOUR_APP_DOMAIN/api/auth/callback
 ./scripts/deploy.sh deploy
 ```
 
-This will build images, start all services, wait for healthy databases, run migrations, and restart the server.
+This will build images, start all services, run database setup (schema push + seed), and start the app.
 
-## Commands
+---
 
-| Command                           | Description                               |
-| --------------------------------- | ----------------------------------------- |
-| `./scripts/deploy.sh deploy`      | Full deployment (build + start + migrate) |
-| `./scripts/deploy.sh build`       | Build Docker images                       |
-| `./scripts/deploy.sh up`          | Start services                            |
-| `./scripts/deploy.sh down`        | Stop services                             |
-| `./scripts/deploy.sh migrate`     | Run Prisma migrations                     |
-| `./scripts/deploy.sh restart`     | Rebuild and restart web + server only     |
-| `./scripts/deploy.sh logs`        | Tail all logs                             |
-| `./scripts/deploy.sh logs server` | Tail server logs                          |
-| `./scripts/deploy.sh status`      | Show service status                       |
-| `./scripts/deploy.sh secrets`     | Generate random secrets                   |
+## Deploy Script Commands
+
+| Command                           | Description                                |
+| --------------------------------- | ------------------------------------------ |
+| `./scripts/deploy.sh deploy`      | Full deployment (build + start + db setup) |
+| `./scripts/deploy.sh build`       | Build Docker images                        |
+| `./scripts/deploy.sh up`          | Start services                             |
+| `./scripts/deploy.sh down`        | Stop services                              |
+| `./scripts/deploy.sh dbsetup`     | Push database schema and run seed          |
+| `./scripts/deploy.sh seed`        | Run seed script independently              |
+| `./scripts/deploy.sh restart`     | Rebuild and restart web + server only      |
+| `./scripts/deploy.sh logs`        | Tail all logs                              |
+| `./scripts/deploy.sh logs server` | Tail server logs                           |
+| `./scripts/deploy.sh status`      | Show service status                        |
+| `./scripts/deploy.sh secrets`     | Generate random secrets                    |
+
+---
+
+## Sentry Configuration
+
+Twitch Hub supports Sentry for error tracking and structured logging on both server and web.
+
+| Variable                    | Where           | Description                           |
+| --------------------------- | --------------- | ------------------------------------- |
+| `SENTRY_DSN`                | Server          | Server-side Sentry DSN                |
+| `PUBLIC_SENTRY_DSN`         | Web (SvelteKit) | Client/server-side Sentry DSN         |
+| `PUBLIC_SENTRY_ENVIRONMENT` | Web             | Environment tag (default: production) |
+
+Both DSNs are optional — Sentry is disabled when the DSN is not set.
+
+---
 
 ## Updating
 
 ```bash
 git pull
 ./scripts/deploy.sh restart
-# If there are new migrations:
-./scripts/deploy.sh migrate
+
+# If schema changed:
+./scripts/deploy.sh dbsetup
 ```
+
+---
 
 ## Monitoring
 
@@ -162,6 +209,8 @@ git pull
 # Single service
 ./scripts/deploy.sh logs server
 ```
+
+---
 
 ## Backups
 
@@ -180,3 +229,26 @@ cat backup.sql | docker compose -f docker-compose.prod.yml exec -T postgres \
 ### Volumes
 
 Persistent data is stored in Docker volumes: `pgdata`, `redisdata`, `caddy_data`, `caddy_config`.
+
+---
+
+## Troubleshooting
+
+### DNS / TLS Issues
+
+- Caddy needs DNS A records to resolve before it can issue TLS certificates
+- Check DNS propagation: `dig +short your-domain.com`
+- View Caddy logs: `./scripts/deploy.sh logs caddy`
+- If certificates fail, restart Caddy after DNS propagates: `docker compose -f docker-compose.prod.yml restart caddy`
+
+### Docker Issues
+
+- Check container health: `./scripts/deploy.sh status`
+- View container logs for a specific service: `./scripts/deploy.sh logs <service>`
+- Rebuild from scratch: `./scripts/deploy.sh down && ./scripts/deploy.sh deploy`
+
+### Database Issues
+
+- Check postgres health: `./scripts/deploy.sh logs postgres`
+- Re-run schema push + seed: `./scripts/deploy.sh dbsetup`
+- Run seed independently: `./scripts/deploy.sh seed`

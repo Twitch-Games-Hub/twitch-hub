@@ -1,0 +1,69 @@
+# Infrastructure
+
+Automated Hetzner VPS deployment for Twitch Hub using [pyinfra](https://pyinfra.com/).
+
+## File Structure
+
+```
+infra/
+├── config.py          # Central config loaded from .env.infra
+├── create_server.py   # Hetzner Cloud VPS creation
+├── dns.py             # DNS verification utilities
+├── wizard.py          # Interactive first-time setup wizard
+├── run.py             # CLI entrypoint (all commands)
+├── inventory.py       # pyinfra inventory (server IP)
+├── provision.py       # pyinfra: server provisioning (root)
+├── deploy.py          # pyinfra: app deployment (deploy user)
+├── pyproject.toml     # Python package definition
+├── tasks/
+│   ├── system_setup.py    # OS packages, swap, firewall, Docker
+│   ├── app_deploy.py      # Docker Compose build + deploy
+│   └── ssh_hardening.py   # SSH security config
+└── templates/
+    └── .env.production.j2 # Production env file template
+```
+
+## Installation
+
+```bash
+cd infra
+pip install -e .    # or: uv pip install -e .
+```
+
+## Available Commands
+
+```bash
+python run.py wizard      # Interactive setup (recommended for first deploy)
+python run.py preflight   # Validate prerequisites and config
+python run.py secrets     # Generate secrets → .env.infra
+python run.py create      # Create Hetzner VPS
+python run.py provision   # Provision server (Docker, firewall, SSH)
+python run.py deploy      # Deploy application
+python run.py full        # create → provision → deploy
+```
+
+## First-Time Deployment
+
+The easiest way to deploy for the first time:
+
+```bash
+python run.py wizard
+```
+
+The wizard walks through every step interactively: prerequisite checks, config collection, secret generation, server creation, DNS setup, and deployment.
+
+## Re-deploying
+
+After code changes, re-deploy with:
+
+```bash
+python run.py deploy
+```
+
+This is idempotent — it rebuilds Docker images and restarts services. Database schema is pushed and seed data is applied each time (both are idempotent operations).
+
+## Configuration
+
+All configuration is stored in `infra/.env.infra` (gitignored). Use `python run.py secrets` to generate one with placeholder values, or `python run.py wizard` to fill it in interactively.
+
+Run `python run.py preflight` to validate your config before deploying.
