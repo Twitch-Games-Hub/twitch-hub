@@ -2,6 +2,7 @@
   import { authStore } from '$lib/stores/auth.svelte';
   import { goto } from '$app/navigation';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
+  import ActiveSessionsBar from '$lib/components/dashboard/ActiveSessionsBar.svelte';
 
   let { children } = $props();
 
@@ -22,5 +23,6 @@
     </div>
   </div>
 {:else if authStore.user}
+  <ActiveSessionsBar />
   {@render children()}
 {/if}

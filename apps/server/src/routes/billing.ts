@@ -54,8 +54,8 @@ export const billingPlugin: FastifyPluginAsync = async (app) => {
       return { error: 'Invalid product' };
     }
 
-    const successUrl = `${config.appUrl}/dashboard/billing?success=true`;
-    const cancelUrl = `${config.appUrl}/dashboard/billing?canceled=true`;
+    const successUrl = `${config.appUrl}/dashboard/profile?tab=billing&success=true`;
+    const cancelUrl = `${config.appUrl}/dashboard/profile?tab=billing&canceled=true`;
 
     try {
       const checkoutUrl = await createCheckoutSession(
@@ -76,7 +76,7 @@ export const billingPlugin: FastifyPluginAsync = async (app) => {
 
   // POST /portal — create Stripe Customer Portal session
   app.post('/portal', async (request: FastifyRequest, reply: FastifyReply) => {
-    const returnUrl = `${config.appUrl}/dashboard/billing`;
+    const returnUrl = `${config.appUrl}/dashboard/profile?tab=billing`;
     const portalUrl = await createPortalSession(request.userId!, returnUrl);
     return { portalUrl };
   });

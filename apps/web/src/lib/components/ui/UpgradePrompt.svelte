@@ -18,7 +18,7 @@
 
     <div class="flex flex-wrap gap-2">
       <Button
-        href="/dashboard/billing"
+        href="/dashboard/profile?tab=billing"
         size="sm"
         variant="primary"
         onclick={() =>
