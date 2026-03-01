@@ -19,6 +19,7 @@ COPY --from=builder --chown=server:nodejs /app/node_modules/.bun ./node_modules/
 COPY --from=builder --chown=server:nodejs /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./apps/server/dist
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma ./apps/server/prisma
+COPY --from=builder --chown=server:nodejs /app/apps/server/prisma.config.ts ./apps/server/prisma.config.ts
 COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./apps/server/package.json
 COPY --from=builder --chown=server:nodejs /app/packages/shared-types/src ./packages/shared-types/src
 COPY --from=builder --chown=server:nodejs /app/packages/shared-types/package.json ./packages/shared-types/package.json
