@@ -19,3 +19,4 @@ infra/.server_ip
 infra/.wizard_state.json
 infra/__pycache__/
 infra/**/__pycache__/
+infra/*.egg-info/
