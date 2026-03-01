@@ -69,7 +69,7 @@ check_prereqs() {
 docker_up() {
   echo ""
   echo "Starting PostgreSQL & Redis containers..."
-  docker compose -f docker-compose.dev.yml up -d --wait || fail "Docker services failed to start"
+  docker compose up -d --wait || fail "Docker services failed to start"
   info "PostgreSQL running (localhost:5432)"
   info "Redis running (localhost:6379)"
 
@@ -82,7 +82,7 @@ docker_up() {
 docker_down() {
   echo ""
   echo "Stopping Docker containers..."
-  docker compose -f docker-compose.dev.yml down
+  docker compose down
   if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     posthog_down
   fi
@@ -92,7 +92,7 @@ docker_down() {
 docker_nuke() {
   echo ""
   echo "Removing Docker containers and volumes..."
-  docker compose -f docker-compose.dev.yml down -v
+  docker compose down -v
   if [[ -d "$POSTHOG_DIR/posthog" ]]; then
     posthog_down_volumes
   fi
@@ -336,7 +336,7 @@ start_tmux_session() {
 
   # Window 2: docker (compose logs)
   tmux new-window -t "$TMUX_SESSION" -n docker -c "$ROOT_DIR" \
-    "docker compose -f docker-compose.dev.yml logs -f"
+    "docker compose logs -f"
 
   # Window 3: posthog (logs or placeholder)
   if [[ -d "$POSTHOG_DIR/posthog" ]]; then

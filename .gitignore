@@ -10,4 +10,3 @@ build/
 docs/.vitepress/cache/
 docs/.vitepress/.temp/
 apps/server/src/generated/
-.turbo/

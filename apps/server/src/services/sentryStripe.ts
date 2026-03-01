@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import type Stripe from 'stripe';
 
-export function isStripeError(
+function isStripeError(
   err: unknown,
 ): err is { code?: string; type?: string; requestId?: string; message: string } {
   return (

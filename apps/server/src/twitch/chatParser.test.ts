@@ -85,6 +85,45 @@ describe('parseChatCommand', () => {
     });
   });
 
+  describe('!pick command (Ranking)', () => {
+    it('parses !pick A', () => {
+      const result = parseChatCommand('!pick A');
+      expect(result).toEqual({ type: 'pick', value: 'A', raw: '!pick A' });
+    });
+
+    it('parses !pick B', () => {
+      const result = parseChatCommand('!pick B');
+      expect(result).toEqual({ type: 'pick', value: 'B', raw: '!pick B' });
+    });
+
+    it('parses !pick 1 as A', () => {
+      const result = parseChatCommand('!pick 1');
+      expect(result).toEqual({ type: 'pick', value: 'A', raw: '!pick 1' });
+    });
+
+    it('parses !pick 2 as B', () => {
+      const result = parseChatCommand('!pick 2');
+      expect(result).toEqual({ type: 'pick', value: 'B', raw: '!pick 2' });
+    });
+
+    it('normalizes lowercase to uppercase', () => {
+      expect(parseChatCommand('!pick a')).toEqual({ type: 'pick', value: 'A', raw: '!pick a' });
+      expect(parseChatCommand('!pick b')).toEqual({ type: 'pick', value: 'B', raw: '!pick b' });
+    });
+
+    it('is case-insensitive for command', () => {
+      const result = parseChatCommand('!PICK A');
+      expect(result).toEqual({ type: 'pick', value: 'A', raw: '!PICK A' });
+    });
+
+    it('rejects invalid pick options', () => {
+      expect(parseChatCommand('!pick C')).toBeNull();
+      expect(parseChatCommand('!pick')).toBeNull();
+      expect(parseChatCommand('!pick 3')).toBeNull();
+      expect(parseChatCommand('!pick AB')).toBeNull();
+    });
+  });
+
   describe('unknown commands', () => {
     it('returns null for non-commands', () => {
       expect(parseChatCommand('hello world')).toBeNull();

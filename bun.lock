@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "twitch-hub",
-      "dependencies": {
-        "prisma": "^7.4.2",
-      },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
         "eslint": "^10.0.2",
@@ -17,7 +14,7 @@
         "lint-staged": "^16.2.7",
         "prettier": "^3.8.1",
         "prettier-plugin-svelte": "^3.5.0",
-        "typescript": "^5.7.0",
+        "typescript": "^5.9.3",
         "typescript-eslint": "^8.56.1",
       },
     },
@@ -55,7 +52,7 @@
       "name": "@twitch-hub/web",
       "version": "0.0.1",
       "dependencies": {
-        "@sentry/sveltekit": "^10.40.0",
+        "@sentry/sveltekit": "^10",
         "@twitch-hub/shared-types": "workspace:*",
         "posthog-js": "^1.356.1",
         "socket.io-client": "^4.8.3",
@@ -84,7 +81,7 @@
       "name": "@twitch-hub/shared-types",
       "version": "0.0.1",
       "devDependencies": {
-        "typescript": "^5.7.0",
+        "typescript": "^5.9.3",
       },
     },
   },
