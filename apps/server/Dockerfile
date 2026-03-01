@@ -2,6 +2,7 @@ FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY . .
+RUN sed -i '/"docs"/d' package.json
 RUN bun install --frozen-lockfile
 RUN bun run --filter @twitch-hub/server db:generate
 RUN bun run --filter @twitch-hub/shared-types build
