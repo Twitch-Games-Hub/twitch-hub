@@ -5,9 +5,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   ssr: {
-    // Bundle @sentry/sveltekit into the SSR output so the Docker image is
-    // self-contained — no runtime node_modules lookup needed for Sentry.
-    noExternal: ['@sentry/sveltekit'],
+    // Bundle all deps into the SSR output so the runner image needs no
+    // node_modules at all — avoids Bun workspace hoisting ambiguity.
+    noExternal: true,
   },
   plugins: [
     sentrySvelteKit({
