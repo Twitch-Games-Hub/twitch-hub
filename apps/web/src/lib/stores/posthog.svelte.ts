@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import * as Sentry from '@sentry/sveltekit';
+import { PUBLIC_POSTHOG_KEY, PUBLIC_POSTHOG_HOST } from '$env/static/public';
 import type { ApiUser } from '@twitch-hub/shared-types';
 
 function createPostHogStore() {
@@ -11,11 +12,10 @@ function createPostHogStore() {
     },
 
     init() {
-      const key = import.meta.env.PUBLIC_POSTHOG_KEY;
-      if (!key) return;
+      if (!PUBLIC_POSTHOG_KEY) return;
 
-      posthog.init(key, {
-        api_host: import.meta.env.PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+      posthog.init(PUBLIC_POSTHOG_KEY, {
+        api_host: PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
         defaults: '2026-01-30',
         loaded: (ph) => {
           initialized = true;
