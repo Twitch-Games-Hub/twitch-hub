@@ -23,6 +23,7 @@ COMMANDS = {
     "dns": "Set A records on Namecheap for app + API domains",
     "provision": "Install Docker, Caddy, and users on the VPS (root)",
     "deploy": "Rsync code and restart containers (deploy user)",
+    "upgrade": "Pull new images, migrate DB, restart server+web (with auto-rollback)",
     "full": "Run create → provision → deploy in one shot",
     "secrets": "Generate random DB, Redis, and JWT secrets into .env.infra",
     "health": "SSH into the server and show container + API status",
@@ -206,6 +207,45 @@ def cmd_deploy() -> None:
         ["pyinfra", f"--user={cfg.deploy_user}", ip, str(INFRA_DIR / "deploy.py")],
         check=True,
     )
+
+
+def cmd_upgrade() -> None:
+    dry_run = "--dry-run" in sys.argv
+    cfg = Config()
+    ip = cfg.get_server_ip()
+
+    if dry_run:
+        ui.banner("Upgrade (dry run)")
+        ui.info(f"Would upgrade server + web on {ip}")
+        ui.info("Steps:")
+        ui.info("  1. Capture current image digests")
+        ui.info("  2. Backup database")
+        ui.info("  3. Login to GHCR")
+        ui.info("  4. Pull latest server + web images")
+        ui.info("  5. Run DB migration (prisma db push + seed)")
+        ui.info("  6. Recreate server + web containers")
+        ui.info("  7. Health check (90s timeout, fatal)")
+        ui.info("  8. Smoke test (curl endpoints, fatal)")
+        ui.info("On failure at steps 5-8: auto-rollback to previous version")
+        return
+
+    ui.banner(f"Upgrading {ip}")
+    result = subprocess.run(
+        ["pyinfra", f"--user={cfg.deploy_user}", ip, str(INFRA_DIR / "upgrade.py")],
+    )
+
+    if result.returncode != 0:
+        ui.error("Upgrade failed — initiating auto-rollback")
+        rollback_result = subprocess.run(
+            ["pyinfra", f"--user={cfg.deploy_user}", ip, str(INFRA_DIR / "upgrade_rollback.py")],
+        )
+        if rollback_result.returncode != 0:
+            ui.error("Rollback also failed!", hint=f"SSH manually: ssh {cfg.deploy_user}@{ip}")
+            sys.exit(2)
+        ui.warn("Rolled back to previous version successfully")
+        sys.exit(1)
+
+    ui.success("Upgrade complete!")
 
 
 def cmd_secrets() -> None:
@@ -393,6 +433,7 @@ def _show_help() -> None:
     flags: dict[str, str] = {
         "wizard": "--fresh",
         "deploy": "--dry-run",
+        "upgrade": "--dry-run",
         "provision": "--dry-run",
     }
 
@@ -411,6 +452,7 @@ def main() -> None:
         "dns": cmd_dns,
         "provision": cmd_provision,
         "deploy": cmd_deploy,
+        "upgrade": cmd_upgrade,
         "full": cmd_full,
         "secrets": cmd_secrets,
         "health": cmd_health,
