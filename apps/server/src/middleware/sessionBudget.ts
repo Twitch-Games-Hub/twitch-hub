@@ -2,6 +2,7 @@ import { prisma } from '../db/client.js';
 import { FREE_SESSIONS_PER_MONTH } from '@twitch-hub/shared-types';
 import type { SessionBudget } from '@twitch-hub/shared-types';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { trackEvent } from '../services/sentryAnalytics.js';
 
 export async function attachSessionBudget(
   request: FastifyRequest,
@@ -59,6 +60,7 @@ export async function attachSessionBudget(
     return;
   }
 
+  trackEvent(request.userId, 'session_budget_exhausted');
   request.sessionBudget = {
     canCreateSession: false,
     source: 'none',

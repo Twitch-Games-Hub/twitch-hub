@@ -1,7 +1,10 @@
 <script lang="ts">
+  import * as Sentry from '@sentry/sveltekit';
   import Button from './Button.svelte';
   import Card from './Card.svelte';
   let { onclose }: { onclose?: () => void } = $props();
+
+  Sentry.addBreadcrumb({ category: 'billing', message: 'upgrade_prompt_shown' });
 </script>
 
 <Card padding="md" class="border-warning-500/20 bg-warning-900/10">
@@ -14,7 +17,15 @@
     </div>
 
     <div class="flex flex-wrap gap-2">
-      <Button href="/dashboard/billing" size="sm" variant="primary">View Plans</Button>
+      <Button
+        href="/dashboard/billing"
+        size="sm"
+        variant="primary"
+        onclick={() =>
+          Sentry.addBreadcrumb({ category: 'billing', message: 'upgrade_prompt_clicked' })}
+      >
+        View Plans
+      </Button>
       {#if onclose}
         <Button size="sm" variant="ghost" onclick={onclose}>Dismiss</Button>
       {/if}

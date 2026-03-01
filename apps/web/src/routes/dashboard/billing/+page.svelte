@@ -20,18 +20,20 @@
     const success = $page.url.searchParams.get('success');
     const canceled = $page.url.searchParams.get('canceled');
     if (success) {
+      Sentry.addBreadcrumb({ category: 'billing', message: 'checkout_success' });
       toastStore.add('Payment successful! Your account has been updated.', 'success');
       // Refresh subscription data after Stripe redirect
       setTimeout(() => subscriptionStore.fetch(), 1000);
     }
     if (canceled) {
+      Sentry.addBreadcrumb({ category: 'billing', message: 'checkout_cancelled' });
       toastStore.add('Payment was canceled.', 'error');
     }
   });
 
   async function startCheckout(product: 'monthly' | 'annual' | 'credits') {
     checkoutLoading = product;
-    Sentry.addBreadcrumb({ category: 'billing', message: `Checkout started: ${product}` });
+    Sentry.addBreadcrumb({ category: 'billing', message: 'checkout_started', data: { product } });
     try {
       const { checkoutUrl } = await apiPost<ApiCheckoutResponse>('/api/billing/checkout', {
         product,
@@ -46,7 +48,7 @@
 
   async function openPortal() {
     portalLoading = true;
-    Sentry.addBreadcrumb({ category: 'billing', message: 'Portal opened' });
+    Sentry.addBreadcrumb({ category: 'billing', message: 'portal_opened' });
     try {
       const { portalUrl } = await apiPost<ApiPortalResponse>('/api/billing/portal', {});
       window.location.href = portalUrl;
