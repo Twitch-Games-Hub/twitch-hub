@@ -5,8 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from hcloud import Client
-from hcloud.hcloud import APIException
+from hcloud import Client, APIException
 from hcloud.images import Image
 from hcloud.locations import Location
 from hcloud.server_types import ServerType
