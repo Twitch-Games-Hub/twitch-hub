@@ -41,7 +41,10 @@ const app = await buildApp();
 // returns raw Buffer for Stripe signature verification
 await app.register(webhookPlugin, { prefix: '/api/billing' });
 
-// Health check — verifies Redis and Postgres
+// Liveness probe — confirms HTTP server is alive (no dependency checks)
+app.get('/healthz', { logLevel: 'silent' }, async () => ({ status: 'ok' }));
+
+// Readiness check — verifies Redis and Postgres
 app.get('/health', { logLevel: 'silent' }, async (request, reply) => {
   try {
     await Promise.all([redis.ping(), prisma.$queryRaw`SELECT 1`]);

@@ -83,7 +83,11 @@ services:
       STRIPE_CREDIT_PACK_PRICE_ID: ${STRIPE_CREDIT_PACK_PRICE_ID:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'bun -e "const r = await fetch(''http://localhost:3001/healthz''); process.exit(r.ok ? 0 : 1)"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -121,7 +125,11 @@ services:
       PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
       PUBLIC_SENTRY_ENVIRONMENT: production
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/ || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'bun -e "const r = await fetch(''http://localhost:3000/''); process.exit(r.ok ? 0 : 1)"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
