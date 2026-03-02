@@ -19,6 +19,7 @@ infra/.server_ip
 infra/.wizard_state.json
 infra/__pycache__/
 infra/**/__pycache__/
+infra/caddy_data.tar.gz
 infra/*.egg-info/
 webhookd/.htpasswd
 

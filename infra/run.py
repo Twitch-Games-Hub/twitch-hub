@@ -27,6 +27,8 @@ COMMANDS = {
     "full": "Run create → provision → deploy in one shot",
     "secrets": "Generate random DB, Redis, and JWT secrets into .env.infra",
     "health": "SSH into the server and show container + API status",
+    "backup-certs": "Download TLS certificates from the server",
+    "restore-certs": "Upload TLS certificates to the server",
 }
 
 
@@ -423,6 +425,99 @@ def cmd_health() -> None:
         ui.warn("API /healthz: unreachable")
 
 
+def cmd_backup_certs() -> None:
+    """Download TLS certificates from the server."""
+    cfg = Config()
+    ip = cfg.get_server_ip()
+    volume = f"{Path(cfg.deploy_dir).name}_caddy_data"
+    local_path = INFRA_DIR / "caddy_data.tar.gz"
+    remote_path = "/tmp/caddy_data.tar.gz"
+    ssh_target = f"{cfg.deploy_user}@{ip}"
+
+    ui.banner("Backup TLS Certificates")
+    ui.info(f"Server: {ip}")
+    ui.info(f"Volume: {volume}")
+
+    # Create tarball from Docker volume
+    ui.info("Creating certificate archive on server...")
+    subprocess.run(
+        [
+            "ssh", "-o", "StrictHostKeyChecking=no", ssh_target,
+            f"docker run --rm -v {volume}:/data -v /tmp:/backup alpine "
+            f"sh -c 'tar czf /backup/caddy_data.tar.gz -C /data . && chmod 666 /backup/caddy_data.tar.gz'",
+        ],
+        check=True,
+    )
+
+    # Download to local
+    ui.info("Downloading archive...")
+    subprocess.run(
+        ["scp", "-o", "StrictHostKeyChecking=no", f"{ssh_target}:{remote_path}", str(local_path)],
+        check=True,
+    )
+
+    # Clean up remote temp file (root-owned, so use docker to remove)
+    subprocess.run(
+        [
+            "ssh", "-o", "StrictHostKeyChecking=no", ssh_target,
+            "docker run --rm -v /tmp:/tmp alpine rm -f /tmp/caddy_data.tar.gz",
+        ],
+        check=True,
+    )
+
+    size_kb = local_path.stat().st_size / 1024
+    ui.success(f"Saved to {local_path} ({size_kb:.1f} KB)")
+
+
+def cmd_restore_certs() -> None:
+    """Upload TLS certificates to the server."""
+    cfg = Config()
+    ip = cfg.get_server_ip()
+    volume = f"{Path(cfg.deploy_dir).name}_caddy_data"
+    local_path = INFRA_DIR / "caddy_data.tar.gz"
+    remote_path = "/tmp/caddy_data.tar.gz"
+    ssh_target = f"{cfg.deploy_user}@{ip}"
+    compose = f"docker compose -f {cfg.deploy_dir}/docker-compose.prod.yml"
+
+    if not local_path.exists():
+        ui.error(
+            f"Backup not found at {local_path}",
+            hint="Run 'python run.py backup-certs' first",
+        )
+        sys.exit(1)
+
+    ui.banner("Restore TLS Certificates")
+    ui.info(f"Server: {ip}")
+    ui.info(f"Volume: {volume}")
+
+    # Upload archive to server
+    ui.info("Uploading archive...")
+    subprocess.run(
+        ["scp", "-o", "StrictHostKeyChecking=no", str(local_path), f"{ssh_target}:{remote_path}"],
+        check=True,
+    )
+
+    # Extract into Docker volume
+    ui.info("Restoring certificates into volume...")
+    subprocess.run(
+        [
+            "ssh", "-o", "StrictHostKeyChecking=no", ssh_target,
+            f"docker run --rm -v {volume}:/data -v /tmp:/backup alpine "
+            f"sh -c 'tar xzf /backup/caddy_data.tar.gz -C /data && rm /backup/caddy_data.tar.gz'",
+        ],
+        check=True,
+    )
+
+    # Restart Caddy to pick up restored certs
+    ui.info("Restarting Caddy...")
+    subprocess.run(
+        ["ssh", "-o", "StrictHostKeyChecking=no", ssh_target, f"{compose} restart caddy"],
+        check=True,
+    )
+
+    ui.success("Certificates restored and Caddy restarted")
+
+
 def _show_help() -> None:
     from rich.table import Table
 
@@ -458,6 +553,8 @@ def main() -> None:
         "full": cmd_full,
         "secrets": cmd_secrets,
         "health": cmd_health,
+        "backup-certs": cmd_backup_certs,
+        "restore-certs": cmd_restore_certs,
     }
 
     # Extract command (skip flags)
