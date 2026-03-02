@@ -73,6 +73,7 @@ export interface GamificationEvent {
 export interface StreakEventData {
   streakType: 'answer';
   count: number;
+  multiplier?: number;
 }
 
 export interface AchievementEventData {

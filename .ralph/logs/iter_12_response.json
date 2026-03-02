@@ -1,0 +1,39 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 140222,
+  "duration_api_ms": 113664,
+  "num_turns": 20,
+  "result": "Task 12 is complete. Let me verify the acceptance criteria:\n\n1. **getStreakMultiplier is imported and used in recordCorrectAnswer** — Imported from `@twitch-hub/shared-types`, called after `redis.incr(sKey)`.\n2. **At streak 3-4, STREAK_BONUS = XP_AWARDS.CORRECT_ANSWER * 1 (5 XP)** — `multiplier=2`, `bonusXp = 5 * (2-1) = 5`.\n3. **At streak >=5, STREAK_BONUS = XP_AWARDS.CORRECT_ANSWER * 2 (10 XP)** — `multiplier=3`, `bonusXp = 5 * (3-1) = 10`.\n4. **Streak milestone broadcast includes multiplier** — Added `multiplier` to the event data object.\n5. **StreakEventData includes optional multiplier field** — Added `multiplier?: number`.\n6. **finalizeSession correctly sums variable STREAK_BONUS** — Uses `hgetall` to read accumulated totals; key name unchanged.\n7. **pnpm build completes without errors** — Verified.\n\nThere are still pending tasks (13-20), so I do NOT output RALPH_DONE.",
+  "stop_reason": null,
+  "session_id": "74483d99-4fbd-4b61-881c-b3f4520b08af",
+  "total_cost_usd": 1.00901975,
+  "usage": {
+    "input_tokens": 21,
+    "cache_creation_input_tokens": 51543,
+    "cache_read_input_tokens": 1090142,
+    "output_tokens": 5668,
+    "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+    "service_tier": "standard",
+    "cache_creation": { "ephemeral_1h_input_tokens": 51543, "ephemeral_5m_input_tokens": 0 },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-opus-4-6": {
+      "inputTokens": 21,
+      "outputTokens": 5668,
+      "cacheReadInputTokens": 1090142,
+      "cacheCreationInputTokens": 51543,
+      "webSearchRequests": 0,
+      "costUSD": 1.00901975,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    }
+  },
+  "permission_denials": [],
+  "fast_mode_state": "off",
+  "uuid": "961ce062-82e0-4de0-a809-b7565a8e31b9"
+}

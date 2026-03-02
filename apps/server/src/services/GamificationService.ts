@@ -2,6 +2,7 @@ import {
   XP_AWARDS,
   computeLevel,
   computeLoyaltyTier,
+  getStreakMultiplier,
   type GamificationEvent,
   type LeaderboardEntry,
 } from '@twitch-hub/shared-types';
@@ -123,10 +124,12 @@ export class GamificationService {
     const newStreak = await redis.incr(sKey);
     await redis.expire(sKey, REDIS_VOTE_TTL_SEC);
 
-    // Streak bonus (3+ consecutive correct)
-    if (newStreak >= 3) {
-      await redis.hincrby(key, 'STREAK_BONUS', XP_AWARDS.STREAK_BONUS_PER_STEP);
-      await redis.zincrby(leaderboardKey(sessionId), XP_AWARDS.STREAK_BONUS_PER_STEP, playerId);
+    // Streak multiplier bonus (2x at streak 3, 3x at streak 5)
+    const multiplier = getStreakMultiplier(newStreak);
+    if (multiplier > 1) {
+      const bonusXp = XP_AWARDS.CORRECT_ANSWER * (multiplier - 1);
+      await redis.hincrby(key, 'STREAK_BONUS', bonusXp);
+      await redis.zincrby(leaderboardKey(sessionId), bonusXp, playerId);
     }
 
     // Broadcast streak milestones
@@ -135,7 +138,7 @@ export class GamificationService {
         type: 'streak',
         playerId,
         displayName: playerId,
-        data: { streakType: 'answer', count: newStreak },
+        data: { streakType: 'answer', count: newStreak, multiplier },
       } satisfies GamificationEvent);
     }
   }

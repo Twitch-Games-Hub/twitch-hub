@@ -205,8 +205,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 12,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Imported getStreakMultiplier from shared-types. Replaced flat STREAK_BONUS_PER_STEP with multiplied bonus: at streak 3-4 awards CORRECT_ANSWER*1 (5 XP), at streak >=5 awards CORRECT_ANSWER*2 (10 XP). Added multiplier to streak milestone broadcast data. Added optional multiplier field to StreakEventData interface. finalizeSession correctly aggregates variable STREAK_BONUS via hincrby/hgetall. Build passes clean."
     },
     {
       "id": 13,
