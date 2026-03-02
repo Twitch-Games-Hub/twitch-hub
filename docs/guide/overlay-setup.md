@@ -16,6 +16,7 @@ Each game type renders a different overlay visualization:
 | Hot Take   | Histogram         | 10-bar chart showing rating distribution (1-10) |
 | Balance    | Tug of War        | Animated A vs B percentage bar                  |
 | Blind Test | Leaderboard       | Top scorers ranked by speed and accuracy        |
+| Ranking    | Bracket           | Elimination bracket with head-to-head matchups  |
 
 ## Transparency
 

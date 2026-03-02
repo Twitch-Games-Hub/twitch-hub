@@ -11,6 +11,7 @@ enum GameType {
   HOT_TAKE = 'HOT_TAKE',
   BALANCE = 'BALANCE',
   BLIND_TEST = 'BLIND_TEST',
+  RANKING = 'RANKING',
 }
 ```
 
@@ -28,10 +29,9 @@ enum GameStatus {
 
 ```ts
 enum SessionStatus {
-  WAITING = 'WAITING',
-  ACTIVE = 'ACTIVE',
-  PAUSED = 'PAUSED',
-  COMPLETED = 'COMPLETED',
+  LOBBY = 'LOBBY',
+  LIVE = 'LIVE',
+  ENDED = 'ENDED',
 }
 ```
 
@@ -46,11 +46,12 @@ enum ResponseSource {
 
 ## Game Config Types
 
-| Type              | Key Fields                                                          |
-| ----------------- | ------------------------------------------------------------------- |
-| `HotTakeConfig`   | `statements: string[]`, `roundDurationSec: number`                  |
-| `BalanceConfig`   | `questions: { optionA, optionB }[]`                                 |
-| `BlindTestConfig` | `rounds: { answer, hints, mediaSrc? }[]`, `answerWindowSec: number` |
+| Type              | Key Fields                                                                   |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `HotTakeConfig`   | `statements: string[]`, `roundDurationSec: number`                           |
+| `BalanceConfig`   | `questions: { optionA, optionB }[]`                                          |
+| `BlindTestConfig` | `rounds: { answer, hints, mediaSrc? }[]`, `answerWindowSec: number`          |
+| `RankingConfig`   | `items: RankingItem[]`, `bracketSize: 8\|16\|32`, `roundDurationSec: number` |
 
 ## API Types
 

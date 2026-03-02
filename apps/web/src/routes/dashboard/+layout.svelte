@@ -2,13 +2,14 @@
   import { authStore } from '$lib/stores/auth.svelte';
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import ActiveSessionsBar from '$lib/components/dashboard/ActiveSessionsBar.svelte';
 
   let { children } = $props();
 
   $effect(() => {
-    if (!authStore.loading && !authStore.user) {
+    if (browser && !authStore.loading && !authStore.user) {
       goto(resolve('/auth/login'));
     }
   });

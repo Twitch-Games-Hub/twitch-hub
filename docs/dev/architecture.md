@@ -12,7 +12,7 @@ twitch-hub/
 └── docs/             # VitePress documentation
 ```
 
-**Tooling**: Bun workspaces manage dependencies and orchestrate builds/scripts across packages.
+**Tooling**: pnpm workspaces manage dependencies and orchestrate builds/scripts across packages.
 
 ## Data Flow
 

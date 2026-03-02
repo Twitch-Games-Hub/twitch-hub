@@ -7,7 +7,10 @@ export default defineConfig({
   ssr: {
     // Bundle all deps into the SSR output so the runner image needs no
     // node_modules at all — keeps production image minimal.
-    noExternal: true,
+    //    noExternal: false,
+    // OpenTelemetry packages are CJS-only and break Vite's SSR module
+    // runner — let Node.js load them natively instead.
+    //  external: [/^@opentelemetry\//, /^@sentry\//],
   },
   plugins: [
     sentrySvelteKit({

@@ -140,7 +140,7 @@ start_tmux_session() {
   echo ""
   echo "  tmux windows:"
   echo "    0:web     — SvelteKit frontend"
-  echo "    1:server  — Express API server"
+  echo "    1:server  — Fastify API server"
   echo "    2:docker  — Docker compose logs"
   echo "    3:stripe  — Stripe webhook listener"
   echo ""
@@ -152,7 +152,7 @@ start_tmux_session() {
   tmux new-session -d -s "$TMUX_SESSION" -n web -c "$ROOT_DIR" \
     "pnpm --filter './apps/web' run dev"
 
-  # Window 1: server (Express API)
+  # Window 1: server (Fastify API)
   tmux new-window -t "$TMUX_SESSION" -n server -c "$ROOT_DIR" \
     "pnpm --filter './apps/server' run dev"
 

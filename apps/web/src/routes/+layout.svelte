@@ -4,7 +4,7 @@
   import { notificationStore } from '$lib/stores/notifications.svelte';
   import { gamificationStore } from '$lib/stores/gamification.svelte';
   import XpBar from '$lib/components/gamification/XpBar.svelte';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import { TwitchIcon, MenuIcon, XIcon, GamepadIcon, PlusIcon } from '$lib/components/ui/icons';
@@ -18,16 +18,9 @@
   let mobileMenuOpen = $state(false);
   let onDashboard = $derived($page.url.pathname.startsWith('/dashboard'));
   let isOverlay = $derived($page.url.pathname.startsWith('/overlay'));
-  let notificationSocketBound = false;
-
-  onMount(() => {
-    authStore.fetchSession();
-  });
-
-  // Set up notification socket and fetch gamification profile when user becomes available
-  $effect(() => {
-    if (authStore.user && !notificationSocketBound) {
-      notificationSocketBound = true;
+  onMount(async () => {
+    await authStore.fetchSession();
+    if (authStore.user) {
       notificationStore.fetchCount();
       gamificationStore.fetchProfile();
       setupNotificationSocket();
@@ -53,12 +46,6 @@
       // Silently fail - notifications are non-critical
     }
   }
-
-  onDestroy(() => {
-    if (notificationSocketBound) {
-      notificationSocketBound = false;
-    }
-  });
 </script>
 
 {#if isOverlay}

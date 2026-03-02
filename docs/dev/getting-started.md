@@ -19,31 +19,21 @@ git clone https://github.com/your-org/twitch-hub.git
 cd twitch-hub
 
 # Configure environment
-cp apps/server/.env.example apps/server/.env
+cp .env.example apps/server/.env
 # Edit .env with your Twitch app credentials
 
 # Full setup + launch
 ./scripts/dev-init.sh
 ```
 
-This opens a tmux session (`twitch-hub`) with three panes:
+This opens a tmux session (`twitch-hub`) with four windows:
 
-```
-┌─────────────────────────────────┐
-│         pnpm dev (65%)          │
-│   (SvelteKit :5173 + Server    │
-│         :3001)                  │
-├────────────────┬────────────────┤
-│ docker compose │ stripe listen  │
-│ logs (35%)     │ (or info msg)  │
-└────────────────┴────────────────┘
-```
-
-| Pane         | Content                                                                |
-| ------------ | ---------------------------------------------------------------------- |
-| Top          | `pnpm dev` — SvelteKit (`:5173`) + Fastify server (`:3001`)            |
-| Bottom-left  | `docker compose logs -f` — PostgreSQL and Redis output                 |
-| Bottom-right | Stripe webhook listener, or a placeholder if Stripe CLI is unavailable |
+| Window     | Content                                                                |
+| ---------- | ---------------------------------------------------------------------- |
+| `0:web`    | SvelteKit frontend (`:5173`)                                           |
+| `1:server` | Fastify API server (`:3001`)                                           |
+| `2:docker` | `docker compose logs -f` — PostgreSQL and Redis output                 |
+| `3:stripe` | Stripe webhook listener, or a placeholder if Stripe CLI is unavailable |
 
 ### `dev-init.sh` Commands
 

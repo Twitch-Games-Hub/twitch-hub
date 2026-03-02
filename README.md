@@ -2,10 +2,10 @@
 
 Interactive games and polls for Twitch streamers — powered by chat commands and real-time overlays.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![SvelteKit](https://img.shields.io/badge/SvelteKit-5-orange)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-black)
-![Prisma](https://img.shields.io/badge/Prisma-6-teal)
+![Prisma](https://img.shields.io/badge/Prisma-7-teal)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-blue)
 ![pnpm](https://img.shields.io/badge/pnpm-10-f69220)
 
@@ -16,7 +16,7 @@ git clone https://github.com/your-org/twitch-hub.git
 cd twitch-hub
 pnpm install
 docker compose up -d              # Postgres + Redis
-cp .env.example .env              # Add your Twitch app credentials
+cp .env.example apps/server/.env  # Add your Twitch app credentials
 pnpm --filter @twitch-hub/server run db:generate
 pnpm --filter @twitch-hub/server run db:push
 pnpm run dev

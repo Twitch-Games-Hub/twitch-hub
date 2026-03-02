@@ -26,7 +26,7 @@ TWITCH_REDIRECT_URI=http://localhost:5173/api/auth/callback
 ## 4. Create a Game
 
 1. Go to **Dashboard** → **New Game**
-2. Select a game type (Hot Take, Balance, or Blind Test)
+2. Select a game type (Hot Take, Balance, Blind Test, or Ranking)
 3. Enter a title and configure the game settings
 4. Save the game (status: `DRAFT`)
 5. Set status to `READY` when configuration is complete
@@ -34,7 +34,7 @@ TWITCH_REDIRECT_URI=http://localhost:5173/api/auth/callback
 ## 5. Run a Session
 
 1. From the dashboard, click **Start Session** on a game
-2. A new session is created in `WAITING` status
+2. A new session is created in `LOBBY` status
 3. Share the play link with viewers: `/play/{sessionId}`
 4. Click **Start** to begin the first round
 5. Use **Next Round** to advance through rounds
@@ -43,7 +43,7 @@ TWITCH_REDIRECT_URI=http://localhost:5173/api/auth/callback
 ## Session Lifecycle
 
 ```
-WAITING → ACTIVE → (round 1 → round 2 → ... → round N) → COMPLETED
+LOBBY → LIVE → (round 1 → round 2 → ... → round N) → ENDED
 ```
 
-Viewers can join at any time during `ACTIVE` status.
+Viewers can join at any time during `LIVE` status.

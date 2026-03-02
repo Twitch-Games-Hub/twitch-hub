@@ -10,6 +10,7 @@ Viewers interact with games by typing commands in Twitch chat. No account or log
 | `!vote A` / `!vote B` | Balance    | `!vote A`       | Vote for option A or B          |
 | `!answer text`        | Blind Test | `!answer Mario` | Submit a guess                  |
 | `!guess text`         | Blind Test | `!guess Zelda`  | Alias for `!answer`             |
+| `!pick A` / `!pick B` | Ranking    | `!pick A`       | Vote for a matchup winner       |
 
 ## How It Works
 
@@ -26,4 +27,4 @@ Viewers interact with games by typing commands in Twitch chat. No account or log
 - Extra whitespace is trimmed
 - Only one vote per user per round is counted
 - Invalid values are silently ignored (e.g., `!rate 15`)
-- Commands only work when a session is in `ACTIVE` status
+- Commands only work when a session is in `LIVE` status

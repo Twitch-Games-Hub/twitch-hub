@@ -8,7 +8,7 @@
     "build": "tsup",
     "start": "node --import ./dist/instrument.js dist/index.js",
     "clean": "rm -rf dist",
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate && node -e \"var f='src/generated/prisma/package.json',p=JSON.parse(require('fs').readFileSync(f));p.type='module';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\\n')\"",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",

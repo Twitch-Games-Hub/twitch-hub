@@ -1,4 +1,4 @@
-import type { Game } from '../generated/prisma/client.js';
+import type { Game } from '../generated/prisma/client';
 import type { SessionBudget } from '@twitch-hub/shared-types';
 
 declare module 'fastify' {

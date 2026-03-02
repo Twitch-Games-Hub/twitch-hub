@@ -1,4 +1,4 @@
-import type { Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client';
 import { prisma } from '../db/client.js';
 import { logger } from '../logger.js';
 import type { ApiNotification } from '@twitch-hub/shared-types';
