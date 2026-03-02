@@ -29,8 +29,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 2,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Built custom particle system using PixiJS v8 directly (bypassed @pixi/particle-emitter v5 due to v7/v8 incompatibility). Created shapes.ts (5 shape generators with metallic sheen), presets.ts (6 named presets with ParticlePreset interface), GeometricParticleSystem.ts (sprite-based particle pool, ticker-driven animation, 200 cap), and barrel index.ts. Build passes clean."
     },
     {
       "id": 3,
@@ -167,6 +167,187 @@
         "pnpm run check passes (lint + typecheck)"
       ],
       "priority": 10,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 11,
+      "title": "Add rank tier constants, streak multiplier logic, and round-XP types to shared-types",
+      "description": "Add the foundational XP system constants, rank tier mapping, streak multiplier logic, and new socket event types to `packages/shared-types/src/gamification.ts` and `packages/shared-types/src/socket-events.ts`.\n\n**1. Named Rank Tiers** — Add to `packages/shared-types/src/gamification.ts` after existing enums:\n- `RankTier` enum: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND\n- `RANK_TIER_THRESHOLDS: Record<RankTier, number>` mapping: BRONZE=0, SILVER=500, GOLD=1500, PLATINUM=3500, DIAMOND=7000\n- `computeRankTier(totalXp: number): RankTier` — returns highest rank whose threshold the player meets\n- `xpToNextRank(totalXp: number): { current: RankTier; next: RankTier | null; xpNeeded: number }` — progress toward next rank\n\n**2. Streak Multiplier** — Add constants and utility:\n- `STREAK_MULTIPLIERS = { THRESHOLD_2X: 3, THRESHOLD_3X: 5, MULTIPLIER_2X: 2, MULTIPLIER_3X: 3 } as const`\n- `getStreakMultiplier(consecutiveCorrect: number): number` — returns 1 for <3, 2 for 3-4, 3 for >=5\n\n**3. Round-end XP broadcast types** — Add new interfaces:\n- `RoundXpSummary`: `{ round: number; playerXp: Record<string, { roundXp: number; totalSessionXp: number; streak: number; multiplier: number }> }`\n- `RankUpEventData`: `{ previousRank: RankTier; newRank: RankTier; totalXp: number }`\n- `XpTickEventData`: `{ amount: number; reason: XpReason; multiplier: number }`\n\n**4. Extend GamificationEvent** — Update the `type` union to include `'rank_up' | 'xp_tick'` and add `RankUpEventData | XpTickEventData` to the `data` union.\n\n**5. Add socket event** — In `packages/shared-types/src/socket-events.ts`, add to `ServerToClientEvents`: `'gamification:round-xp': (data: RoundXpSummary) => void;`\n\n**6. Update PlayerProfileSummary** — Add `rankTier: RankTier` field.\n\nRun `pnpm build` from workspace root to verify shared-types compiles and downstream packages resolve the new exports.",
+      "acceptance_criteria": [
+        "RankTier enum with BRONZE/SILVER/GOLD/PLATINUM/DIAMOND is exported",
+        "RANK_TIER_THRESHOLDS maps each rank to correct XP threshold (0/500/1500/3500/7000)",
+        "computeRankTier(totalXp) returns the correct rank for given XP values",
+        "xpToNextRank returns current rank, next rank, and XP needed",
+        "STREAK_MULTIPLIERS constants and getStreakMultiplier function are exported",
+        "getStreakMultiplier returns 1 for <3, 2 for 3-4, 3 for >=5",
+        "RoundXpSummary, RankUpEventData, XpTickEventData interfaces are exported",
+        "GamificationEvent type union includes rank_up and xp_tick",
+        "ServerToClientEvents includes gamification:round-xp",
+        "PlayerProfileSummary includes rankTier field",
+        "pnpm build completes without errors"
+      ],
+      "priority": 11,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 12,
+      "title": "Add streak multiplier logic to GamificationService",
+      "description": "Modify `apps/server/src/services/GamificationService.ts` to apply streak multipliers (2x at streak 3, 3x at streak 5) when recording correct answers.\n\n**Changes to `recordCorrectAnswer` method:**\n1. Import `getStreakMultiplier` from `@twitch-hub/shared-types`.\n2. After incrementing the streak counter in Redis (`const newStreak = await redis.incr(sKey)`), compute the multiplier: `const multiplier = getStreakMultiplier(newStreak);`\n3. Replace the flat `STREAK_BONUS_PER_STEP` with a multiplied correct-answer XP:\n   - Base correct answer XP is already awarded (`XP_AWARDS.CORRECT_ANSWER`).\n   - If `multiplier > 1`, award additional bonus XP: `const bonusXp = XP_AWARDS.CORRECT_ANSWER * (multiplier - 1);`\n   - Replace the existing streak bonus increment with: `await redis.hincrby(key, 'STREAK_BONUS', bonusXp);` and matching leaderboard zincrby.\n   - Result: streak 3 yields 5 + 5 = 10 XP (2x), streak 5 yields 5 + 10 = 15 XP (3x).\n4. Update the streak milestone broadcast to include the multiplier value in the event data.\n5. Update `StreakEventData` in shared-types to include optional `multiplier?: number` field if not already present.\n\nVerify that `finalizeSession` still correctly aggregates the `STREAK_BONUS` field from Redis — the key name hasn't changed, just the amounts.",
+      "acceptance_criteria": [
+        "getStreakMultiplier is imported and used in recordCorrectAnswer",
+        "At streak 3-4, STREAK_BONUS awarded is XP_AWARDS.CORRECT_ANSWER * 1 (the extra 1x)",
+        "At streak >=5, STREAK_BONUS awarded is XP_AWARDS.CORRECT_ANSWER * 2 (the extra 2x)",
+        "Streak milestone broadcast includes multiplier in event data",
+        "StreakEventData interface includes optional multiplier field",
+        "finalizeSession correctly sums up variable STREAK_BONUS amounts from Redis",
+        "pnpm build completes without errors"
+      ],
+      "priority": 12,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 13,
+      "title": "Add round-end XP broadcast to gameHandler and game store",
+      "description": "Currently, XP summaries are only emitted at game END. Add per-round XP data emission so the overlay can show floating +XP numbers.\n\n**1. Add `getRoundXpSummary` method to GamificationService** (`apps/server/src/services/GamificationService.ts`):\n- Signature: `async getRoundXpSummary(sessionId: string, round: number, participantIds: string[]): Promise<RoundXpSummary>`\n- For each participant: read their XP hash from Redis, compute total session XP, diff against a stored previous total (use Redis key `session:{sessionId}:prevxp:{playerId}`), read streak count, compute multiplier.\n- Return `RoundXpSummary` with per-player `{ roundXp, totalSessionXp, streak, multiplier }` for players whose roundXp > 0.\n\n**2. Modify `game:next-round` handler** in `apps/server/src/socket/handlers/gameHandler.ts`:\n- After `broadcastToSession(io, sessionId, 'game:round-end', results)`, add:\n  ```\n  const roundXpSummary = await gamificationService.getRoundXpSummary(sessionId, results.round, [...engine.getParticipantIds()]);\n  broadcastToSession(io, sessionId, 'gamification:round-xp', roundXpSummary);\n  ```\n- Wrap in try/catch with error logging.\n\n**3. Handle auto-timer path** in `apps/server/src/engine/GameEngine.ts`:\n- Add callback: `private onRoundXpCallback?: (sessionId: string, round: number) => Promise<void>;` with setter method.\n- In `onRoundTimerExpired`, after leaderboard broadcast, call `this.onRoundXpCallback?.(this.sessionId, results.round)`.\n- Wire this callback in GameRegistry's `initSession` to call `gamificationService.getRoundXpSummary` and broadcast.\n\n**4. Update game store** (`apps/web/src/lib/stores/game.svelte.ts`):\n- Add `roundXpSummary: RoundXpSummary | null` to state (default null).\n- Add getter for roundXpSummary.\n- Listen for `'gamification:round-xp'` event, set `state.roundXpSummary = data`.\n- Reset `roundXpSummary` to null on `game:round-start`.",
+      "acceptance_criteria": [
+        "GamificationService has getRoundXpSummary method returning per-player round XP deltas",
+        "game:next-round handler broadcasts gamification:round-xp after round-end",
+        "onRoundTimerExpired in GameEngine also triggers round XP broadcast via callback",
+        "GameRegistry wires the round XP callback during initSession",
+        "game.svelte.ts stores roundXpSummary and resets it on round-start",
+        "RoundXpSummary type from shared-types is used consistently",
+        "pnpm build completes without errors"
+      ],
+      "priority": 13,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 14,
+      "title": "Add rank-up detection to GamificationService finalizeSession",
+      "description": "Modify `apps/server/src/services/GamificationService.ts` to detect when a player crosses a rank tier threshold during session finalization, and broadcast a `rank_up` gamification event.\n\n**Changes to `finalizeSession` method** (inside the transaction loop after profile update):\n\n1. Import `computeRankTier, RankTier` from `@twitch-hub/shared-types`.\n2. Before the `tx.playerProfile.update` that increments `totalXp`, read the player's current `totalXp` to determine their pre-update rank:\n   ```ts\n   const preUpdateProfile = await tx.playerProfile.findUnique({ where: { id: profileId }, select: { totalXp: true } });\n   const previousRank = computeRankTier(preUpdateProfile?.totalXp ?? 0);\n   ```\n3. After the profile update (which increments totalXp), compute the new rank:\n   ```ts\n   const newRank = computeRankTier(updatedProfile.totalXp);\n   ```\n4. If `newRank !== previousRank`, broadcast a `rank_up` event:\n   ```ts\n   this.broadcastCallback?.(sessionId, 'gamification:event', {\n     type: 'rank_up',\n     playerId,\n     displayName: playerId,\n     data: { previousRank, newRank, totalXp: updatedProfile.totalXp },\n   } satisfies GamificationEvent);\n   ```\n5. Also update the existing `level_up` broadcast to include rank info in the event data if the level-up also triggers a rank change.",
+      "acceptance_criteria": [
+        "Pre-update rank is computed from current totalXp before incrementing",
+        "Post-update rank is computed after totalXp increment",
+        "rank_up GamificationEvent is broadcast when rank changes (e.g., BRONZE -> SILVER)",
+        "rank_up event includes previousRank, newRank, and totalXp",
+        "No rank_up event fires if rank stays the same",
+        "GamificationEvent type annotation satisfies the updated union including rank_up",
+        "pnpm build completes without errors"
+      ],
+      "priority": 14,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 15,
+      "title": "Add rank tier to profile API responses and create global leaderboard endpoint",
+      "description": "Update the gamification REST API to include rank tier information in profile responses, and add a new global XP leaderboard endpoint.\n\n**1. Update profile responses** in `apps/server/src/routes/gamification.ts`:\n- Import `computeRankTier` from `@twitch-hub/shared-types`.\n- In both `/profile` and `/profile/:twitchLogin` response objects, add: `rankTier: computeRankTier(profile.totalXp)`\n- Add this field alongside the existing `totalXp`, `level`, etc. fields.\n\n**2. Create global leaderboard endpoint** — Add a new route in the same `gamificationPlugin`:\n- `GET /leaderboard` with query params `limit` (default 50, max 100) and `offset` (default 0).\n- Query `prisma.playerProfile.findMany` ordered by `totalXp` desc, with limit/offset, including user relation for displayName, profileImageUrl, twitchLogin.\n- Also query `prisma.playerProfile.count()` for total.\n- Return: `{ entries: [{ rank, twitchLogin, displayName, profileImageUrl, totalXp, level, rankTier }], total, limit, offset }`\n- Each entry's `rankTier` computed via `computeRankTier(p.totalXp)`.",
+      "acceptance_criteria": [
+        "GET /api/gamification/profile response includes rankTier field",
+        "GET /api/gamification/profile/:twitchLogin response includes rankTier field",
+        "GET /api/gamification/leaderboard returns paginated global XP leaderboard",
+        "Leaderboard entries include rank, twitchLogin, displayName, profileImageUrl, totalXp, level, rankTier",
+        "Leaderboard supports limit (default 50, max 100) and offset query params",
+        "Leaderboard returns total count for pagination UI",
+        "pnpm build completes without errors"
+      ],
+      "priority": 15,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 16,
+      "title": "Create RankBadge component and update profile page with rank display",
+      "description": "Create a RankBadge Svelte component and update the player profile page to show the player's rank tier.\n\n**1. Create `apps/web/src/lib/components/gamification/RankBadge.svelte`:**\n- Props: `{ tier: RankTier; size?: 'sm' | 'md' | 'lg' }`\n- Color mapping per tier:\n  - BRONZE: from-amber-700 to-amber-500, border-amber-600\n  - SILVER: from-gray-400 to-gray-200, border-gray-300\n  - GOLD: from-yellow-500 to-yellow-300, border-yellow-400\n  - PLATINUM: from-cyan-400 to-blue-300, border-cyan-300\n  - DIAMOND: from-cyan-300 to-teal-200, border-cyan-200 with shimmer animation\n- Rendering: Pill/badge shape with metallic gradient background, rank name in bold uppercase, thin tier-colored border.\n- Size variants: sm (text-xs, px-2 py-0.5), md (text-sm, px-3 py-1), lg (text-base, px-4 py-1.5).\n- Diamond rank: `background-size: 200% auto; animation: shimmer 3s linear infinite`.\n\n**2. Update `apps/web/src/routes/u/[twitchLogin]/+page.svelte`:**\n- Import `RankBadge` and `RankTier` from shared-types.\n- In the header section after the display name, add: `{#if profile.rankTier}<RankBadge tier={profile.rankTier} size=\"md\" />{/if}`\n\n**3. Update `apps/web/src/lib/components/gamification/XpBar.svelte`:**\n- Add optional `rankTier` prop.\n- Display rank name next to the level badge when provided.",
+      "acceptance_criteria": [
+        "RankBadge.svelte renders a pill badge with the rank name in metallic gradient styling",
+        "All 5 rank tiers have distinct color schemes",
+        "Diamond rank has a shimmer animation",
+        "Size variants sm/md/lg produce correctly sized badges",
+        "Profile page shows the rank badge next to the player's display name",
+        "XpBar optionally shows rank tier name alongside level",
+        "pnpm build completes without errors"
+      ],
+      "priority": 16,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 17,
+      "title": "Create global XP leaderboard page",
+      "description": "Create a new SvelteKit route at `apps/web/src/routes/leaderboard/` that displays a paginated global XP leaderboard.\n\n**1. Create `apps/web/src/routes/leaderboard/+page.svelte`:**\n- Page title: 'Global Leaderboard'\n- Fetches from `GET /api/gamification/leaderboard` with limit/offset query params.\n- Leaderboard table columns: Rank, Player (avatar + display name), Rank Tier (RankBadge component), Level, Total XP.\n- Top 3 players get visually highlighted rows (gold/silver/bronze backgrounds).\n- Each player row links to their profile: `/u/{twitchLogin}`.\n- Pagination: Previous/Next buttons, showing 'Page X of Y'. 50 entries per page.\n- Loading state while data fetches.\n- Use Svelte 5 runes: `$state` for entries/loading/page, `$derived` for totalPages.\n- Use existing Tailwind design system (bg-surface-primary, text-text-primary, etc.) consistent with the profile page.\n\n**2. Add `<svelte:head><title>Leaderboard - Twitch Hub</title></svelte:head>` for SEO.**\n\n**3. Add navigation link** — Find the main app navigation component and add a 'Leaderboard' link pointing to `/leaderboard`.",
+      "acceptance_criteria": [
+        "Route /leaderboard renders a global XP leaderboard page",
+        "Page fetches from /api/gamification/leaderboard endpoint",
+        "Table shows rank, player avatar+name, rank badge, level, and total XP",
+        "Top 3 players have visually highlighted rows",
+        "Player rows link to /u/{twitchLogin} profile pages",
+        "Pagination with Previous/Next works correctly",
+        "Loading state shown while data fetches",
+        "Navigation includes a Leaderboard link",
+        "pnpm build completes without errors"
+      ],
+      "priority": 17,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 18,
+      "title": "Add XP summary and rank badges to GameOverResults overlay component",
+      "description": "Extend `apps/web/src/lib/components/overlay/GameOverResults.svelte` to show per-player XP earned during the session and a personal XP breakdown.\n\n**1. Update GameOverResults.svelte:**\n- Add new optional props: `sessionSummary: SessionXpSummary | null` and `leaderboard: LeaderboardEntry[]`.\n- After the existing game-type-specific results block, add two new sections with stagger-reveal animations:\n\n  **Session XP Leaderboard** (animation-delay: 1200ms):\n  ```svelte\n  {#if leaderboard.length > 0}\n    <div class=\"stagger-reveal mt-4 rounded-2xl bg-black/70 p-6 backdrop-blur-sm\" style=\"animation-delay: 1200ms;\">\n      <h3 class=\"mb-3 text-center text-sm font-semibold text-text-muted uppercase\">Session XP Leaderboard</h3>\n      <Leaderboard entries={leaderboard.map(e => ({ userId: e.playerId, score: e.xp }))} title=\"XP Earned\" />\n    </div>\n  {/if}\n  ```\n\n  **Personal XP Breakdown** (animation-delay: 1600ms):\n  ```svelte\n  {#if sessionSummary}\n    <div class=\"stagger-reveal mt-4 rounded-2xl bg-black/70 p-6 backdrop-blur-sm\" style=\"animation-delay: 1600ms;\">\n      <h3>Your XP Breakdown</h3>\n      {#each Object.entries(sessionSummary.breakdown) as [reason, xp]}\n        <div class=\"flex justify-between\"><span>{formatXpReason(reason)}</span><span>+{xp}</span></div>\n      {/each}\n      <div class=\"border-t pt-2\">Total: +{sessionSummary.total} XP</div>\n    </div>\n  {/if}\n  ```\n\n- Add `formatXpReason(reason: string): string` helper mapping XpReason values to labels: PARTICIPATION→'Participation', CORRECT_ANSWER→'Correct Answers', STREAK_BONUS→'Streak Multiplier Bonus', etc.\n\n**2. Update overlay page** (`apps/web/src/routes/overlay/[sessionId]/+page.svelte`):\n- Pass `sessionSummary={gameStore.sessionSummary}` and `leaderboard={gameStore.leaderboard}` to GameOverResults.\n\n**3. Update play page** if it also uses GameOverResults — pass the same props.",
+      "acceptance_criteria": [
+        "GameOverResults shows session XP leaderboard when leaderboard data is available",
+        "GameOverResults shows personal XP breakdown when sessionSummary is available",
+        "XP breakdown displays human-readable labels for each XP reason",
+        "XP breakdown shows total with a separator line",
+        "Stagger-reveal animation delays are sequential (1200ms, 1600ms)",
+        "Overlay page passes sessionSummary and leaderboard props to GameOverResults",
+        "pnpm build completes without errors"
+      ],
+      "priority": 18,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 19,
+      "title": "Build canvas floating +XP numbers and XP progress bar effects",
+      "description": "Create canvas XP animation effects that render on the overlay during gameplay. These require the PixiJS infrastructure from tasks 1-3.\n\n**1. Create `apps/web/src/lib/canvas/effects/floating-xp.ts`:**\n- Export: `function spawnFloatingXp(app: Application, x: number, y: number, amount: number, options?: { color?: number; fontSize?: number; duration?: number }): void`\n- Creates a PixiJS `Text` object with `+{amount} XP` label.\n- Font: bold, 18px default (configurable), white with drop shadow.\n- Animates upward ~60px over 1200ms with easeOutQuart from theme.\n- Fades opacity from 1 to 0 over the same duration.\n- If streak multiplier > 1, caller passes gold color (0xfbbf24) and 22px font.\n- Self-removes from stage when animation completes.\n- Respects `shouldAnimate()` — skips if reduced motion preferred.\n\n**2. Create `apps/web/src/lib/canvas/effects/xp-progress-bar.ts`:**\n- Export: `class CanvasXpProgressBar` with:\n  - `constructor(app: Application, y: number, width: number, height: number)`\n  - `update(progress: number, rankColor: number): void` — progress 0-1\n  - `animateFill(from: number, to: number, duration?: number): void` — smooth tween\n  - `destroy(): void`\n- Renders a horizontal bar with dark background track and metallic gradient fill.\n- Uses the `metallic-fill` effect from task 3 for chrome sweep.\n- Fill color matches the player's current rank tier.\n- `animateFill` smoothly tweens fill width from `from` to `to` over `duration` ms.\n- On rank change, flash the bar with a `glow` effect.\n\n**3. Update barrel exports** (`apps/web/src/lib/canvas/effects/index.ts` and `apps/web/src/lib/canvas/index.ts`) to include both new effects.",
+      "acceptance_criteria": [
+        "spawnFloatingXp creates an animated +XP text that drifts up and fades out",
+        "Floating XP text uses gold color and larger font when multiplier > 1",
+        "Floating XP respects reduced motion preferences",
+        "CanvasXpProgressBar renders a metallic gradient fill bar",
+        "animateFill smoothly tweens the progress bar width",
+        "Progress bar uses rank-tier-appropriate colors",
+        "Both effects self-clean from the PixiJS stage when done/destroyed",
+        "Effects are exported from the canvas barrel module",
+        "pnpm build completes without errors"
+      ],
+      "priority": 19,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 20,
+      "title": "Build canvas level-up/rank-up celebrations and wire XP effects into overlay",
+      "description": "Create the remaining canvas celebration effects and wire all XP-related canvas effects into the overlay page by consuming gamification events from the game store.\n\n**1. Create `apps/web/src/lib/canvas/effects/level-up-effect.ts`:**\n- Export: `function playLevelUpEffect(app: Application, x: number, y: number): void`\n- Sequence: shockwave at (x, y) with brand purple → 200ms delay → CELEBRATION particle burst (30 particles, brand purple + white).\n- Uses existing `shockwave.ts` from task 3.\n\n**2. Create `apps/web/src/lib/canvas/effects/rank-up-effect.ts`:**\n- Export: `function playRankUpEffect(app: Application, newRank: RankTier, centerX: number, centerY: number): void`\n- Sequence:\n  1. Screen-center shockwave with the new rank's color\n  2. 300ms later: SHOCKWAVE_DEBRIS particles in rank color\n  3. 500ms later: Rank insignia (from `rank-insignias.ts` task 3) as PixiJS Sprite at center, scale from 0→1.2→1.0 (overshoot bounce), hold 2 seconds, then fade out\n  4. Gold CELEBRATION particles during insignia reveal\n\n**3. Create `apps/web/src/lib/components/overlay/XpEffectsController.svelte`:**\n- Renderless Svelte 5 component (no visible DOM).\n- Gets `pixi-app` from context.\n- Watches `gameStore.roundXpSummary` via `$effect()`: when new summary arrives, spawn floating +XP for each player (staggered 50ms apart). Position: random x across viewport, y at bottom third.\n- Watches `gameStore.gamificationQueue` via `$effect()`: consume `level_up` events → `playLevelUpEffect`, consume `rank_up` events → `playRankUpEffect`. Dequeue after triggering.\n- All effects respect reduced motion.\n\n**4. Mount in overlay page** (`apps/web/src/routes/overlay/[sessionId]/+page.svelte`):\n- Import and add `<XpEffectsController />` inside the `<PixiWrapper>` (from task 10).\n- Active during `live`, `round-results`, and `game-over` phases.\n\n**5. Update barrel exports** to include new effects.",
+      "acceptance_criteria": [
+        "Level-up triggers a shockwave + celebration particle burst on the canvas",
+        "Rank-up triggers shockwave + debris + animated insignia reveal with rank-colored particles",
+        "Rank insignia scales in with overshoot bounce and fades out after 2 seconds",
+        "Floating +XP numbers appear on canvas when round XP summary arrives",
+        "XP numbers use gold color and larger font when streak multiplier > 1",
+        "XpEffectsController correctly consumes and dequeues gamification events",
+        "XpEffectsController is mounted in the overlay page within PixiWrapper",
+        "Effects only trigger during live/round-results/game-over phases",
+        "All canvas effects respect reduced motion preferences",
+        "pnpm build completes without errors"
+      ],
+      "priority": 20,
       "status": "pending",
       "notes": ""
     }

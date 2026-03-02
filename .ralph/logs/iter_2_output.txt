@@ -1,0 +1,24 @@
+Task 2 is complete. Here's a summary of what was implemented:
+
+## Task 2 — Completed
+
+**Files created:**
+- `apps/web/src/lib/canvas/particles/shapes.ts` — 5 geometric shape generators (triangle, diamond, hexagon, line, dot) with metallic chrome sheen effect
+- `apps/web/src/lib/canvas/particles/presets.ts` — `ParticlePreset` interface + 6 named presets (VOTE_BURST, AMBIENT_FIELD, CELEBRATION, SPARK, SHOCKWAVE_DEBRIS, WINNER_CROWN)
+- `apps/web/src/lib/canvas/particles/GeometricParticleSystem.ts` — Custom particle system with sprite pooling, ticker-driven animation, 200 particle cap, `burst()`/`startAmbient()`/`stopAmbient()` API
+- `apps/web/src/lib/canvas/particles/index.ts` — Barrel export
+
+**Files modified:**
+- `apps/web/src/lib/canvas/index.ts` — Added particles re-export
+
+**Key decision:** Built a custom particle system using PixiJS v8's native API instead of wrapping `@pixi/particle-emitter` v5, because the emitter depends on PixiJS v7 module structure (`@pixi/core`, `@pixi/display`) which is incompatible with v8. The custom system uses `Graphics→Texture` generation, `Sprite` pooling, and ticker callbacks.
+
+**All acceptance criteria met:**
+- shapes.ts exports all 5 shape generators
+- GeometricParticleSystem has burst(), startAmbient(), stopAmbient()
+- Pool caps at 200 active particles
+- All 6 presets defined and exported
+- shouldAnimate() checked in burst() and startAmbient()
+- `pnpm build` passes clean
+
+There are still 8 pending tasks remaining, so not outputting RALPH_DONE.
