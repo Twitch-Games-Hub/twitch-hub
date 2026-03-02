@@ -1,0 +1,16 @@
+There are still 5 pending tasks (16-20), so I should NOT output RALPH_DONE.
+
+**Task 15 is complete.** Here's what was implemented:
+
+1. **Updated profile responses** — Imported `computeRankTier` from `@twitch-hub/shared-types` and added `rankTier` field to:
+   - Empty profile response (when no profile exists) — `computeRankTier(0)` → BRONZE
+   - Authenticated `/profile` response — `computeRankTier(profile.totalXp)`
+   - Public `/profile/:twitchLogin` response — `computeRankTier(profile.totalXp)`
+
+2. **Created `GET /leaderboard` endpoint** with:
+   - `limit` query param (default 50, max 100, min 1)
+   - `offset` query param (default 0, min 0)
+   - Parallel `findMany` + `count` queries via `Promise.all`
+   - Returns `{ entries, total, limit, offset }` with each entry containing: rank, twitchLogin, displayName, profileImageUrl, totalXp, level, rankTier
+
+Only file changed: `apps/server/src/routes/gamification.ts`. Build passes clean.

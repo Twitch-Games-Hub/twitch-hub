@@ -1,7 +1,7 @@
 import { prisma } from '../db/client.js';
 import { authMiddleware } from '../auth.js';
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
-import { xpForLevel } from '@twitch-hub/shared-types';
+import { xpForLevel, computeRankTier } from '@twitch-hub/shared-types';
 
 export const gamificationPlugin: FastifyPluginAsync = async (app) => {
   // Own profile (auth required)
@@ -39,6 +39,7 @@ export const gamificationPlugin: FastifyPluginAsync = async (app) => {
         return {
           totalXp: 0,
           level: 1,
+          rankTier: computeRankTier(0),
           xpToNextLevel: xpForLevel(2),
           xpInCurrentLevel: 0,
           totalSessions: 0,
@@ -57,6 +58,7 @@ export const gamificationPlugin: FastifyPluginAsync = async (app) => {
       return {
         totalXp: profile.totalXp,
         level: profile.level,
+        rankTier: computeRankTier(profile.totalXp),
         xpToNextLevel: nextLevelXp,
         xpInCurrentLevel: profile.totalXp - currentLevelXp,
         xpNeededForNext: nextLevelXp - currentLevelXp,
@@ -125,6 +127,7 @@ export const gamificationPlugin: FastifyPluginAsync = async (app) => {
       profileImageUrl: profile.user?.profileImageUrl ?? null,
       totalXp: profile.totalXp,
       level: profile.level,
+      rankTier: computeRankTier(profile.totalXp),
       xpToNextLevel: nextLevelXp,
       xpInCurrentLevel: profile.totalXp - currentLevelXp,
       xpNeededForNext: nextLevelXp - currentLevelXp,
@@ -205,4 +208,40 @@ export const gamificationPlugin: FastifyPluginAsync = async (app) => {
       }));
     },
   );
+
+  // Global XP leaderboard
+  app.get<{ Querystring: { limit?: string; offset?: string } }>('/leaderboard', async (request) => {
+    const limit = Math.min(Math.max(parseInt(request.query.limit || '50', 10), 1), 100);
+    const offset = Math.max(parseInt(request.query.offset || '0', 10), 0);
+
+    const [profiles, total] = await Promise.all([
+      prisma.playerProfile.findMany({
+        orderBy: { totalXp: 'desc' },
+        take: limit,
+        skip: offset,
+        include: {
+          user: {
+            select: {
+              displayName: true,
+              profileImageUrl: true,
+              twitchLogin: true,
+            },
+          },
+        },
+      }),
+      prisma.playerProfile.count(),
+    ]);
+
+    const entries = profiles.map((p, i) => ({
+      rank: offset + i + 1,
+      twitchLogin: p.twitchLogin ?? p.user?.twitchLogin ?? null,
+      displayName: p.user?.displayName ?? p.twitchLogin,
+      profileImageUrl: p.user?.profileImageUrl ?? null,
+      totalXp: p.totalXp,
+      level: p.level,
+      rankTier: computeRankTier(p.totalXp),
+    }));
+
+    return { entries, total, limit, offset };
+  });
 };
