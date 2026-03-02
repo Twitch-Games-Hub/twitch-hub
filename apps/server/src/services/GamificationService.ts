@@ -5,6 +5,7 @@ import {
   getStreakMultiplier,
   type GamificationEvent,
   type LeaderboardEntry,
+  type RoundXpSummary,
 } from '@twitch-hub/shared-types';
 import { redis } from '../db/redis.js';
 import { prisma } from '../db/client.js';
@@ -29,6 +30,9 @@ function _completionsKey(sessionId: string) {
 }
 function roundParticipantsKey(sessionId: string, round: number) {
   return `session:${sessionId}:round:${round}:participants`;
+}
+function prevXpKey(sessionId: string, playerId: string) {
+  return `session:${sessionId}:prevxp:${playerId}`;
 }
 function leaderboardKey(sessionId: string) {
   return `session:${sessionId}:xp-leaderboard`;
@@ -196,6 +200,47 @@ export class GamificationService {
       entries.push({ rank: entries.length + 1, playerId: raw[i], xp: parseInt(raw[i + 1], 10) });
     }
     return entries;
+  }
+
+  /**
+   * Compute per-player XP earned in the current round by diffing against previous totals.
+   */
+  async getRoundXpSummary(
+    sessionId: string,
+    round: number,
+    participantIds: string[],
+  ): Promise<RoundXpSummary> {
+    const playerXp: RoundXpSummary['playerXp'] = {};
+
+    for (const playerId of participantIds) {
+      const key = xpKey(sessionId, playerId);
+      const data = await redis.hgetall(key);
+      if (Object.keys(data).length === 0) continue;
+
+      const totalSessionXp = Object.values(data).reduce((sum, v) => sum + parseInt(v, 10), 0);
+
+      // Read previous total and compute diff
+      const pKey = prevXpKey(sessionId, playerId);
+      const prevRaw = await redis.get(pKey);
+      const prevTotal = prevRaw ? parseInt(prevRaw, 10) : 0;
+      const roundXp = totalSessionXp - prevTotal;
+
+      // Store current total as previous for next round
+      await redis.set(pKey, String(totalSessionXp));
+      await redis.expire(pKey, REDIS_VOTE_TTL_SEC);
+
+      if (roundXp <= 0) continue;
+
+      // Read streak and compute multiplier
+      const sKey = streakKey(sessionId, playerId);
+      const streakRaw = await redis.get(sKey);
+      const streak = streakRaw ? parseInt(streakRaw, 10) : 0;
+      const multiplier = getStreakMultiplier(streak);
+
+      playerXp[playerId] = { roundXp, totalSessionXp, streak, multiplier };
+    }
+
+    return { round, playerXp };
   }
 
   /**

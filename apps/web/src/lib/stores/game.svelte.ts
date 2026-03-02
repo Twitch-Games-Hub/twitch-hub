@@ -10,6 +10,7 @@ import type {
   GamificationEvent,
   LeaderboardEntry,
   SessionXpSummary,
+  RoundXpSummary,
 } from '@twitch-hub/shared-types';
 import type { Socket } from 'socket.io-client';
 import * as Sentry from '@sentry/sveltekit';
@@ -42,6 +43,7 @@ interface GameStoreState {
   submittedAnswers: Record<string, unknown>;
   leaderboard: LeaderboardEntry[];
   sessionSummary: SessionXpSummary | null;
+  roundXpSummary: RoundXpSummary | null;
 }
 
 function createGameStore() {
@@ -62,6 +64,7 @@ function createGameStore() {
     submittedAnswers: {},
     leaderboard: [],
     sessionSummary: null,
+    roundXpSummary: null,
   });
 
   let socket: Socket | null = null;
@@ -85,6 +88,7 @@ function createGameStore() {
     'leaderboard:update',
     'reaction:received',
     'gamification:session-summary',
+    'gamification:round-xp',
   ];
 
   function bindSocket(s: Socket) {
@@ -117,6 +121,7 @@ function createGameStore() {
       state.multiVotes = null;
       state.submittedQuestionIds = [];
       state.submittedAnswers = {};
+      state.roundXpSummary = null;
       Sentry.logger.info('Round started', { round: round.round });
     });
 
@@ -202,6 +207,10 @@ function createGameStore() {
       state.sessionSummary = summary;
     });
 
+    s.on('gamification:round-xp', (data: RoundXpSummary) => {
+      state.roundXpSummary = data;
+    });
+
     s.on('session:rejoined', (snapshot: SessionSnapshot) => {
       state.gameState = snapshot.gameState;
       state.currentRound = snapshot.currentRound;
@@ -234,6 +243,7 @@ function createGameStore() {
     state.submittedAnswers = {};
     state.leaderboard = [];
     state.sessionSummary = null;
+    state.roundXpSummary = null;
   }
 
   return {
@@ -284,6 +294,9 @@ function createGameStore() {
     },
     get sessionSummary() {
       return state.sessionSummary;
+    },
+    get roundXpSummary() {
+      return state.roundXpSummary;
     },
     dequeueGamificationEvent() {
       state.gamificationQueue = state.gamificationQueue.slice(1);

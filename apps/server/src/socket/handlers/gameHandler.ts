@@ -168,6 +168,18 @@ export function registerGameHandlers(socket: AppSocket, io: AppServer) {
       const leaderboard = await gamificationService.getSessionLeaderboard(sessionId);
       io.of('/play').to(sessionId).emit('leaderboard:update', leaderboard);
 
+      // Broadcast per-round XP summary
+      try {
+        const roundXpSummary = await gamificationService.getRoundXpSummary(
+          sessionId,
+          results.round,
+          [...engine.getParticipantIds()],
+        );
+        broadcastToSession(io, sessionId, 'gamification:round-xp', roundXpSummary);
+      } catch (err) {
+        log.error({ err, sessionId }, 'Failed to broadcast round XP summary');
+      }
+
       const roundData = await engine.startRound();
       if (roundData) {
         broadcastToSession(io, sessionId, 'game:round-start', roundData);

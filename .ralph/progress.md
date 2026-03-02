@@ -134,3 +134,15 @@
   - `packages/shared-types/src/gamification.ts` — added optional `multiplier?: number` field to StreakEventData interface
 - **Summary**: Modified `recordCorrectAnswer` to use `getStreakMultiplier(newStreak)` after incrementing the streak counter. Replaced the flat `STREAK_BONUS_PER_STEP` (2 XP per streak step) with a multiplied correct-answer bonus: when `multiplier > 1`, awards `XP_AWARDS.CORRECT_ANSWER * (multiplier - 1)` as STREAK_BONUS. At streak 3-4 this yields 5 bonus XP (2x total: 5+5=10), at streak >=5 this yields 10 bonus XP (3x total: 5+10=15). Streak milestone broadcasts now include the multiplier value in event data. `finalizeSession` correctly aggregates variable STREAK_BONUS amounts because it uses `redis.hgetall()` which reads the accumulated total from `hincrby` calls — the key name `STREAK_BONUS` hasn't changed, only the amounts vary.
 - **Patterns discovered**: The `hincrby`/`hgetall` Redis accumulator pattern in GamificationService naturally handles variable XP amounts — no changes needed to `finalizeSession` when changing the per-increment amount, since it reads the accumulated total.
+
+### Iteration 13 — Task 13: Add round-end XP broadcast to gameHandler and game store
+
+- **Status**: completed
+- **Files changed**:
+  - `apps/server/src/services/GamificationService.ts` — added `prevXpKey` helper, `getRoundXpSummary` method, imported `RoundXpSummary` type
+  - `apps/server/src/socket/handlers/gameHandler.ts` — added round XP broadcast after round-end in `game:next-round` handler
+  - `apps/server/src/engine/GameEngine.ts` — added `onRoundXpCallback` private field, `setOnRoundXpCallback` setter, call in `onRoundTimerExpired`
+  - `apps/server/src/engine/GameRegistry.ts` — wired `onRoundXpCallback` in `initSession` to call `gamificationService.getRoundXpSummary` and broadcast
+  - `apps/web/src/lib/stores/game.svelte.ts` — added `roundXpSummary` state, getter, `gamification:round-xp` listener, reset on round-start
+- **Summary**: Implemented per-round XP data emission. `getRoundXpSummary` reads each participant's XP hash from Redis, computes total session XP, diffs against a stored previous total (Redis key `session:{sessionId}:prevxp:{playerId}`), reads streak count, computes multiplier, and returns `RoundXpSummary` with per-player data filtered to `roundXp > 0`. Two broadcast paths: (1) manual `game:next-round` handler broadcasts after round-end with try/catch, (2) auto-timer path via `onRoundXpCallback` on GameEngine called in `onRoundTimerExpired`, wired in GameRegistry's `initSession`. Game store updated with full lifecycle: listen → store → reset on round-start.
+- **Patterns discovered**: The prevxp Redis key pattern (`session:{sid}:prevxp:{pid}`) for tracking round-over-round XP deltas is clean — store cumulative total after each round, diff on next. The callback pattern on GameEngine (`setOnRoundXpCallback`) follows the same convention as `setOnAutoEnd` and `setBroadcastCallback` — private field + setter + optional chaining call.

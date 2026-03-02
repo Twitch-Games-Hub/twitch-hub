@@ -222,8 +222,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 13,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Added getRoundXpSummary method to GamificationService (reads XP hash, diffs against prevxp Redis key, returns per-player round XP deltas with streak/multiplier). Modified game:next-round handler to broadcast gamification:round-xp after round-end (try/catch wrapped). Added onRoundXpCallback to GameEngine with setter, called in onRoundTimerExpired after leaderboard broadcast. Wired callback in GameRegistry initSession. Updated game.svelte.ts with roundXpSummary state, getter, gamification:round-xp listener, and reset on round-start. Build and check pass clean."
     },
     {
       "id": 14,

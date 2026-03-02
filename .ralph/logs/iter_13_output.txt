@@ -1,0 +1,15 @@
+There are still 7 pending tasks, so I should NOT output RALPH_DONE.
+
+**Task 13 is complete.** Here's a summary of what was implemented:
+
+1. **GamificationService.getRoundXpSummary** — Reads each participant's XP hash from Redis, computes total session XP, diffs against a stored previous total (`session:{sessionId}:prevxp:{playerId}`), reads streak count, computes multiplier. Returns `RoundXpSummary` with only players whose `roundXp > 0`.
+
+2. **gameHandler.ts `game:next-round`** — After broadcasting `game:round-end` and leaderboard update, broadcasts `gamification:round-xp` with the round XP summary (wrapped in try/catch).
+
+3. **GameEngine.ts auto-timer path** — Added `onRoundXpCallback` private field with `setOnRoundXpCallback` setter. Called in `onRoundTimerExpired` after leaderboard broadcast (try/catch wrapped).
+
+4. **GameRegistry.ts wiring** — `initSession` wires the callback to call `gamificationService.getRoundXpSummary` and broadcast via `broadcastCallback`.
+
+5. **game.svelte.ts store** — Added `roundXpSummary: RoundXpSummary | null` state, getter, `gamification:round-xp` socket listener, and reset to null on `game:round-start`.
+
+All acceptance criteria met: `pnpm build` and `pnpm run check` pass clean (0 errors, 0 TypeScript warnings).

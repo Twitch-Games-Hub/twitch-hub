@@ -38,6 +38,9 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
   // Auto-end callback (called when timer expires on last round)
   private onAutoEnd?: (finalResults: FinalResults) => void;
 
+  // Round XP callback (called after round-end to broadcast XP summary)
+  private onRoundXpCallback?: (sessionId: string, round: number) => Promise<void>;
+
   // Gamification service (optional dependency)
   protected gamificationService?: GamificationService;
 
@@ -53,6 +56,10 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
 
   setOnAutoEnd(cb: (finalResults: FinalResults) => void) {
     this.onAutoEnd = cb;
+  }
+
+  setOnRoundXpCallback(cb: (sessionId: string, round: number) => Promise<void>) {
+    this.onRoundXpCallback = cb;
   }
 
   setGamificationService(svc: GamificationService) {
@@ -196,6 +203,13 @@ export abstract class GameEngine<TConfig = unknown, TAnswer = unknown> {
     if (this.gamificationService) {
       const leaderboard = await this.gamificationService.getSessionLeaderboard(this.sessionId);
       this.broadcastCallback?.(this.sessionId, 'leaderboard:update', leaderboard);
+    }
+
+    // Broadcast per-round XP summary
+    try {
+      await this.onRoundXpCallback?.(this.sessionId, results.round);
+    } catch (err) {
+      this.log.error({ err }, 'Failed to broadcast round XP in auto-timer path');
     }
 
     if (this.currentRound < this.totalRounds) {

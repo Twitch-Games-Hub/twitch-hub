@@ -65,6 +65,14 @@ class GameRegistryClass {
     }
     engine.setOnAutoEnd((finalResults) => this.handleAutoEnd(sessionId, finalResults));
     engine.setGamificationService(gamificationService);
+    engine.setOnRoundXpCallback(async (sid, round) => {
+      const eng = this.engines.get(sid);
+      if (!eng) return;
+      const summary = await gamificationService.getRoundXpSummary(sid, round, [
+        ...eng.getParticipantIds(),
+      ]);
+      this.broadcastCallback?.(sid, 'gamification:round-xp', summary);
+    });
     this.engines.set(sessionId, engine);
     this.sessionHosts.set(sessionId, hostId);
     if (channelId) this.sessionChannels.set(sessionId, channelId);
