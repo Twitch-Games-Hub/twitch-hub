@@ -43,3 +43,18 @@
   - `apps/web/src/lib/canvas/index.ts` — added particles re-export
 - **Summary**: Built a custom particle system using PixiJS v8's native API instead of wrapping @pixi/particle-emitter, because the emitter v5 depends on PixiJS v7 (`@pixi/core`, `@pixi/display`) which is incompatible with v8's module structure. The custom system uses Graphics→Texture generation, Sprite pooling, and ticker-based animation. All shape generators produce small (8-16px) Graphics objects with metallic chrome sheen (1px white offset stroke at 0.4 alpha).
 - **Patterns discovered**: @pixi/particle-emitter v5 is not compatible with PixiJS v8 at the type/module level (imports from @pixi/core etc.). Custom particle systems using `app.renderer.generateTexture(graphics)` + Sprite pooling + ticker callbacks are a clean v8-native alternative. The `poly()` method on Graphics is used for arbitrary shapes (triangle, diamond, hexagon).
+
+### Iteration 3 — Task 3: Build canvas effects library (shockwave, metallic fill, line draw, glow, grid)
+
+- **Status**: completed
+- **Files changed**:
+  - `apps/web/src/lib/canvas/effects/shockwave.ts` — expanding ring effect using Graphics circle, scales 0.1→2.6 with quarticOut easing, fades 0.8→0, self-removes via ticker
+  - `apps/web/src/lib/canvas/effects/metallic-fill.ts` — chrome gradient sweep on rectangles, returns MetallicFill object with update()/destroy() methods, white highlight band sweeps left-to-right
+  - `apps/web/src/lib/canvas/effects/line-draw.ts` — progressive line drawing from point A to B with configurable duration, returns Graphics for cleanup
+  - `apps/web/src/lib/canvas/effects/glow.ts` — BlurFilter halo effect with moveTo()/destroy() API, uses Graphics circle + BlurFilter
+  - `apps/web/src/lib/canvas/effects/grid-overlay.ts` — persistent scan-lines at 4px intervals with 0.03 alpha, auto-resizes on window resize
+  - `apps/web/src/lib/canvas/effects/index.ts` — barrel export for all effects
+  - `apps/web/src/lib/canvas/rank-insignias.ts` — shield/chevron rank badges (bronze/silver/gold/platinum/diamond) using Canvas 2D API, returns data URLs
+  - `apps/web/src/lib/canvas/index.ts` — added effects and rank-insignias re-exports
+- **Summary**: Built the full effects library with 5 canvas effects plus rank insignia renderer. Effects use PixiJS v8 Graphics + ticker pattern established in task 2. Metallic fill returns an updatable object for dynamic bar resizing. Glow uses BlurFilter for soft halo. Grid overlay handles window resize. Rank insignias use Canvas 2D directly (no PixiJS app dependency) for generating data URLs — more practical since they need to produce `<img src>` strings without a PixiJS Application context. All animated effects check shouldAnimate() and skip/render-final-state when reduced motion is preferred.
+- **Patterns discovered**: PixiJS v8 BlurFilter constructor takes `{ strength, quality }` object. For effects that return controllable objects (metallic-fill, glow, grid-overlay), return plain objects with destroy() methods rather than extending PixiJS classes — simpler and more idiomatic TypeScript. Canvas 2D API is more practical than PixiJS for offline rendering to data URLs since it doesn't need an Application instance.

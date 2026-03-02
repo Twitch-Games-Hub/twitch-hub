@@ -47,8 +47,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 3,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Created effects module at apps/web/src/lib/canvas/effects/ with 5 effects: shockwave (expanding fading ring), metallic-fill (chrome gradient sweep on rectangles), line-draw (progressive line animation), glow (BlurFilter halo), grid-overlay (persistent scan-lines at 4px intervals). Created rank-insignias.ts using Canvas 2D API for shield/chevron badges (bronze/silver/gold/platinum/diamond) returning data URLs. All effects respect shouldAnimate() reduced-motion. Updated barrel exports. Build passes clean."
     },
     {
       "id": 4,
