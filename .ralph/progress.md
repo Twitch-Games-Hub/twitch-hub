@@ -58,3 +58,11 @@
   - `apps/web/src/lib/canvas/index.ts` — added effects and rank-insignias re-exports
 - **Summary**: Built the full effects library with 5 canvas effects plus rank insignia renderer. Effects use PixiJS v8 Graphics + ticker pattern established in task 2. Metallic fill returns an updatable object for dynamic bar resizing. Glow uses BlurFilter for soft halo. Grid overlay handles window resize. Rank insignias use Canvas 2D directly (no PixiJS app dependency) for generating data URLs — more practical since they need to produce `<img src>` strings without a PixiJS Application context. All animated effects check shouldAnimate() and skip/render-final-state when reduced motion is preferred.
 - **Patterns discovered**: PixiJS v8 BlurFilter constructor takes `{ strength, quality }` object. For effects that return controllable objects (metallic-fill, glow, grid-overlay), return plain objects with destroy() methods rather than extending PixiJS classes — simpler and more idiomatic TypeScript. Canvas 2D API is more practical than PixiJS for offline rendering to data URLs since it doesn't need an Application instance.
+
+### Iteration 4 — Task 4: Migrate AmbientParticles to canvas (full replacement)
+
+- **Status**: completed
+- **Files changed**:
+  - `apps/web/src/lib/components/overlay/AmbientParticles.svelte` — complete rewrite from HTML div particles to renderless canvas-effect controller
+- **Summary**: Rewrote AmbientParticles.svelte to be a purely script-based component with zero HTML output. It gets the PixiJS app from Svelte context (`getContext('pixi-app')`), creates a `GeometricParticleSystem` with the `AMBIENT_FIELD` preset (slow-drifting hexagons at 0.1 opacity), and initializes the `gridOverlay` scan-line effect. Cleanup on component destroy calls `stopAmbient()`, `destroy()` on the particle system, and `destroy()` on the grid overlay. The old CSS `particle-drift` keyframes in app.css are left for Task 10's cleanup pass. This validates the full PixiJS pipeline: PixiWrapper context → particle system → canvas rendering.
+- **Patterns discovered**: Renderless canvas-controller components work well in Svelte 5 — just a `<script>` block with `getContext` + `onMount` cleanup pattern. No HTML template needed. The `onMount` return function handles cleanup cleanly.

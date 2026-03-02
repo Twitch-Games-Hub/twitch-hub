@@ -63,8 +63,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 4,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Rewrote AmbientParticles.svelte as a renderless canvas-effect controller. Removed all HTML divs and CSS animation references. Component gets pixi-app from Svelte context, creates GeometricParticleSystem with AMBIENT_FIELD preset (drifting hexagons), and initializes grid-overlay scan-lines. Cleanup on destroy via onMount return. Build passes clean."
     },
     {
       "id": 5,
