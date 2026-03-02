@@ -2,6 +2,7 @@ import {
   XP_AWARDS,
   computeLevel,
   computeLoyaltyTier,
+  computeRankTier,
   getStreakMultiplier,
   type GamificationEvent,
   type LeaderboardEntry,
@@ -336,6 +337,13 @@ export class GamificationService {
             ? Math.floor(xpData['ROUND_RESPONSE'] / XP_AWARDS.ROUND_RESPONSE)
             : 0;
 
+          // Read pre-update totalXp for rank-up detection
+          const preUpdateProfile = await tx.playerProfile.findUnique({
+            where: { id: profileId },
+            select: { totalXp: true },
+          });
+          const previousRank = computeRankTier(preUpdateProfile?.totalXp ?? 0);
+
           const profile = await tx.playerProfile.update({
             where: { id: profileId },
             data: {
@@ -358,6 +366,10 @@ export class GamificationService {
             },
           });
 
+          // Rank-up detection
+          const newRank = computeRankTier(profile.totalXp);
+          const rankChanged = newRank !== previousRank;
+
           // Update level
           const newLevel = computeLevel(profile.totalXp);
           if (newLevel !== profile.level) {
@@ -366,12 +378,25 @@ export class GamificationService {
               data: { level: newLevel },
             });
 
-            // Broadcast level-up event
+            // Broadcast level-up event (include rank info if rank also changed)
             this.broadcastCallback?.(sessionId, 'gamification:event', {
               type: 'level_up',
               playerId,
               displayName: playerId,
-              data: { newLevel },
+              data: {
+                newLevel,
+                ...(rankChanged ? { rankUp: { previousRank, newRank } } : {}),
+              },
+            } satisfies GamificationEvent);
+          }
+
+          // Broadcast rank-up event if rank changed
+          if (rankChanged) {
+            this.broadcastCallback?.(sessionId, 'gamification:event', {
+              type: 'rank_up',
+              playerId,
+              displayName: playerId,
+              data: { previousRank, newRank, totalXp: profile.totalXp },
             } satisfies GamificationEvent);
           }
 

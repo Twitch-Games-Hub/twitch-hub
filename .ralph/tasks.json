@@ -239,8 +239,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 14,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Imported computeRankTier from shared-types. Added pre-update totalXp read before profile update to compute previousRank. After profile update, computes newRank and broadcasts rank_up GamificationEvent when rank changes (includes previousRank, newRank, totalXp). Updated level_up broadcast to include rankUp info when level-up coincides with rank change. Extended LevelUpEventData with optional rankUp field. Build passes clean."
     },
     {
       "id": 15,

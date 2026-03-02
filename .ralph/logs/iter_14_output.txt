@@ -1,0 +1,16 @@
+Task 14 is complete. Here's a summary of what was implemented:
+
+**Files changed:**
+- `apps/server/src/services/GamificationService.ts` — Added `computeRankTier` import, pre-update rank read, post-update rank comparison, `rank_up` broadcast, and updated `level_up` broadcast with rank info
+- `packages/shared-types/src/gamification.ts` — Extended `LevelUpEventData` with optional `rankUp` field
+
+**What was done:**
+1. Before the `tx.playerProfile.update` that increments `totalXp`, reads the player's current `totalXp` and computes `previousRank` via `computeRankTier`
+2. After the update, computes `newRank` from the updated `profile.totalXp`
+3. If ranks differ, broadcasts a `rank_up` GamificationEvent with `{ previousRank, newRank, totalXp }`
+4. No event fires if rank stays the same
+5. Updated the `level_up` broadcast to include `rankUp` data when a level-up coincides with a rank change
+6. All events use `satisfies GamificationEvent` for type safety
+7. `pnpm build` passes clean
+
+There are still 6 pending tasks (15-20), so not outputting RALPH_DONE.

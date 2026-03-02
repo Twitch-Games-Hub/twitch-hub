@@ -146,3 +146,12 @@
   - `apps/web/src/lib/stores/game.svelte.ts` — added `roundXpSummary` state, getter, `gamification:round-xp` listener, reset on round-start
 - **Summary**: Implemented per-round XP data emission. `getRoundXpSummary` reads each participant's XP hash from Redis, computes total session XP, diffs against a stored previous total (Redis key `session:{sessionId}:prevxp:{playerId}`), reads streak count, computes multiplier, and returns `RoundXpSummary` with per-player data filtered to `roundXp > 0`. Two broadcast paths: (1) manual `game:next-round` handler broadcasts after round-end with try/catch, (2) auto-timer path via `onRoundXpCallback` on GameEngine called in `onRoundTimerExpired`, wired in GameRegistry's `initSession`. Game store updated with full lifecycle: listen → store → reset on round-start.
 - **Patterns discovered**: The prevxp Redis key pattern (`session:{sid}:prevxp:{pid}`) for tracking round-over-round XP deltas is clean — store cumulative total after each round, diff on next. The callback pattern on GameEngine (`setOnRoundXpCallback`) follows the same convention as `setOnAutoEnd` and `setBroadcastCallback` — private field + setter + optional chaining call.
+
+### Iteration 14 — Task 14: Add rank-up detection to GamificationService finalizeSession
+
+- **Status**: completed
+- **Files changed**:
+  - `apps/server/src/services/GamificationService.ts` — imported `computeRankTier`, added pre-update rank read, post-update rank comparison, `rank_up` broadcast, updated `level_up` broadcast with rank info
+  - `packages/shared-types/src/gamification.ts` — extended `LevelUpEventData` with optional `rankUp` field
+- **Summary**: Added rank-up detection to `finalizeSession` inside the transaction loop. Before the `tx.playerProfile.update` that increments `totalXp`, reads the player's current `totalXp` via `findUnique` and computes `previousRank` via `computeRankTier`. After the update, computes `newRank` from the updated `profile.totalXp`. If ranks differ, broadcasts a `rank_up` GamificationEvent with `previousRank`, `newRank`, and `totalXp`. Also updated the existing `level_up` broadcast to include optional `rankUp` data when a level-up coincides with a rank change. Extended `LevelUpEventData` interface with `rankUp?: { previousRank: RankTier; newRank: RankTier }`.
+- **Patterns discovered**: The pre-read + post-compare pattern for detecting threshold crossings works cleanly inside Prisma transactions — read before increment, compare after. Using `satisfies GamificationEvent` ensures type safety at the call site without casting.

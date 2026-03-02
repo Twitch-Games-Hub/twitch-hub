@@ -1,0 +1,39 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 157188,
+  "duration_api_ms": 127658,
+  "num_turns": 21,
+  "result": "Task 14 is complete. Here's a summary of what was implemented:\n\n**Files changed:**\n- `apps/server/src/services/GamificationService.ts` — Added `computeRankTier` import, pre-update rank read, post-update rank comparison, `rank_up` broadcast, and updated `level_up` broadcast with rank info\n- `packages/shared-types/src/gamification.ts` — Extended `LevelUpEventData` with optional `rankUp` field\n\n**What was done:**\n1. Before the `tx.playerProfile.update` that increments `totalXp`, reads the player's current `totalXp` and computes `previousRank` via `computeRankTier`\n2. After the update, computes `newRank` from the updated `profile.totalXp`\n3. If ranks differ, broadcasts a `rank_up` GamificationEvent with `{ previousRank, newRank, totalXp }`\n4. No event fires if rank stays the same\n5. Updated the `level_up` broadcast to include `rankUp` data when a level-up coincides with a rank change\n6. All events use `satisfies GamificationEvent` for type safety\n7. `pnpm build` passes clean\n\nThere are still 6 pending tasks (15-20), so not outputting RALPH_DONE.",
+  "stop_reason": null,
+  "session_id": "7b9bc206-4be0-4fb0-a13a-4a7d0836d624",
+  "total_cost_usd": 1.1323832499999997,
+  "usage": {
+    "input_tokens": 22,
+    "cache_creation_input_tokens": 54907,
+    "cache_read_input_tokens": 1226759,
+    "output_tokens": 7029,
+    "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+    "service_tier": "standard",
+    "cache_creation": { "ephemeral_1h_input_tokens": 54907, "ephemeral_5m_input_tokens": 0 },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-opus-4-6": {
+      "inputTokens": 22,
+      "outputTokens": 7029,
+      "cacheReadInputTokens": 1226759,
+      "cacheCreationInputTokens": 54907,
+      "webSearchRequests": 0,
+      "costUSD": 1.1323832499999997,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    }
+  },
+  "permission_denials": [],
+  "fast_mode_state": "off",
+  "uuid": "3f5003e0-3392-4a3c-bd59-53702aec6b01"
+}

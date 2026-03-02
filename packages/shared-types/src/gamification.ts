@@ -83,6 +83,7 @@ export interface AchievementEventData {
 
 export interface LevelUpEventData {
   newLevel: number;
+  rankUp?: { previousRank: RankTier; newRank: RankTier };
 }
 
 export interface RankUpEventData {
