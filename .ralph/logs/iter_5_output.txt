@@ -1,0 +1,13 @@
+Task 5 is complete. There are still 15 pending tasks remaining (tasks 6-20), so I will **not** output RALPH_DONE.
+
+**Summary of changes:**
+
+- **File modified**: `apps/web/src/lib/components/overlay/RoundSplash.svelte`
+- Removed `.radial-burst` div and two `.accent-line` divs from HTML markup
+- Removed corresponding CSS rules (`.radial-burst`, `.accent-line`, `.accent-line-left`, `.accent-line-right`)
+- Added `getContext('pixi-app')` to get the PixiJS application from context
+- On mount: fires `shockwave` effect at viewport center + `SHOCKWAVE_DEBRIS` particle burst simultaneously
+- Particle system auto-cleans after 600ms via `setTimeout`
+- Preserved HTML text ("Round N of M") with `animate-scale-in-overshoot` CSS animation
+- Preserved `onDone` callback via `setTimeout(onDone, 1500)`
+- Build passes clean with no errors

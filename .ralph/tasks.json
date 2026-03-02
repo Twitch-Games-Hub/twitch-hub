@@ -80,8 +80,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 5,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Migrated RoundSplash.svelte to hybrid canvas + HTML. Removed .radial-burst div and .accent-line divs plus their CSS. Kept HTML text with animate-scale-in-overshoot animation and onDone timer (1500ms). Added pixi-app context, fires shockwave effect and SHOCKWAVE_DEBRIS particle burst at viewport center on mount. Particle system auto-cleans after 600ms. Build passes clean."
     },
     {
       "id": 6,
