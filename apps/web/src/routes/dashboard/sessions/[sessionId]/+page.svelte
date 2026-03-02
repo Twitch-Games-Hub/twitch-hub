@@ -1,6 +1,5 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import type { Pathname } from '$app/types';
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
   import { apiGet } from '$lib/api';
@@ -130,8 +129,9 @@
         {/if}
 
         <!-- Back button -->
+        <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
         <a
-          href={resolve(backHref as Pathname)}
+          href={resolve(backHref as any)}
           class="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-surface-primary/80 text-text-muted backdrop-blur-sm transition-colors hover:bg-surface-primary hover:text-text-primary"
         >
           <ArrowLeftIcon size={16} />

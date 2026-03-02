@@ -331,7 +331,6 @@
             {gameType}
             roundResults={gameStore.roundResults}
             submittedAnswer={myAnswer}
-            currentRound={gameStore.currentRound}
           />
         {/if}
         {#if gameStore.leaderboard.length > 0}

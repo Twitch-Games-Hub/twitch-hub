@@ -1,6 +1,5 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import type { Pathname } from '$app/types';
   import type { Snippet } from 'svelte';
   import ArrowLeftIcon from './icons/ArrowLeftIcon.svelte';
 
@@ -20,8 +19,9 @@
 <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
   <div class="flex items-center gap-3">
     {#if back}
+      <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
       <a
-        href={resolve(back as Pathname)}
+        href={resolve(back as any)}
         class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
         aria-label="Go back"
       >
