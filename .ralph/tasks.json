@@ -309,8 +309,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 18,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Added sessionSummary and leaderboard optional props to GameOverResults.svelte. Added Session XP Leaderboard section (1200ms delay) using Leaderboard component with playerId→userId, xp→score mapping. Added Personal XP Breakdown section (1600ms delay) with formatXpReason() helper mapping all 8 XpReason values to human-readable labels, individual reason/xp rows, and total with border-t separator. Updated overlay page to pass gameStore.sessionSummary and gameStore.leaderboard props. Play page does not use GameOverResults. Build passes clean."
     },
     {
       "id": 19,

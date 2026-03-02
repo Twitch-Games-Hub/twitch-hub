@@ -223,7 +223,13 @@
         {:else if phase === 'game-over' && gameStore.finalResults && gameType}
           <!-- Game over with type-specific results -->
           <div in:fly={{ y: 30, duration: 400, delay: 250 }} out:fade={{ duration: 200 }}>
-            <GameOverResults {gameType} finalResults={gameStore.finalResults} {gameTitle} />
+            <GameOverResults
+              {gameType}
+              finalResults={gameStore.finalResults}
+              {gameTitle}
+              sessionSummary={gameStore.sessionSummary}
+              leaderboard={gameStore.leaderboard}
+            />
           </div>
         {/if}
       {/key}

@@ -1,7 +1,12 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
   import type { Application } from 'pixi.js';
-  import type { GameType, FinalResults } from '@twitch-hub/shared-types';
+  import type {
+    GameType,
+    FinalResults,
+    SessionXpSummary,
+    LeaderboardEntry,
+  } from '@twitch-hub/shared-types';
   import BracketViz from './BracketViz.svelte';
   import Leaderboard from './Leaderboard.svelte';
   import Histogram from './Histogram.svelte';
@@ -14,11 +19,29 @@
     gameType,
     finalResults,
     gameTitle,
+    sessionSummary = null,
+    leaderboard = [],
   }: {
     gameType: GameType;
     finalResults: FinalResults;
     gameTitle?: string;
+    sessionSummary?: SessionXpSummary | null;
+    leaderboard?: LeaderboardEntry[];
   } = $props();
+
+  function formatXpReason(reason: string): string {
+    const labels: Record<string, string> = {
+      PARTICIPATION: 'Participation',
+      ROUND_RESPONSE: 'Round Responses',
+      CORRECT_ANSWER: 'Correct Answers',
+      SPEED_BONUS: 'Speed Bonus',
+      STREAK_BONUS: 'Streak Multiplier Bonus',
+      MAJORITY_VOTER: 'Majority Voter',
+      SESSION_COMPLETION: 'Session Completion',
+      FIRST_RESPONDER: 'First Responder',
+    };
+    return labels[reason] ?? reason;
+  }
 
   const lastRound = $derived(
     finalResults.rounds.length > 0 ? finalResults.rounds[finalResults.rounds.length - 1] : null,
@@ -136,6 +159,46 @@
       </p>
     {/if}
   </div>
+
+  <!-- Session XP Leaderboard -->
+  {#if leaderboard.length > 0}
+    <div
+      class="stagger-reveal mt-4 rounded-2xl bg-black/70 p-6 backdrop-blur-sm"
+      style="animation-delay: 1200ms;"
+    >
+      <h3 class="mb-3 text-center text-sm font-semibold text-text-muted uppercase">
+        Session XP Leaderboard
+      </h3>
+      <Leaderboard
+        entries={leaderboard.map((e) => ({ userId: e.playerId, score: e.xp }))}
+        title="XP Earned"
+      />
+    </div>
+  {/if}
+
+  <!-- Personal XP Breakdown -->
+  {#if sessionSummary}
+    <div
+      class="stagger-reveal mt-4 rounded-2xl bg-black/70 p-6 backdrop-blur-sm"
+      style="animation-delay: 1600ms;"
+    >
+      <h3 class="mb-3 text-center text-sm font-semibold text-text-muted uppercase">
+        Your XP Breakdown
+      </h3>
+      {#each Object.entries(sessionSummary.breakdown) as [reason, xp] (reason)}
+        <div class="flex justify-between py-1 text-sm text-text-secondary">
+          <span>{formatXpReason(reason)}</span>
+          <span class="font-semibold tabular-nums text-brand-400">+{xp}</span>
+        </div>
+      {/each}
+      <div
+        class="mt-2 flex justify-between border-t border-white/20 pt-2 text-base font-bold text-white"
+      >
+        <span>Total</span>
+        <span class="tabular-nums text-brand-300">+{sessionSummary.total} XP</span>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>

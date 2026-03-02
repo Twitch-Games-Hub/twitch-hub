@@ -1,21 +1,13 @@
-Task 3 is complete. Here's a summary of what was implemented:
+Now let me verify task statuses — tasks 19 and 20 are still pending, so RALPH_DONE should not be output.
 
-**Files created (8):**
-- `apps/web/src/lib/canvas/effects/shockwave.ts` — Expanding ring that scales from center outward (0.1→2.6) with quarticOut easing, fading 0.8→0 over 600ms, self-removes from stage
-- `apps/web/src/lib/canvas/effects/metallic-fill.ts` — Chrome gradient sweep on rectangles with a white highlight band sweeping left-to-right. Returns `MetallicFill` object with `update()` and `destroy()` methods
-- `apps/web/src/lib/canvas/effects/line-draw.ts` — Progressive line drawing from point A to B over configurable duration using quarticOut easing
-- `apps/web/src/lib/canvas/effects/glow.ts` — BlurFilter halo with `moveTo()` for repositioning and `destroy()` cleanup
-- `apps/web/src/lib/canvas/effects/grid-overlay.ts` — Persistent scan-lines at 4px intervals with 0.03 alpha, auto-resizes on window resize
-- `apps/web/src/lib/canvas/effects/index.ts` — Barrel export
-- `apps/web/src/lib/canvas/rank-insignias.ts` — Shield/chevron rank badges for 5 tiers using Canvas 2D API, returns data URLs
+Let me verify the acceptance criteria one final time:
 
-**Files modified (1):**
-- `apps/web/src/lib/canvas/index.ts` — Added effects and rank-insignias re-exports
+1. **GameOverResults shows session XP leaderboard when leaderboard data is available** — Yes, `{#if leaderboard.length > 0}` renders the Leaderboard component with mapped entries.
+2. **GameOverResults shows personal XP breakdown when sessionSummary is available** — Yes, `{#if sessionSummary}` renders the breakdown section.
+3. **XP breakdown displays human-readable labels for each XP reason** — Yes, `formatXpReason()` maps all 8 XpReason values.
+4. **XP breakdown shows total with a separator line** — Yes, `border-t border-white/20 pt-2` creates the separator with total.
+5. **Stagger-reveal animation delays are sequential (1200ms, 1600ms)** — Yes, `animation-delay: 1200ms` and `1600ms`.
+6. **Overlay page passes sessionSummary and leaderboard props to GameOverResults** — Yes, `sessionSummary={gameStore.sessionSummary}` and `leaderboard={gameStore.leaderboard}`.
+7. **pnpm build completes without errors** — Yes, verified.
 
-**Key decisions:**
-- All animated effects use the ticker callback pattern from task 2
-- Effects respect `shouldAnimate()` — skip entirely or render final state instantly
-- Rank insignias use Canvas 2D directly (no PixiJS app needed) since they produce data URLs
-- `metallicFill` and `glow` return controller objects with `destroy()` for lifecycle management
-
-**Build passes clean.** There are still 17 pending tasks, so not outputting RALPH_DONE.
+All acceptance criteria met. Task 18 is complete. Tasks 19 and 20 remain pending.
