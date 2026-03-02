@@ -115,8 +115,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 7,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Migrated Histogram.svelte to hybrid canvas + HTML. Removed colored bar divs (bg-gradient), CSS .bar/.bar-leading classes, box-shadow glow, bar-pulse-glow animation, and shimmer-sweep pseudo-element. Replaced with: metallic-fill canvas rectangles (COLORS.brand) for each bar, glow effect on leading bar (purple halo at top-center), VOTE_BURST particles at top of growing bars (100ms per-bar throttle). Fills managed dynamically to match distribution length. All canvas positions synced via getBoundingClientRect(). Kept HTML: TweenedNumber vote counts above bars, numeric labels below, total votes pill. Build passes clean."
     },
     {
       "id": 8,

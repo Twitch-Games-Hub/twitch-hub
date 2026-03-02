@@ -1,0 +1,26 @@
+13 tasks still pending — not outputting RALPH_DONE.
+
+## Task 7 Complete
+
+**Migrated Histogram.svelte to hybrid canvas + HTML.** Here's what was done:
+
+**Removed (CSS/HTML → Canvas):**
+- Colored bar divs (`bg-gradient-to-t from-brand-700 to-brand-400`)
+- `.bar` CSS class (box-shadow glow, transitions)
+- `.bar-leading` CSS class (bar-pulse-glow animation, shimmer-sweep pseudo-element)
+- Entire `<style>` block
+
+**Added (Canvas effects):**
+- `metallicFill` rectangles (brand purple) for each bar, dynamically sized to match `distribution.length`
+- Purple `glow` effect at the top-center of the leading bar
+- `VOTE_BURST` particles at the top of any bar whose count increases, throttled to 100ms per bar
+
+**Preserved (HTML):**
+- TweenedNumber vote counts above bars
+- Numeric labels below bars
+- Label text and total votes pill
+
+**Key patterns:**
+- Bar positions synced via `getBoundingClientRect()` on transparent positioning divs
+- Two `$effect()` blocks: position sync + VOTE_BURST detection (prev vs current distribution comparison)
+- Non-`$state` fills array managed imperatively; `$state` singletons (glow, particles) trigger effect re-runs after `onMount`
