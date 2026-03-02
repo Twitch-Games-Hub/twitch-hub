@@ -1,12 +1,19 @@
-16 tasks still pending — NOT all tasks are complete, so no RALPH_DONE.
+There is still 1 pending task (Task 20), so I should NOT output RALPH_DONE.
 
-**Task 4 complete.** Here's a summary:
+**Task 19 completed.** Here's a summary:
 
-**AmbientParticles.svelte** was rewritten from an HTML-based component (10 `<div>` elements with CSS `particle-drift` animation) into a renderless canvas-effect controller:
+**Files created/modified:**
+- `apps/web/src/lib/canvas/effects/floating-xp.ts` — `spawnFloatingXp()` function that creates an animated `+N XP` PixiJS Text with bold font + drop shadow, drifts up 60px with quarticOut easing, fades to 0 over 1200ms, self-removes from stage. Configurable color/fontSize/duration for streak multiplier support. Respects `shouldAnimate()`.
+- `apps/web/src/lib/canvas/effects/xp-progress-bar.ts` — `CanvasXpProgressBar` class with dark background track + rank-colored fill. `update()` for immediate progress/color changes, `animateFill()` for smooth tweened transitions with chrome sweep highlight, glow flash on rank color change. Proper cleanup via `destroy()`.
+- `apps/web/src/lib/canvas/effects/index.ts` — Added barrel exports for both new effects.
 
-- **No HTML output** — the component is purely a `<script>` block
-- **Gets PixiJS app from context** via `getContext('pixi-app')`
-- **Starts ambient hexagon particles** using `GeometricParticleSystem.startAmbient(AMBIENT_FIELD)` — 15-20 slow-drifting hexagons at 0.1 opacity
-- **Initializes grid scan-line overlay** via `gridOverlay(app)` — subtle horizontal lines at 4px intervals, 0.03 alpha
-- **Clean teardown** on component destroy — stops ambient emission, destroys particle system and grid overlay
-- **Build passes clean** with no errors
+**All acceptance criteria met:**
+- Floating XP text drifts up and fades out
+- Gold color + larger font supported for multiplier > 1
+- Reduced motion preferences respected
+- Progress bar renders metallic gradient fill
+- animateFill smoothly tweens width
+- Rank-tier colors passed through update()
+- Both effects self-clean from stage
+- Exported from barrel module
+- `pnpm build` completes without errors

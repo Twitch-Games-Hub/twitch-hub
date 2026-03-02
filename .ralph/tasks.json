@@ -328,8 +328,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 19,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Created floating-xp.ts with spawnFloatingXp() function (PixiJS Text, bold 18px default, white+drop shadow, drifts up 60px over 1200ms with quarticOut, fades to 0, self-removes, respects shouldAnimate). Created xp-progress-bar.ts with CanvasXpProgressBar class (dark track + colored fill, update/animateFill/destroy API, chrome sweep during animateFill, glow flash on rank color change, proper ticker cleanup). Updated effects/index.ts barrel with both new exports. Build passes clean."
     },
     {
       "id": 20,
