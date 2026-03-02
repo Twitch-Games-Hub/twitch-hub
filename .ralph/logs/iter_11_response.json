@@ -1,0 +1,49 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 216996,
+  "duration_api_ms": 183590,
+  "num_turns": 29,
+  "result": "Now let me verify that not all tasks are completed (tasks 12-20 are still pending), so I should NOT output RALPH_DONE.\n\nTask 11 is complete. Here's what was implemented:\n\n**Files changed:**\n- `packages/shared-types/src/gamification.ts` — Added all new types, constants, and utility functions\n- `packages/shared-types/src/socket-events.ts` — Added `gamification:round-xp` socket event\n\n**What was added:**\n1. **RankTier enum** — BRONZE, SILVER, GOLD, PLATINUM, DIAMOND\n2. **RANK_TIER_THRESHOLDS** — Maps each tier to XP threshold (0/500/1500/3500/7000)\n3. **computeRankTier(totalXp)** — Returns highest rank whose threshold is met (descending if-chain matching existing `computeLoyaltyTier` pattern)\n4. **xpToNextRank(totalXp)** — Returns `{ current, next, xpNeeded }` tuple\n5. **STREAK_MULTIPLIERS** — Constants `{ THRESHOLD_2X: 3, THRESHOLD_3X: 5, MULTIPLIER_2X: 2, MULTIPLIER_3X: 3 }`\n6. **getStreakMultiplier(consecutiveCorrect)** — Returns 1 (<3), 2 (3-4), 3 (>=5)\n7. **RoundXpSummary, RankUpEventData, XpTickEventData** — New interfaces\n8. **GamificationEvent** — Extended type union with `'rank_up' | 'xp_tick'` and corresponding data types\n9. **ServerToClientEvents** — Added `'gamification:round-xp'`\n10. **PlayerProfileSummary** — Added `rankTier: RankTier` field\n\n`pnpm build` completes without errors. All acceptance criteria met.",
+  "stop_reason": null,
+  "session_id": "62d6ed70-135c-4872-8280-1ea2bbeec0a7",
+  "total_cost_usd": 1.37506585,
+  "usage": {
+    "input_tokens": 27,
+    "cache_creation_input_tokens": 53823,
+    "cache_read_input_tokens": 1405143,
+    "output_tokens": 7523,
+    "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+    "service_tier": "standard",
+    "cache_creation": { "ephemeral_1h_input_tokens": 53823, "ephemeral_5m_input_tokens": 0 },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-opus-4-6": {
+      "inputTokens": 27,
+      "outputTokens": 7523,
+      "cacheReadInputTokens": 1405143,
+      "cacheCreationInputTokens": 53823,
+      "webSearchRequests": 0,
+      "costUSD": 1.22717525,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    },
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 93,
+      "outputTokens": 4381,
+      "cacheReadInputTokens": 710676,
+      "cacheCreationInputTokens": 43860,
+      "webSearchRequests": 0,
+      "costUSD": 0.1478906,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    }
+  },
+  "permission_denials": [],
+  "fast_mode_state": "off",
+  "uuid": "c806a66b-2090-42ab-a575-485863e0ea31"
+}

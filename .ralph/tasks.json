@@ -188,8 +188,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 11,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Added RankTier enum (BRONZE/SILVER/GOLD/PLATINUM/DIAMOND), RANK_TIER_THRESHOLDS, computeRankTier(), xpToNextRank(), STREAK_MULTIPLIERS, getStreakMultiplier(), RoundXpSummary/RankUpEventData/XpTickEventData interfaces, extended GamificationEvent with rank_up/xp_tick, added gamification:round-xp socket event, added rankTier to PlayerProfileSummary. Build passes clean."
     },
     {
       "id": 12,

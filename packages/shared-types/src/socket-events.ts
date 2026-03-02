@@ -1,6 +1,6 @@
 import type { GameType, SessionStatus } from './game.js';
 import type { ApiNotification } from './notification.js';
-import type { GamificationEvent, PlayerProfileSummary } from './gamification.js';
+import type { GamificationEvent, PlayerProfileSummary, RoundXpSummary } from './gamification.js';
 
 // --- Game State ---
 
@@ -133,4 +133,5 @@ export interface ServerToClientEvents {
   'leaderboard:update': (entries: LeaderboardEntry[]) => void;
   'reaction:received': (data: { emoji: string }) => void;
   'gamification:session-summary': (summary: SessionXpSummary) => void;
+  'gamification:round-xp': (data: RoundXpSummary) => void;
 }
