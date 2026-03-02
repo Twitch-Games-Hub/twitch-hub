@@ -93,9 +93,9 @@ jobs:
             ghcr.io/${{ steps.vars.outputs.owner }}/twitch-hub-${{ matrix.app }}:latest
             ghcr.io/${{ steps.vars.outputs.owner }}/twitch-hub-${{ matrix.app }}:${{ github.sha }}
           secrets: |
-            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
-            SENTRY_ORG=${{ secrets.SENTRY_ORG }}
-            SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}
+            ${{ secrets.SENTRY_AUTH_TOKEN && format('SENTRY_AUTH_TOKEN={0}', secrets.SENTRY_AUTH_TOKEN) || '' }}
+            ${{ secrets.SENTRY_ORG && format('SENTRY_ORG={0}', secrets.SENTRY_ORG) || '' }}
+            ${{ secrets.SENTRY_PROJECT && format('SENTRY_PROJECT={0}', secrets.SENTRY_PROJECT) || '' }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,scope=${{ matrix.app }},mode=max
 
