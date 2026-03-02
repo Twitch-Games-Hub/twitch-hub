@@ -4,6 +4,8 @@
   import XpBar from '$lib/components/gamification/XpBar.svelte';
   import AchievementGrid from '$lib/components/gamification/AchievementGrid.svelte';
   import LoyaltyBadge from '$lib/components/gamification/LoyaltyBadge.svelte';
+  import RankBadge from '$lib/components/gamification/RankBadge.svelte';
+  import type { RankTier } from '@twitch-hub/shared-types';
 
   interface ProfileData {
     twitchLogin: string;
@@ -26,6 +28,7 @@
       iconUrl: string | null;
       earnedAt: string;
     }[];
+    rankTier?: RankTier;
     channelStats: {
       channelId: string;
       channelXp: number;
@@ -101,7 +104,10 @@
         </div>
       {/if}
       <div>
-        <h1 class="text-2xl font-bold text-text-primary">{profile.displayName}</h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-text-primary">{profile.displayName}</h1>
+          {#if profile.rankTier}<RankBadge tier={profile.rankTier} size="md" />{/if}
+        </div>
         <p class="text-sm text-text-muted">@{profile.twitchLogin}</p>
       </div>
     </div>
@@ -113,6 +119,7 @@
         currentXp={profile.totalXp}
         xpNeededForNext={profile.xpNeededForNext}
         xpInCurrentLevel={profile.xpInCurrentLevel}
+        rankTier={profile.rankTier}
       />
     </div>
 

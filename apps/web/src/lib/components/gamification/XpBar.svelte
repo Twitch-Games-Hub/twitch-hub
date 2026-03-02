@@ -1,16 +1,20 @@
 <script lang="ts">
+  import type { RankTier } from '@twitch-hub/shared-types';
+
   let {
     level,
     currentXp,
     xpNeededForNext,
     xpInCurrentLevel,
     compact = false,
+    rankTier,
   } = $props<{
     level: number;
     currentXp: number;
     xpNeededForNext: number;
     xpInCurrentLevel: number;
     compact?: boolean;
+    rankTier?: RankTier;
   }>();
 
   let progress = $derived(
@@ -35,6 +39,9 @@
         <span class="rounded-lg bg-brand-500/20 px-2.5 py-1 text-sm font-bold text-brand-400">
           Level {level}
         </span>
+        {#if rankTier}
+          <span class="text-xs font-semibold uppercase text-text-secondary">{rankTier}</span>
+        {/if}
         <span class="text-sm text-text-muted">{currentXp.toLocaleString()} XP</span>
       </div>
       <span class="text-xs text-text-muted">

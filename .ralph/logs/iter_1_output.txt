@@ -1,22 +1,18 @@
-Task 1 is complete. Let me verify the tasks.json to confirm there are still pending tasks (so I should NOT output RALPH_DONE).
+There are still 4 pending tasks (17, 18, 19, 20), so I should NOT output RALPH_DONE.
 
-There are 9 remaining pending tasks (2-10), so this is not the final iteration.
+**Task 16 is complete.** Here's what was implemented:
 
-**Task 1 Summary — Install PixiJS and create core canvas infrastructure:**
+1. **Created `RankBadge.svelte`** — Pill-shaped badge component with metallic gradient backgrounds for all 5 rank tiers (BRONZE/SILVER/GOLD/PLATINUM/DIAMOND), bold uppercase rank name, thin tier-colored border, and 3 size variants (sm/md/lg). Diamond rank has a shimmer animation via scoped CSS keyframes.
 
-**Files created/modified:**
-- `apps/web/package.json` — added `pixi.js@^8` and `@pixi/particle-emitter@^5`
-- `.npmrc` — fixed pnpm store path for environment
-- `apps/web/src/lib/canvas/theme.ts` — COLORS, EASING, TIMING exports
-- `apps/web/src/lib/canvas/reduced-motion.ts` — `shouldAnimate()` with SSR-safe matchMedia detection
-- `apps/web/src/lib/canvas/pixi-app.ts` — `createPixiApp(canvas)` factory with transparent bg, antialias, low-power GPU, auto-resize
-- `apps/web/src/lib/canvas/PixiWrapper.svelte` — Svelte 5 component mounting canvas at z-0, async PixiJS init, `setContext('pixi-app')`, cleanup on destroy
-- `apps/web/src/lib/canvas/index.ts` — barrel export
+2. **Updated profile page** (`u/[twitchLogin]/+page.svelte`) — Added `RankBadge` import and `rankTier` to the `ProfileData` interface. Badge displays next to the player's display name when `rankTier` is present. Also passes `rankTier` to the `XpBar` component.
 
-**All acceptance criteria met:**
-- pixi.js@8.16.0 and @pixi/particle-emitter@5.0.10 in dependencies
-- theme.ts exports COLORS, EASING, TIMING
-- reduced-motion.ts exports shouldAnimate()
-- pixi-app.ts exports createPixiApp returning configured Application
-- PixiWrapper.svelte mounts canvas, initializes PixiJS, sets context
+3. **Updated `XpBar.svelte`** — Added optional `rankTier` prop that displays the rank name as uppercase text between the level badge and XP count in the non-compact view.
+
+All acceptance criteria met:
+- RankBadge renders a pill badge with metallic gradient styling
+- All 5 rank tiers have distinct color schemes
+- Diamond rank has shimmer animation
+- Size variants sm/md/lg produce correctly sized badges
+- Profile page shows rank badge next to display name
+- XpBar optionally shows rank tier name alongside level
 - `pnpm build` completes without errors
