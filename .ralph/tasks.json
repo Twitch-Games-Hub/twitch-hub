@@ -167,8 +167,8 @@
         "pnpm run check passes (lint + typecheck)"
       ],
       "priority": 10,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Wrapped overlay page content with <PixiWrapper> from $lib/canvas. HTML content sits at z-10 above the canvas at z-0. Removed 8 orphaned CSS keyframes from app.css (particle-drift, bar-pulse-glow, momentum-pulse-left/right, trophy-bounce, sparkle-burst, champion-glow, line-extend) and their --animate-* declarations. Kept all 16 still-in-use animations. Build and check pass clean."
     },
     {
       "id": 11,

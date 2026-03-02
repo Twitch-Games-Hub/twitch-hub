@@ -1,0 +1,20 @@
+There are still 10 pending tasks remaining, so I will not output RALPH_DONE.
+
+## Summary — Task 10 Complete
+
+**What was done:**
+
+1. **Integrated PixiWrapper into overlay page** (`+page.svelte`):
+   - Imported `PixiWrapper` from `$lib/canvas`
+   - Wrapped all `.overlay-container` content with `<PixiWrapper>`
+   - Added `z-10` to the overlay container so HTML content renders above the canvas (z-0)
+   - AmbientParticles conditional rendering during `live` + `round-results` unchanged
+
+2. **Cleaned up replaced CSS** (`app.css`):
+   - Removed 8 orphaned `@keyframes`: `particle-drift`, `bar-pulse-glow`, `momentum-pulse-left`, `momentum-pulse-right`, `trophy-bounce`, `sparkle-burst`, `champion-glow`, `line-extend`
+   - Removed corresponding `--animate-*` custom property declarations
+   - Kept all 16 still-in-use animations (verified by grepping entire `src/`)
+
+3. **Verification**:
+   - `pnpm build` — passes clean
+   - `pnpm run check` — lint (0 errors, only pre-existing warnings), formatting clean, typecheck 0 errors/warnings
