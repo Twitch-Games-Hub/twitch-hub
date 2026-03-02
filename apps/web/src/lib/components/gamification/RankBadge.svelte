@@ -32,7 +32,7 @@
     lg: 'text-base px-4 py-1.5',
   };
 
-  let colors = $derived(tierColors[tier] ?? tierColors[RankTier.BRONZE]);
+  let colors = $derived(tierColors[tier as RankTier] ?? tierColors[RankTier.BRONZE]);
   let isDiamond = $derived(tier === RankTier.DIAMOND);
 </script>
 

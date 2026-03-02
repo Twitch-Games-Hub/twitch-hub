@@ -116,6 +116,7 @@ services:
       PORT: 3000
       ORIGIN: https://${APP_DOMAIN}
       PUBLIC_SERVER_URL: https://${API_DOMAIN}
+      INTERNAL_SERVER_URL: http://server:3001
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
       TWITCH_REDIRECT_URI: https://${APP_DOMAIN}/api/auth/callback

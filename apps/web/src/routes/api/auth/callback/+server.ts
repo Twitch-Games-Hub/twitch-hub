@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 import * as Sentry from '@sentry/sveltekit';
+import { SERVER_URL } from '$lib/server/config';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
@@ -57,9 +58,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     data: [twitchUser],
   } = await userRes.json();
 
-  // Upsert user via real-time server API
-  const serverUrl = env.PUBLIC_SERVER_URL || 'http://localhost:3001';
-  const upsertRes = await fetch(`${serverUrl}/api/auth/upsert`, {
+  // Upsert user via real-time server API (prefer internal Docker URL)
+  const upsertRes = await fetch(`${SERVER_URL}/api/auth/upsert`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
