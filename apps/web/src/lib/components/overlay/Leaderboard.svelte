@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import { SvelteMap } from 'svelte/reactivity';
+  import { renderInsignia } from '$lib/canvas';
 
   interface Entry {
     userId: string;
@@ -9,18 +10,20 @@
 
   let { entries, title }: { entries: Entry[]; title: string } = $props();
 
-  const medalEmojis = {
-    0: '🥇',
-    1: '🥈',
-    2: '🥉',
+  const RANK_MAP: Record<number, 'gold' | 'silver' | 'bronze'> = {
+    0: 'gold',
+    1: 'silver',
+    2: 'bronze',
   };
 
-  function getMedal(index: number): string {
-    if (index === 0) return medalEmojis[0];
-    if (index === 1) return medalEmojis[1];
-    if (index === 2) return medalEmojis[2];
-    return '';
-  }
+  // Pre-render insignia data URLs for top 3 positions
+  const insigniaUrls: Record<number, string> = $derived.by(() => {
+    const urls: Record<number, string> = {};
+    for (const [index, rank] of Object.entries(RANK_MAP)) {
+      urls[Number(index)] = renderInsignia(rank);
+    }
+    return urls;
+  });
 
   function isMedalPosition(index: number): boolean {
     return index < 3;
@@ -73,8 +76,14 @@
           in:fly={{ y: 20, duration: 300, delay: index * 80 }}
         >
           <div class="entry-rank">
-            {#if isMedalPosition(index)}
-              <span class="medal">{getMedal(index)}</span>
+            {#if isMedalPosition(index) && insigniaUrls[index]}
+              <img
+                src={insigniaUrls[index]}
+                alt="{RANK_MAP[index]} rank"
+                class="insignia"
+                width="24"
+                height="24"
+              />
             {:else}
               <span class="rank-number">#{index + 1}</span>
             {/if}
@@ -193,9 +202,9 @@
     font-weight: 700;
   }
 
-  .medal {
-    font-size: 24px;
-    line-height: 1;
+  .insignia {
+    display: block;
+    image-rendering: auto;
   }
 
   .rank-number {

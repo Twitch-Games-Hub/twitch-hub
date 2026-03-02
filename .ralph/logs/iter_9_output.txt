@@ -1,0 +1,18 @@
+Let me verify the task statuses — there are still pending tasks (10-20), so I should NOT output RALPH_DONE.
+
+**Task 9 complete.** Here's a summary:
+
+**Leaderboard.svelte:**
+- Replaced emoji medals (`🥇🥈🥉`) with canvas-rendered shield insignias using `renderInsignia()` from `rank-insignias.ts`
+- `RANK_MAP` maps positions 0/1/2 to gold/silver/bronze ranks
+- `$derived` pre-computes data URLs for the top 3 insignias
+- `<img>` tags with data URL sources replace the emoji `<span>` elements
+- CSS `.medal` class replaced with `.insignia` class
+
+**GameOverResults.svelte:**
+- Removed trophy emoji div (`🏆` with `animate-trophy-bounce`), `trophySparkles` array, and all `.sparkle-dot` spans
+- Removed `.sparkle-dot` CSS animation
+- Added `CELEBRATION` particle burst (30-50 particles, gold + brand purple) fired at viewport upper-center on component mount via `GeometricParticleSystem` from pixi-app context
+- Auto-cleanup after 1600ms
+
+All HTML text and layout preserved in both components. `pnpm build` passes clean. Tasks 10-20 remain pending.

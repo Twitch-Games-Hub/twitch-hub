@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getContext, onMount } from 'svelte';
+  import type { Application } from 'pixi.js';
   import type { GameType, FinalResults } from '@twitch-hub/shared-types';
   import BracketViz from './BracketViz.svelte';
   import Leaderboard from './Leaderboard.svelte';
@@ -6,6 +8,7 @@
   import TugOfWar from './TugOfWar.svelte';
   import { SvelteMap } from 'svelte/reactivity';
   import { extractBinaryPercents } from '$lib/utils/votes';
+  import { GeometricParticleSystem, CELEBRATION } from '$lib/canvas';
 
   let {
     gameType,
@@ -36,14 +39,28 @@
       .sort((a, b) => b.score - a.score);
   });
 
-  const trophySparkles = [
-    { sx: '20px', sy: '-25px' },
-    { sx: '-20px', sy: '-25px' },
-    { sx: '28px', sy: '10px' },
-    { sx: '-28px', sy: '10px' },
-    { sx: '10px', sy: '28px' },
-    { sx: '-10px', sy: '28px' },
-  ];
+  const pixiCtx = getContext<{ readonly app: Application | null }>('pixi-app');
+
+  onMount(() => {
+    const app = pixiCtx?.app;
+    if (!app) return;
+
+    // Fire CELEBRATION particle burst at viewport center on mount
+    const particles = new GeometricParticleSystem(app);
+    const cx = app.screen.width / 2;
+    const cy = app.screen.height / 3;
+    particles.burst(cx, cy, CELEBRATION);
+
+    // Auto-cleanup after particles finish
+    const timer = setTimeout(() => {
+      particles.destroy();
+    }, 1600);
+
+    return () => {
+      clearTimeout(timer);
+      particles.destroy();
+    };
+  });
 </script>
 
 <div class="w-full max-w-2xl">
@@ -77,16 +94,6 @@
   >
     {#if gameType === 'RANKING' && finalResults.ranking}
       <div class="mb-4 flex flex-col items-center">
-        <div class="relative mb-2">
-          <div class="animate-trophy-bounce text-5xl">🏆</div>
-          <!-- Trophy sparkle burst -->
-          {#each trophySparkles as sparkle, i (i)}
-            <span
-              class="sparkle-dot"
-              style="--sx: {sparkle.sx}; --sy: {sparkle.sy}; animation-delay: {300 + i * 80}ms;"
-            ></span>
-          {/each}
-        </div>
         {#if finalResults.ranking.champion.imageUrl}
           <img
             src={finalResults.ranking.champion.imageUrl}
@@ -140,17 +147,5 @@
   .gradient-shimmer-text {
     background-size: 200% auto;
     animation: gradient-shimmer 3s linear infinite;
-  }
-
-  .sparkle-dot {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgba(145, 70, 255, 0.8);
-    animation: sparkle-burst 0.6s ease-out forwards;
-    pointer-events: none;
   }
 </style>

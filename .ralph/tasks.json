@@ -150,8 +150,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 9,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Migrated Leaderboard.svelte: replaced emoji medals (🥇🥈🥉) with canvas-rendered shield insignias from rank-insignias.ts via renderInsignia() data URLs for gold/silver/bronze positions. Migrated GameOverResults.svelte: removed trophy emoji div, trophySparkles array, sparkle-dot spans, and sparkle CSS. Added CELEBRATION particle burst (50 particles, gold + brand purple) fired on component mount via GeometricParticleSystem from pixi-app context. All HTML text/layout preserved in both components. Build passes clean."
     },
     {
       "id": 10,
