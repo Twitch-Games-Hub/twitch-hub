@@ -98,8 +98,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 6,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Migrated TugOfWar.svelte to hybrid canvas + HTML. Removed bar fill divs, SVG rope texture, CSS chevrons, knot glow line, and shimmer/momentum CSS. Replaced with: metallic-fill canvas rectangles (brand purple + pink), canvas cross-hatch rope pattern, glow effect at knot position, SPARK particles when isClose, VOTE_BURST on vote side (100ms throttle). All canvas positions synced via getBoundingClientRect(). Kept HTML labels, percentages, knot marker, images, vote counts. Build passes clean."
     },
     {
       "id": 7,

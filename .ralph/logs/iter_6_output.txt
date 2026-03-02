@@ -1,0 +1,26 @@
+There are still 14 pending/in-progress tasks remaining, so I should NOT output RALPH_DONE.
+
+## Task 6 Complete
+
+**Migrated TugOfWar.svelte to hybrid canvas + HTML.** Here's what changed:
+
+**Removed (CSS → Canvas):**
+- Bar fill divs with `leading-side-shimmer` CSS animation → `metallicFill` canvas rectangles (brand purple + pink)
+- SVG rope texture overlay → Canvas `Graphics` cross-hatch pattern at 0.08 alpha
+- CSS chevron momentum indicators (`.chevron-left`/`.chevron-right`) → Replaced by geometric particle effects
+- Knot glow line with `bar-pulse-glow` animation → Canvas `glow` BlurFilter halo
+- Entire `<style>` block removed
+
+**Added (Canvas effects):**
+- `metallicFill` for both bar sides with chrome sweep animation
+- `glow` effect tracking knot position
+- `SPARK` particles at knot when sides within 10% (`isClose`)
+- `VOTE_BURST` at the side receiving a vote (100ms throttle)
+- Cross-hatch rope texture drawn via PixiJS Graphics
+
+**Preserved (HTML):**
+- Labels, percentages, TweenedNumber components, images
+- Knot marker circle with `animate-tow-wobble`
+- Vote count footer
+
+**Three `$effect()` blocks handle:** position sync via `getBoundingClientRect()`, SPARK spawning, and vote burst detection.

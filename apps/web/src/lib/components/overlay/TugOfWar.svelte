@@ -1,5 +1,18 @@
 <script lang="ts">
+  import { getContext, onMount } from 'svelte';
+  import type { Application } from 'pixi.js';
+  import { Graphics } from 'pixi.js';
   import TweenedNumber from '$lib/components/ui/TweenedNumber.svelte';
+  import {
+    metallicFill,
+    glow,
+    GeometricParticleSystem,
+    SPARK,
+    VOTE_BURST,
+    COLORS,
+    type MetallicFill,
+    type GlowEffect,
+  } from '$lib/canvas';
 
   let {
     percentA = 0,
@@ -30,14 +43,150 @@
   const votesA = $derived(totalVotes > 0 ? Math.round((clampedA / 100) * totalVotes) : 0);
   const votesB = $derived(totalVotes > 0 ? Math.round((clampedB / 100) * totalVotes) : 0);
 
-  const knotShadowColor = $derived(
-    aLeading
-      ? 'rgba(145, 70, 255, 0.5)'
-      : bLeading
-        ? 'rgba(236, 72, 153, 0.5)'
-        : 'rgba(255, 255, 255, 0.2)',
-  );
-  const knotShadowSpread = $derived(isClose ? '12px' : '6px');
+  const pixiCtx = getContext<{ readonly app: Application | null }>('pixi-app');
+
+  let barContainer: HTMLDivElement | undefined = $state();
+
+  // Canvas effect instances
+  let fillA: MetallicFill | null = $state(null);
+  let fillB: MetallicFill | null = $state(null);
+  let knotGlow: GlowEffect | null = $state(null);
+  let ropeTexture: Graphics | null = $state(null);
+  let particles: GeometricParticleSystem | null = $state(null);
+
+  // Throttle state for vote bursts
+  let lastBurstA = 0;
+  let lastBurstB = 0;
+  let prevTotalVotes = 0;
+  let prevVotesA = 0;
+
+  onMount(() => {
+    const app = pixiCtx?.app;
+    if (!app) return;
+
+    particles = new GeometricParticleSystem(app);
+
+    // Create metallic fills for bars
+    fillA = metallicFill(app, { x: 0, y: 0, width: 0, height: 0 }, COLORS.brand);
+    fillB = metallicFill(app, { x: 0, y: 0, width: 0, height: 0 }, 0xec4899);
+
+    // Create knot glow
+    knotGlow = glow(app, 0, 0, 20, COLORS.brand);
+
+    // Create rope cross-hatch texture on canvas
+    ropeTexture = new Graphics();
+    ropeTexture.alpha = 0.08;
+    app.stage.addChild(ropeTexture);
+
+    return () => {
+      fillA?.destroy();
+      fillB?.destroy();
+      knotGlow?.destroy();
+      particles?.destroy();
+      if (ropeTexture) {
+        app.stage.removeChild(ropeTexture);
+        ropeTexture.destroy();
+      }
+    };
+  });
+
+  // Sync canvas positions with DOM layout
+  $effect(() => {
+    // Read reactive values to establish dependencies
+    const _a = clampedA;
+    const _b = clampedB;
+    const _kl = knotLeft;
+    const _tv = totalVotes;
+
+    if (!barContainer || !fillA || !fillB || !knotGlow || !ropeTexture) return;
+
+    const rect = barContainer.getBoundingClientRect();
+    const barX = rect.left;
+    const barY = rect.top;
+    const barW = rect.width;
+    const barH = rect.height;
+
+    // Update left fill (A side, from left)
+    const widthA = (clampedA / 100) * barW;
+    fillA.update({ x: barX, y: barY, width: widthA, height: barH });
+
+    // Update right fill (B side, from right)
+    const widthB = (clampedB / 100) * barW;
+    fillB.update({ x: barX + barW - widthB, y: barY, width: widthB, height: barH });
+
+    // Update knot glow position
+    const knotX = barX + (knotLeft / 100) * barW;
+    const knotY = barY + barH / 2;
+    knotGlow.moveTo(knotX, knotY);
+
+    // Draw rope cross-hatch pattern on canvas
+    drawRopeTexture(ropeTexture, barX, barY, barW, barH);
+  });
+
+  // SPARK particles at knot when sides are close
+  $effect(() => {
+    if (!isClose || totalVotes === 0 || !particles || !barContainer) return;
+
+    const rect = barContainer.getBoundingClientRect();
+    const knotX = rect.left + (knotLeft / 100) * rect.width;
+    const knotY = rect.top + rect.height / 2;
+
+    const interval = setInterval(() => {
+      if (particles && isClose && totalVotes > 0) {
+        particles.burst(knotX, knotY, SPARK);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  });
+
+  // VOTE_BURST on vote side (throttled to 100ms)
+  $effect(() => {
+    const currentTotalVotes = totalVotes;
+    const currentVotesA = votesA;
+
+    if (currentTotalVotes <= prevTotalVotes || !particles || !barContainer) {
+      prevTotalVotes = currentTotalVotes;
+      prevVotesA = currentVotesA;
+      return;
+    }
+
+    const rect = barContainer.getBoundingClientRect();
+    const now = Date.now();
+
+    // Determine which side got the vote
+    if (currentVotesA > prevVotesA) {
+      // Vote went to A side
+      if (now - lastBurstA >= 100) {
+        const widthA = (clampedA / 100) * rect.width;
+        particles.burst(rect.left + widthA, rect.top + rect.height / 2, VOTE_BURST);
+        lastBurstA = now;
+      }
+    } else {
+      // Vote went to B side
+      if (now - lastBurstB >= 100) {
+        const widthB = (clampedB / 100) * rect.width;
+        particles.burst(rect.left + rect.width - widthB, rect.top + rect.height / 2, VOTE_BURST);
+        lastBurstB = now;
+      }
+    }
+
+    prevTotalVotes = currentTotalVotes;
+    prevVotesA = currentVotesA;
+  });
+
+  function drawRopeTexture(g: Graphics, x: number, y: number, w: number, h: number): void {
+    g.clear();
+    const spacing = 8;
+    // Diagonal cross-hatch lines
+    for (let i = -h; i < w + h; i += spacing) {
+      g.moveTo(x + i, y);
+      g.lineTo(x + i + h, y + h);
+      g.moveTo(x + i + h, y);
+      g.lineTo(x + i, y + h);
+    }
+    g.stroke({ color: 0xffffff, width: 1 });
+  }
 </script>
 
 <div
@@ -91,63 +240,17 @@
   </div>
 
   <!-- Rope track -->
-  <div class="relative h-14 w-full overflow-hidden rounded-full bg-surface-elevated shadow-lg">
-    <!-- Left fill -->
-    <div
-      class="absolute inset-y-0 left-0 bg-brand-500/80 transition-all duration-500 ease-out"
-      class:leading-side-shimmer={aLeading && totalVotes > 0}
-      style="width: {clampedA}%;"
-    ></div>
-
-    <!-- Right fill -->
-    <div
-      class="absolute inset-y-0 right-0 bg-pink-500/80 transition-all duration-500 ease-out"
-      class:leading-side-shimmer={bLeading && totalVotes > 0}
-      style="width: {clampedB}%;"
-    ></div>
-
-    <!-- Rope texture overlay -->
-    <svg
-      class="pointer-events-none absolute inset-0 h-full w-full opacity-[0.08]"
-      aria-hidden="true"
-    >
-      <defs>
-        <pattern
-          id="rope-lines"
-          width="8"
-          height="8"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <line x1="0" y1="0" x2="0" y2="8" stroke="white" stroke-width="2" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#rope-lines)" />
-    </svg>
-
-    <!-- Momentum chevrons -->
-    {#if totalVotes > 0 && (aLeading || bLeading)}
-      <div
-        class="chevron chevron-left"
-        class:active={aLeading}
-        style="left: calc({knotLeft}% - 28px);"
-      ></div>
-      <div
-        class="chevron chevron-right"
-        class:active={bLeading}
-        style="left: calc({knotLeft}% + 18px);"
-      ></div>
-    {/if}
-
-    <!-- Knot marker -->
+  <div
+    bind:this={barContainer}
+    class="relative h-14 w-full overflow-hidden rounded-full bg-surface-elevated shadow-lg"
+  >
+    <!-- Knot marker (HTML positioned, canvas glow handled separately) -->
     <div
       class="knot-marker absolute top-1/2 z-10 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/90 bg-white shadow-lg transition-all duration-500 ease-out"
       class:animate-tow-wobble={isClose && totalVotes > 0}
-      style="left: {knotLeft}%; box-shadow: 0 0 {knotShadowSpread} {knotShadowColor};"
+      style="left: {knotLeft}%;"
     >
       <div class="absolute inset-1 rounded-full bg-white/80 shadow-inner"></div>
-      <!-- Glow line -->
-      <div class="knot-glow-line" class:knot-glow-pulse={isClose && totalVotes > 0}></div>
     </div>
   </div>
 
@@ -157,74 +260,3 @@
     <span><TweenedNumber value={votesB} /> votes</span>
   </div>
 </div>
-
-<style>
-  .leading-side-shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .leading-side-shimmer::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      105deg,
-      transparent 40%,
-      rgba(255, 255, 255, 0.12) 50%,
-      transparent 60%
-    );
-    animation: shimmer-sweep 2.5s ease-in-out infinite;
-  }
-
-  .chevron {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-top: 6px solid transparent;
-    border-bottom: 6px solid transparent;
-    opacity: 0;
-    z-index: 5;
-    transition:
-      left 0.5s ease-out,
-      opacity 0.3s ease;
-  }
-
-  .chevron-left {
-    border-right: 8px solid rgba(145, 70, 255, 0.7);
-  }
-
-  .chevron-right {
-    border-left: 8px solid rgba(236, 72, 153, 0.7);
-  }
-
-  .chevron-left.active {
-    animation: momentum-pulse-left 1s ease-in-out infinite;
-    opacity: 1;
-  }
-
-  .chevron-right.active {
-    animation: momentum-pulse-right 1s ease-in-out infinite;
-    opacity: 1;
-  }
-
-  .knot-glow-line {
-    position: absolute;
-    left: 50%;
-    top: -8px;
-    bottom: -8px;
-    width: 2px;
-    transform: translateX(-50%);
-    background: rgba(145, 70, 255, 0.4);
-    border-radius: 1px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .knot-glow-pulse {
-    opacity: 1;
-    animation: bar-pulse-glow 1.5s ease-in-out infinite;
-  }
-</style>
