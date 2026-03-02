@@ -260,6 +260,22 @@ def step_collect_config(state: WizardState, ssh_key: Path) -> dict[str, str]:
         "Stripe Secret Key (optional)",
         default=existing.get("STRIPE_SECRET_KEY", ""),
     )
+    config["STRIPE_WEBHOOK_SECRET"] = ui.prompt_input(
+        "Stripe Webhook Secret (optional)",
+        default=existing.get("STRIPE_WEBHOOK_SECRET", ""),
+    )
+    config["STRIPE_MONTHLY_PRICE_ID"] = ui.prompt_input(
+        "Stripe Monthly Price ID (optional)",
+        default=existing.get("STRIPE_MONTHLY_PRICE_ID", ""),
+    )
+    config["STRIPE_ANNUAL_PRICE_ID"] = ui.prompt_input(
+        "Stripe Annual Price ID (optional)",
+        default=existing.get("STRIPE_ANNUAL_PRICE_ID", ""),
+    )
+    config["STRIPE_CREDIT_PACK_PRICE_ID"] = ui.prompt_input(
+        "Stripe Credit Pack Price ID (optional)",
+        default=existing.get("STRIPE_CREDIT_PACK_PRICE_ID", ""),
+    )
 
     # Optional DNS automation
     ui.console.print("\n  [dim]Namecheap API credentials enable automatic DNS record creation.[/dim]")
@@ -301,7 +317,7 @@ def _read_existing_config() -> dict[str, str]:
 
 def _read_existing_secrets() -> dict[str, str]:
     """Read generated secret values from an existing .env.infra file."""
-    secret_keys = {"POSTGRES_PASSWORD", "REDIS_PASSWORD", "JWT_SECRET", "INTERNAL_API_SECRET"}
+    secret_keys = {"POSTGRES_PASSWORD", "REDIS_PASSWORD", "JWT_SECRET", "INTERNAL_API_SECRET", "WEBHOOK_SECRET"}
     return {k: v for k, v in _read_existing_config().items() if k in secret_keys}
 
 
@@ -334,6 +350,7 @@ def step_generate_secrets(state: WizardState, config: dict[str, str]) -> None:
         ("REDIS_PASSWORD", 32),
         ("JWT_SECRET", 48),
         ("INTERNAL_API_SECRET", 48),
+        ("WEBHOOK_SECRET", 32),
     ):
         if key not in existing:
             config[key] = secrets.token_urlsafe(nbytes)

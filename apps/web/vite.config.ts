@@ -6,7 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   ssr: {
     // Bundle all deps into the SSR output so the runner image needs no
-    // node_modules at all — avoids Bun workspace hoisting ambiguity.
+    // node_modules at all — keeps production image minimal.
     noExternal: true,
   },
   plugins: [

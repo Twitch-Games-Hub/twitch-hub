@@ -46,10 +46,10 @@ check_prereqs() {
   fi
   info "Node.js $node_version"
 
-  if ! command -v bun &>/dev/null; then
-    fail "bun is not installed (run: curl -fsSL https://bun.sh/install | bash)"
+  if ! command -v pnpm &>/dev/null; then
+    fail "pnpm is not installed (run: corepack enable)"
   fi
-  info "bun $(bun -v)"
+  info "pnpm $(pnpm -v)"
 
   if ! command -v docker &>/dev/null; then
     fail "Docker is not installed"
@@ -102,7 +102,7 @@ check_env() {
 install_deps() {
   echo ""
   echo "Installing dependencies..."
-  bun install --frozen-lockfile 2>/dev/null || bun install
+  pnpm install --frozen-lockfile 2>/dev/null || pnpm install
   info "Dependencies installed"
 }
 
@@ -112,9 +112,9 @@ setup_db() {
   echo ""
   echo "Setting up database..."
   cd apps/server
-  bunx prisma db push
+  pnpm exec prisma db push
   info "Database schema pushed"
-  bunx prisma generate
+  pnpm exec prisma generate
   info "Prisma client generated"
   cd "$ROOT_DIR"
 }
@@ -150,11 +150,11 @@ start_tmux_session() {
 
   # Window 0: web (SvelteKit frontend)
   tmux new-session -d -s "$TMUX_SESSION" -n web -c "$ROOT_DIR" \
-    "bun run --filter './apps/web' dev"
+    "pnpm --filter './apps/web' run dev"
 
   # Window 1: server (Express API)
   tmux new-window -t "$TMUX_SESSION" -n server -c "$ROOT_DIR" \
-    "bun run --filter './apps/server' dev"
+    "pnpm --filter './apps/server' run dev"
 
   # Window 2: docker (compose logs)
   tmux new-window -t "$TMUX_SESSION" -n docker -c "$ROOT_DIR" \

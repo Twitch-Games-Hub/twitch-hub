@@ -1,26 +1,22 @@
 {
   "name": "twitch-hub",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "docs"
-  ],
+  "packageManager": "pnpm@10.6.2",
   "engines": {
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "bun run --filter './apps/*' dev",
-    "build": "bun run --filter @twitch-hub/shared-types build && bun run --filter './apps/*' build",
-    "lint": "bun run --filter '*' lint",
-    "format": "bun run --filter '*' format",
+    "dev": "pnpm --filter './apps/*' run dev",
+    "build": "pnpm --filter @twitch-hub/shared-types run build && pnpm --filter './apps/*' run build",
+    "lint": "pnpm --filter '*' run lint",
+    "format": "pnpm --filter '*' run format",
     "format:check": "prettier --check .",
-    "typecheck": "bun run --filter '*' typecheck",
-    "check": "bun run lint && bun run format:check && bun run typecheck",
-    "test": "bun run --filter '*' test",
-    "clean": "bun run --filter '*' clean",
-    "docs:dev": "bun run --filter @twitch-hub/docs dev",
-    "docs:build": "bun run --filter @twitch-hub/docs build",
+    "typecheck": "pnpm --filter '*' run typecheck",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck",
+    "test": "pnpm --filter '*' run test",
+    "clean": "pnpm --filter '*' run clean",
+    "docs:dev": "pnpm --filter @twitch-hub/docs run dev",
+    "docs:build": "pnpm --filter @twitch-hub/docs run build",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -30,6 +26,14 @@
     ],
     "*.{json,md,yml,yaml,css,html}": [
       "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "@sentry/cli"
     ]
   },
   "devDependencies": {

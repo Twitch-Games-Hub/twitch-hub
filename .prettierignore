@@ -2,8 +2,7 @@ node_modules
 dist
 build
 .svelte-kit
-bun.lock
-bun.lockb
+pnpm-lock.yaml
 .vitepress/cache
 .vitepress/dist
 infra/.venv

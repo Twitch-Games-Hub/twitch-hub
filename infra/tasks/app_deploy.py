@@ -110,7 +110,7 @@ def deploy_app(cfg: Config) -> None:
     server.shell(
         name="Smoke test: API health endpoint",
         commands=[
-            "curl -sf http://localhost:3001/health > /dev/null "
+            "curl -sf http://localhost:3001/healthz > /dev/null "
             '&& echo "API health: OK" '
             '|| echo "WARNING: API health endpoint not responding"',
         ],

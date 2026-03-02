@@ -116,6 +116,10 @@ services:
       PORT: 3000
       ORIGIN: https://${APP_DOMAIN}
       PUBLIC_SERVER_URL: https://${API_DOMAIN}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      TWITCH_REDIRECT_URI: https://${APP_DOMAIN}/api/auth/callback
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
       PUBLIC_SENTRY_ENVIRONMENT: production
     deploy:
@@ -145,6 +149,7 @@ services:
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
+      ACME_CA: ${ACME_CA:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -201,7 +206,7 @@ services:
       [
         'sh',
         '-c',
-        'bunx prisma db push --schema=prisma/schema.prisma --accept-data-loss && bun seeds/seed.js',
+        'npx prisma db push --schema=prisma/schema.prisma --accept-data-loss && node seeds/seed.js',
       ]
     networks:
       - internal

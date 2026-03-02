@@ -1,14 +1,15 @@
 # Build stage
-FROM oven/bun:1.2-alpine AS builder
+FROM node:22-alpine AS builder
+RUN corepack enable
 WORKDIR /app
 
 # Install dependencies based on lockfile
-COPY package.json bun.lock ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY docs/package.json docs/package.json
-RUN bun install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY tsconfig.base.json ./
@@ -21,8 +22,8 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
     export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN 2>/dev/null)" && \
     export SENTRY_ORG="$(cat /run/secrets/SENTRY_ORG 2>/dev/null)" && \
     export SENTRY_PROJECT="$(cat /run/secrets/SENTRY_PROJECT 2>/dev/null)" && \
-    bun run --filter @twitch-hub/shared-types build && \
-    bun run --filter @twitch-hub/web build
+    pnpm --filter @twitch-hub/shared-types run build && \
+    pnpm --filter @twitch-hub/web run build
 
 # Runtime stage
 FROM node:22.14-alpine AS runner

@@ -39,6 +39,7 @@ class Config:
     api_domain: str = field(default_factory=lambda: _env("API_DOMAIN", required=True))
     deploy_user: str = field(default_factory=lambda: _env("DEPLOY_USER", "deploy"))
     deploy_dir: str = field(default_factory=lambda: _env("DEPLOY_DIR", "/opt/twitch-hub"))
+    acme_ca: str = field(default_factory=lambda: _env("ACME_CA", ""))
 
     # Twitch
     twitch_client_id: str = field(default_factory=lambda: _env("TWITCH_CLIENT_ID", required=True))

@@ -81,7 +81,7 @@ cmd_dbsetup() {
 
 cmd_seed() {
   echo "==> Running seed script..."
-  if ! $COMPOSE --profile tools run --rm dbsetup sh -c 'bun run prisma/seed.ts'; then
+  if ! $COMPOSE --profile tools run --rm dbsetup sh -c 'node seeds/seed.js'; then
     echo "Error: Seed failed!"
     exit 1
   fi

@@ -215,7 +215,7 @@ Secrets (auto-generated, minimum 32 chars): `POSTGRES_PASSWORD`, `REDIS_PASSWORD
 
 Optional overrides: `HCLOUD_SERVER_TYPE` (default: cx23), `HCLOUD_LOCATION` (default: nbg1), `SSH_PUBLIC_KEY_PATH`, `DEPLOY_USER` (default: deploy).
 
-Optional services: `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+Optional services: `ACME_CA`, `SENTRY_DSN`, `PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 ---
 
@@ -494,6 +494,9 @@ Persistent data is stored in Docker volumes: `pgdata`, `redisdata`, `caddy_data`
 - Check DNS propagation: `dig +short your-domain.com`
 - View Caddy logs: `./scripts/deploy.sh logs caddy`
 - If certificates fail, restart Caddy after DNS propagates: `docker compose -f docker-compose.prod.yml restart caddy`
+- **Rate limiting during development**: Set `ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory`
+  in `infra/.env.infra` to use staging certificates (30,000/week vs production's 50/week).
+  Staging certs trigger browser warnings but avoid rate limits during server destroy/recreate cycles.
 
 ### Docker Issues
 

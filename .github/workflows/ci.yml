@@ -42,16 +42,15 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-      - run: bun install --frozen-lockfile
-      - run: bun run --filter @twitch-hub/shared-types build
-      - run: bun run --filter @twitch-hub/server db:generate
-      - run: bun run ${{ matrix.check == 'lint' && 'lint && bun run format:check' || matrix.check }}
+          node-version: 22
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @twitch-hub/shared-types run build
+      - run: pnpm --filter @twitch-hub/server run db:generate
+      - run: pnpm run ${{ matrix.check == 'lint' && 'lint && pnpm run format:check' || matrix.check }}
         env:
           DATABASE_URL: postgresql://twitch_hub:twitch_hub@localhost:5432/twitch_hub
           REDIS_URL: redis://localhost:6379

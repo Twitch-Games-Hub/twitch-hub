@@ -2,12 +2,12 @@
 
 ## Prerequisites
 
-| Tool    | Version                |
-| ------- | ---------------------- |
-| Node.js | >= 22                  |
-| Bun     | >= 1.x                 |
-| Docker  | For PostgreSQL + Redis |
-| tmux    | Terminal multiplexer   |
+| Tool    | Version                         |
+| ------- | ------------------------------- |
+| Node.js | >= 22                           |
+| pnpm    | >= 10.x (via `corepack enable`) |
+| Docker  | For PostgreSQL + Redis          |
+| tmux    | Terminal multiplexer            |
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ This opens a tmux session (`twitch-hub`) with three panes:
 
 ```
 ┌─────────────────────────────────┐
-│         bun dev (65%)           │
+│         pnpm dev (65%)          │
 │   (SvelteKit :5173 + Server    │
 │         :3001)                  │
 ├────────────────┬────────────────┤
@@ -41,7 +41,7 @@ This opens a tmux session (`twitch-hub`) with three panes:
 
 | Pane         | Content                                                                |
 | ------------ | ---------------------------------------------------------------------- |
-| Top          | `bun dev` — SvelteKit (`:5173`) + Fastify server (`:3001`)             |
+| Top          | `pnpm dev` — SvelteKit (`:5173`) + Fastify server (`:3001`)            |
 | Bottom-left  | `docker compose logs -f` — PostgreSQL and Redis output                 |
 | Bottom-right | Stripe webhook listener, or a placeholder if Stripe CLI is unavailable |
 
@@ -52,7 +52,7 @@ This opens a tmux session (`twitch-hub`) with three panes:
 | `./scripts/dev-init.sh`         | Full setup: prereqs, Docker, install, db push, tmux |
 | `./scripts/dev-init.sh init`    | Same as above (explicit)                            |
 | `./scripts/dev-init.sh reset`   | Nuke volumes + node_modules, then full init         |
-| `./scripts/dev-init.sh restart` | Restart Docker + tmux session (skip `bun install`)  |
+| `./scripts/dev-init.sh restart` | Restart Docker + tmux session (skip `pnpm install`) |
 | `./scripts/dev-init.sh stop`    | Kill tmux session and stop Docker containers        |
 | `./scripts/dev-init.sh stripe`  | Start Stripe webhook listener standalone (no tmux)  |
 
@@ -80,15 +80,15 @@ Create a `.env` file in `apps/server/` (see `.env.example`):
 
 ## Scripts
 
-| Command             | Description                    |
-| ------------------- | ------------------------------ |
-| `bun run dev`       | Start all services in dev mode |
-| `bun run build`     | Build all packages             |
-| `bun run lint`      | Run ESLint across workspaces   |
-| `bun run format`    | Format code with Prettier      |
-| `bun run typecheck` | Run TypeScript type checking   |
-| `bun run test`      | Run unit tests                 |
-| `bun run docs:dev`  | Start documentation dev server |
+| Command              | Description                    |
+| -------------------- | ------------------------------ |
+| `pnpm run dev`       | Start all services in dev mode |
+| `pnpm run build`     | Build all packages             |
+| `pnpm run lint`      | Run ESLint across workspaces   |
+| `pnpm run format`    | Format code with Prettier      |
+| `pnpm run typecheck` | Run TypeScript type checking   |
+| `pnpm run test`      | Run unit tests                 |
+| `pnpm run docs:dev`  | Start documentation dev server |
 
 ## Database Seeding
 
@@ -96,7 +96,7 @@ Populate the database with example games (4 games across all 4 types):
 
 ```bash
 cd apps/server
-bun run db:seed
+pnpm run db:seed
 ```
 
 This creates a demo streamer user and 4 games covering Hot Take, Balance, Blind Test, and Ranking types. The seed is idempotent — re-running it replaces previous seed data.

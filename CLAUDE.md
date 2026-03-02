@@ -1,6 +1,5 @@
-# Claude Code Guidelines
-
+- Use only up to date software
+- Never use python for running code, just use uv
 - Adhere to the project's coding standards and naming conventions.
-- Ensure all tests pass before completing a task.
 - Use Conventional Commits for all commit messages.
 - For automated reviews, provide concise and actionable feedback.

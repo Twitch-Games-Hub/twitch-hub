@@ -147,6 +147,6 @@ Run the achievement seed script after schema push:
 
 ```bash
 cd apps/server
-bun prisma db push
-bun run prisma/seed-achievements.ts
+pnpm exec prisma db push
+pnpm exec tsx prisma/seed-achievements.ts
 ```

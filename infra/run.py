@@ -411,16 +411,16 @@ def cmd_health() -> None:
         [
             "ssh", "-o", "StrictHostKeyChecking=no",
             f"{cfg.deploy_user}@{ip}",
-            "curl -sf http://localhost:3001/health 2>/dev/null || echo 'UNREACHABLE'",
+            "curl -sf http://localhost:3001/healthz 2>/dev/null || echo 'UNREACHABLE'",
         ],
         capture_output=True,
         text=True,
     )
     api_status = api_result.stdout.strip()
     if api_status and api_status != "UNREACHABLE":
-        ui.success(f"API /health: {api_status}")
+        ui.success(f"API /healthz: {api_status}")
     else:
-        ui.warn("API /health: unreachable")
+        ui.warn("API /healthz: unreachable")
 
 
 def _show_help() -> None:
