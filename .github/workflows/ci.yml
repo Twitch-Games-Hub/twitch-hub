@@ -111,6 +111,10 @@ jobs:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "WEBHOOK_URL not configured, skipping deploy"
+            exit 0
+          fi
           curl -sf -X POST \
             -u "deploy:${WEBHOOK_SECRET}" \
             -H "X-Hook-Mode: buffered" \
