@@ -13,8 +13,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 1,
-      "status": "in_progress",
-      "notes": ""
+      "status": "completed",
+      "notes": "Installed pixi.js@8.16.0 and @pixi/particle-emitter@5.0.10. Created canvas module at apps/web/src/lib/canvas/ with theme.ts (COLORS/EASING/TIMING), reduced-motion.ts (shouldAnimate), pixi-app.ts (createPixiApp factory), PixiWrapper.svelte (canvas mount + context), and index.ts barrel. Fixed .npmrc store-dir path for environment. Build passes clean."
     },
     {
       "id": 2,

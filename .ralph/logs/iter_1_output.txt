@@ -1,0 +1,22 @@
+Task 1 is complete. Let me verify the tasks.json to confirm there are still pending tasks (so I should NOT output RALPH_DONE).
+
+There are 9 remaining pending tasks (2-10), so this is not the final iteration.
+
+**Task 1 Summary — Install PixiJS and create core canvas infrastructure:**
+
+**Files created/modified:**
+- `apps/web/package.json` — added `pixi.js@^8` and `@pixi/particle-emitter@^5`
+- `.npmrc` — fixed pnpm store path for environment
+- `apps/web/src/lib/canvas/theme.ts` — COLORS, EASING, TIMING exports
+- `apps/web/src/lib/canvas/reduced-motion.ts` — `shouldAnimate()` with SSR-safe matchMedia detection
+- `apps/web/src/lib/canvas/pixi-app.ts` — `createPixiApp(canvas)` factory with transparent bg, antialias, low-power GPU, auto-resize
+- `apps/web/src/lib/canvas/PixiWrapper.svelte` — Svelte 5 component mounting canvas at z-0, async PixiJS init, `setContext('pixi-app')`, cleanup on destroy
+- `apps/web/src/lib/canvas/index.ts` — barrel export
+
+**All acceptance criteria met:**
+- pixi.js@8.16.0 and @pixi/particle-emitter@5.0.10 in dependencies
+- theme.ts exports COLORS, EASING, TIMING
+- reduced-motion.ts exports shouldAnimate()
+- pixi-app.ts exports createPixiApp returning configured Application
+- PixiWrapper.svelte mounts canvas, initializes PixiJS, sets context
+- `pnpm build` completes without errors
