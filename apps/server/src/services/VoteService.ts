@@ -70,12 +70,9 @@ export class VoteService {
           source: data.source as 'WEB' | 'CHAT',
         },
       });
-    } catch (err: unknown) {
+    } catch (err) {
       // Unique constraint violation = duplicate vote, expected
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        (err as Prisma.PrismaClientKnownRequestError).code === 'P2002'
-      ) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         return;
       }
       throw err;
