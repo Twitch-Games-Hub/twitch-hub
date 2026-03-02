@@ -28,8 +28,7 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 server
 
-# Copy bundled server and manifests for production install
-COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./
+# Copy manifests for production install
 COPY --from=builder --chown=server:nodejs /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=builder --chown=server:nodejs /app/apps/server/package.json ./apps/server/package.json
 COPY --from=builder --chown=server:nodejs /app/apps/web/package.json ./apps/web/package.json
@@ -41,17 +40,20 @@ COPY --from=builder --chown=server:nodejs /app/docs/package.json ./docs/package.
 # --ignore-scripts avoids running the root "prepare" hook (husky) which is a devDependency
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Copy Prisma assets
-COPY --from=builder --chown=server:nodejs /app/apps/server/prisma/schema.prisma ./prisma/schema.prisma
-COPY --from=builder --chown=server:nodejs /app/apps/server/src/generated/prisma ./src/generated/prisma
+# Copy bundled server output into the workspace package directory so ESM
+# resolution walks up to apps/server/node_modules/ for external deps.
+COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./apps/server/dist
+
+# Copy Prisma assets alongside the server
+COPY --from=builder --chown=server:nodejs /app/apps/server/prisma/schema.prisma ./apps/server/dist/prisma/schema.prisma
+COPY --from=builder --chown=server:nodejs /app/apps/server/src/generated/prisma ./apps/server/dist/src/generated/prisma
 
 USER server
 ENV NODE_ENV=production
-ENV NODE_PATH=/app/apps/server/node_modules
 ENV SERVER_PORT=3001
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget -qO /dev/null http://localhost:3001/healthz || exit 1
 
-CMD ["node", "--import", "./instrument.js", "./index.js"]
+CMD ["node", "--import", "./apps/server/dist/instrument.js", "./apps/server/dist/index.js"]

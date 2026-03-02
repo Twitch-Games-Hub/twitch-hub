@@ -44,12 +44,13 @@ COPY --from=builder --chown=sveltekit:nodejs /app/docs/package.json ./docs/packa
 # Install production dependencies (instrumentation.server.ts needs @sentry/sveltekit at runtime)
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/build ./build
+# Copy build output into the workspace package directory so ESM
+# resolution walks up to apps/web/node_modules/ for external deps.
+COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/build ./apps/web/build
 
 USER sveltekit
 
 ENV NODE_ENV=production
-ENV NODE_PATH=/app/apps/web/node_modules
 ENV PORT=3000
 EXPOSE 3000
-CMD ["node", "build/index.js"]
+CMD ["node", "apps/web/build/index.js"]
