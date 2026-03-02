@@ -1,16 +1,14 @@
 <script lang="ts">
-  import type { RoundResults, RoundData } from '@twitch-hub/shared-types';
+  import type { RoundResults } from '@twitch-hub/shared-types';
 
   let {
     gameType,
     roundResults,
     submittedAnswer,
-    currentRound,
   }: {
     gameType: string;
     roundResults: RoundResults;
     submittedAnswer: unknown;
-    currentRound: RoundData;
   } = $props();
 
   const outcome = $derived(computeOutcome());

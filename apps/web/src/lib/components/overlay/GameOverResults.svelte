@@ -80,7 +80,7 @@
         <div class="relative mb-2">
           <div class="animate-trophy-bounce text-5xl">🏆</div>
           <!-- Trophy sparkle burst -->
-          {#each trophySparkles as sparkle, i}
+          {#each trophySparkles as sparkle, i (i)}
             <span
               class="sparkle-dot"
               style="--sx: {sparkle.sx}; --sy: {sparkle.sy}; animation-delay: {300 + i * 80}ms;"

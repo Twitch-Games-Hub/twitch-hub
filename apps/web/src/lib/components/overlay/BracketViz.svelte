@@ -98,7 +98,7 @@
         class="champion-card relative rounded-lg border-2 border-brand-400 bg-brand-600/10 p-4 text-center min-w-[140px]"
       >
         <!-- Sparkle burst dots -->
-        {#each sparkles as sparkle, i}
+        {#each sparkles as sparkle, i (i)}
           <span
             class="sparkle-dot"
             style="--sx: {sparkle.sx}; --sy: {sparkle.sy}; animation-delay: {i * 100}ms;"

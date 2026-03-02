@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import type { Pathname } from '$app/types';
   import LoaderIcon from './icons/LoaderIcon.svelte';
   import type { Snippet } from 'svelte';
 
@@ -51,7 +52,7 @@
 </script>
 
 {#if href}
-  <a href={resolve(href as any)} class={classes}>
+  <a href={resolve(href as Pathname)} class={classes}>
     {#if loading}
       <LoaderIcon size={size === 'lg' ? 20 : 16} />
     {/if}
