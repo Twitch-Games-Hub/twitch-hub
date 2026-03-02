@@ -5,3 +5,5 @@ export { glow, type GlowEffect } from './glow';
 export { gridOverlay, type GridOverlay } from './grid-overlay';
 export { spawnFloatingXp, type FloatingXpOptions } from './floating-xp';
 export { CanvasXpProgressBar } from './xp-progress-bar';
+export { playLevelUpEffect } from './level-up-effect';
+export { playRankUpEffect } from './rank-up-effect';

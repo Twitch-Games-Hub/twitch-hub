@@ -12,6 +12,7 @@
   import RoundSplash from '$lib/components/overlay/RoundSplash.svelte';
   import GameOverResults from '$lib/components/overlay/GameOverResults.svelte';
   import AmbientParticles from '$lib/components/overlay/AmbientParticles.svelte';
+  import XpEffectsController from '$lib/components/overlay/XpEffectsController.svelte';
   import { PixiWrapper } from '$lib/canvas';
   import { GAME_TYPE_META } from '$lib/constants';
   import type { Socket } from 'socket.io-client';
@@ -83,6 +84,11 @@
     <!-- Ambient particles (visible during live + round-results) -->
     {#if phase === 'live' || phase === 'round-results'}
       <AmbientParticles />
+    {/if}
+
+    <!-- XP effects controller (active during live, round-results, game-over) -->
+    {#if phase === 'live' || phase === 'round-results' || phase === 'game-over'}
+      <XpEffectsController />
     {/if}
 
     <!-- HUD (top bar, visible during live + round-results phases) -->

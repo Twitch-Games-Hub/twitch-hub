@@ -348,8 +348,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 20,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Created level-up-effect.ts (shockwave + 200ms delayed CELEBRATION burst with brand purple + white, 30 particles). Created rank-up-effect.ts (shockwave with rank color, 300ms SHOCKWAVE_DEBRIS, 500ms insignia sprite with overshoot bounce 0→1.2→1.0 + gold CELEBRATION, 2s hold + fade out). Created XpEffectsController.svelte (renderless, gets pixi-app from context, watches roundXpSummary to spawn staggered floating +XP with gold/22px for streaked, watches gamificationQueue to consume level_up/rank_up events and dequeue). Mounted in overlay page within PixiWrapper during live/round-results/game-over phases. Updated effects barrel exports. Build passes clean."
     }
   ]
 }

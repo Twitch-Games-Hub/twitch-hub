@@ -1,13 +1,24 @@
-Task 5 is complete. There are still 15 pending tasks remaining (tasks 6-20), so I will **not** output RALPH_DONE.
+All 20 tasks are now completed. Here's a summary of what was implemented for Task 20:
 
-**Summary of changes:**
+**Files created:**
+- `apps/web/src/lib/canvas/effects/level-up-effect.ts` — `playLevelUpEffect()`: brand-purple shockwave + 200ms delayed CELEBRATION burst (30 particles, purple + white)
+- `apps/web/src/lib/canvas/effects/rank-up-effect.ts` — `playRankUpEffect()`: 4-step sequence — rank-colored shockwave → 300ms SHOCKWAVE_DEBRIS → 500ms insignia sprite with overshoot bounce (0→1.2→1.0, 2s hold, fade out) + gold CELEBRATION
+- `apps/web/src/lib/components/overlay/XpEffectsController.svelte` — Renderless controller consuming game store events
 
-- **File modified**: `apps/web/src/lib/components/overlay/RoundSplash.svelte`
-- Removed `.radial-burst` div and two `.accent-line` divs from HTML markup
-- Removed corresponding CSS rules (`.radial-burst`, `.accent-line`, `.accent-line-left`, `.accent-line-right`)
-- Added `getContext('pixi-app')` to get the PixiJS application from context
-- On mount: fires `shockwave` effect at viewport center + `SHOCKWAVE_DEBRIS` particle burst simultaneously
-- Particle system auto-cleans after 600ms via `setTimeout`
-- Preserved HTML text ("Round N of M") with `animate-scale-in-overshoot` CSS animation
-- Preserved `onDone` callback via `setTimeout(onDone, 1500)`
-- Build passes clean with no errors
+**Files modified:**
+- `apps/web/src/routes/overlay/[sessionId]/+page.svelte` — Mounted XpEffectsController during live/round-results/game-over phases
+- `apps/web/src/lib/canvas/effects/index.ts` — Added barrel exports for new effects
+
+**Acceptance criteria met:**
+- Level-up triggers shockwave + celebration particle burst
+- Rank-up triggers shockwave + debris + animated insignia reveal with rank-colored particles  
+- Rank insignia scales in with overshoot bounce and fades out after 2 seconds
+- Floating +XP numbers appear when round XP summary arrives
+- XP numbers use gold color and larger font when streak multiplier > 1
+- XpEffectsController correctly consumes and dequeues gamification events
+- XpEffectsController mounted in overlay page within PixiWrapper
+- Effects only trigger during live/round-results/game-over phases
+- All canvas effects respect reduced motion preferences
+- `pnpm build` completes without errors
+
+RALPH_DONE
