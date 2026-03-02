@@ -55,10 +55,94 @@ jobs:
           DATABASE_URL: postgresql://twitch_hub:twitch_hub@localhost:5432/twitch_hub
           REDIS_URL: redis://localhost:6379
 
+  container-smoke:
+    name: Container Smoke (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: [quality]
+    strategy:
+      matrix:
+        include:
+          - app: server
+            port: 3001
+            health: /healthz
+          - app: web
+            port: 3000
+            health: /
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          load: true
+          tags: twitch-hub-${{ matrix.app }}:smoke
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+      - name: Start dependencies
+        if: matrix.app == 'server'
+        run: |
+          docker network create smoke
+          docker run -d --name postgres --network smoke \
+            -e POSTGRES_USER=twitch_hub \
+            -e POSTGRES_PASSWORD=twitch_hub \
+            -e POSTGRES_DB=twitch_hub \
+            postgres:17-alpine
+          docker run -d --name redis --network smoke \
+            redis:7-alpine
+          for i in $(seq 1 30); do
+            docker exec postgres pg_isready -U twitch_hub && break
+            sleep 1
+          done
+          for i in $(seq 1 15); do
+            docker exec redis redis-cli ping | grep -q PONG && break
+            sleep 1
+          done
+
+      - name: Start container
+        run: |
+          if [ "${{ matrix.app }}" = "server" ]; then
+            docker run -d --name app --network smoke \
+              -p ${{ matrix.port }}:${{ matrix.port }} \
+              -e DATABASE_URL=postgresql://twitch_hub:twitch_hub@postgres:5432/twitch_hub \
+              -e REDIS_URL=redis://redis:6379 \
+              -e JWT_SECRET=smoke-test-secret \
+              -e INTERNAL_API_SECRET=smoke-test-internal \
+              -e TWITCH_CLIENT_ID=smoke-test-id \
+              -e TWITCH_CLIENT_SECRET=smoke-test-secret \
+              twitch-hub-${{ matrix.app }}:smoke
+          else
+            docker run -d --name app \
+              -p ${{ matrix.port }}:${{ matrix.port }} \
+              twitch-hub-${{ matrix.app }}:smoke
+          fi
+
+      - name: Wait for healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:${{ matrix.port }}${{ matrix.health }} > /dev/null; then
+              echo "Container is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Container failed to become healthy within 60s"
+          docker logs app
+          exit 1
+
+      - name: Print container logs
+        if: failure()
+        run: docker logs app
+
   publish:
     name: Publish ${{ matrix.app }} Image
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: [quality, container-smoke]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
@@ -124,7 +208,7 @@ jobs:
   report-failure:
     name: Report Failure
     runs-on: ubuntu-latest
-    needs: [quality, publish, deploy]
+    needs: [quality, container-smoke, publish, deploy]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure')
     permissions:
       contents: read

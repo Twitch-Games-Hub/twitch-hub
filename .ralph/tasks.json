@@ -1,0 +1,174 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Install PixiJS and create core canvas infrastructure",
+      "description": "Install PixiJS v8 and the particle emitter into the web app, then create the foundational canvas module at `apps/web/src/lib/canvas/`.\n\n1. Run `pnpm --filter @twitch-hub/web add pixi.js@^8 @pixi/particle-emitter@^5`\n2. Create `apps/web/src/lib/canvas/theme.ts` — export a color palette object (brand purple #7c3aed, silver #c0c0c0, steel #71717a, gold #fbbf24, diamond #22d3ee), easing curve functions (quartic sharp-out/in), and timing constants (BURST_DURATION=300, SWEEP_DURATION=600, SHOCKWAVE_DURATION=600).\n3. Create `apps/web/src/lib/canvas/reduced-motion.ts` — detect `prefers-reduced-motion: reduce` via matchMedia, export a `shouldAnimate()` function. All effects must check this.\n4. Create `apps/web/src/lib/canvas/pixi-app.ts` — factory function `createPixiApp(canvas)` that returns a PixiJS `Application` configured with: transparent background, antialias on, resolution = devicePixelRatio, `powerPreference: 'low-power'` (OBS-friendly), auto-resize.\n5. Create `apps/web/src/lib/canvas/PixiWrapper.svelte` — Svelte 5 component that: mounts a `<canvas>` element fixed behind HTML content (z-index 0, pointer-events: none), initializes the PixiJS app via the factory, exposes the app instance via `setContext('pixi-app')`, handles window resize and cleanup on destroy.\n6. Create an `apps/web/src/lib/canvas/index.ts` barrel export.",
+      "acceptance_criteria": [
+        "pixi.js and @pixi/particle-emitter appear in apps/web/package.json dependencies",
+        "theme.ts exports COLORS, EASING, and TIMING objects",
+        "reduced-motion.ts exports shouldAnimate() that returns false when prefers-reduced-motion is reduce",
+        "pixi-app.ts exports createPixiApp that returns a configured PixiJS Application",
+        "PixiWrapper.svelte mounts a canvas, initializes PixiJS, and sets context",
+        "pnpm build completes without errors"
+      ],
+      "priority": 1,
+      "status": "in_progress",
+      "notes": ""
+    },
+    {
+      "id": 2,
+      "title": "Build geometric particle system with shape generators and presets",
+      "description": "Create the particle system module at `apps/web/src/lib/canvas/particles/`.\n\n1. Create `shapes.ts` — generator functions for geometric shapes: triangle, diamond, hexagon, thin line, dot. Each returns a PixiJS `Graphics` object drawn programmatically with a subtle metallic look (1px lighter offset for chrome sheen effect). Shapes should be small (8-16px).\n2. Create `GeometricParticleSystem.ts` — a class that wraps `@pixi/particle-emitter`. API:\n   - `burst(x, y, preset)` — one-shot particle burst at a position\n   - `startAmbient(preset)` / `stopAmbient()` — continuous particle emission\n   - Internal object pool for reuse (cap total active particles at 200)\n   - Respects `shouldAnimate()` from reduced-motion module\n   - Constructor takes the PixiJS Application stage container\n3. Create `presets.ts` — named particle preset configurations:\n   - `VOTE_BURST`: 8-12 particles, sharp outward trajectory, 300ms lifetime\n   - `AMBIENT_FIELD`: 15-20 slow-drifting hexagons, 0.1 opacity, long lifetime\n   - `CELEBRATION`: 30-50 particles upward fountain, gold color\n   - `SPARK`: 4-6 tiny fast dots, very short lifetime\n   - `SHOCKWAVE_DEBRIS`: 20 radial triangles expanding outward\n   - `WINNER_CROWN`: gold upward fountain, similar to CELEBRATION but more concentrated\n4. Create `particles/index.ts` barrel export.",
+      "acceptance_criteria": [
+        "shapes.ts exports triangle, diamond, hexagon, line, dot generator functions",
+        "GeometricParticleSystem class can burst() and startAmbient()/stopAmbient()",
+        "Particle pool caps at 200 active particles",
+        "All 6 presets are defined and exported from presets.ts",
+        "System respects shouldAnimate() — returns early when reduced motion is preferred",
+        "pnpm build completes without errors"
+      ],
+      "priority": 2,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "title": "Build canvas effects library (shockwave, metallic fill, line draw, glow, grid)",
+      "description": "Create the effects module at `apps/web/src/lib/canvas/effects/`.\n\n1. Create `shockwave.ts` — function that creates an expanding ring (PixiJS Graphics circle) that scales from center outward, fading opacity from 0.8 to 0 over 600ms. Self-removes from stage when done. Takes (app, x, y, color?) params.\n2. Create `metallic-fill.ts` — function that animates a chrome gradient sweep across a rectangular area left-to-right. Used for histogram bars and tug-of-war fills. Takes (app, rect, color, duration?) params. Returns a Graphics object that can be updated with new dimensions.\n3. Create `line-draw.ts` — function that progressively draws a line from point A to point B over a configurable duration. For bracket connectors. Takes (app, startPoint, endPoint, color, duration?) params.\n4. Create `glow.ts` — function that creates a focused halo using PixiJS BlurFilter in white or purple. Can be applied to a position or attached to follow an element. Takes (app, x, y, radius, color?) params.\n5. Create `grid-overlay.ts` — function that draws a persistent subtle scan-line pattern (horizontal lines at 4px intervals, 0.03 alpha) covering the full viewport. Creates once, resizes on window resize.\n6. Create `effects/index.ts` barrel export.\n\nAlso create `apps/web/src/lib/canvas/rank-insignias.ts` — functions to programmatically render shield/chevron rank badges (bronze, silver, gold, platinum, diamond) using PixiJS Graphics. Each badge is ~24px. Export a function `renderInsignia(rank) => string` that returns a data URL suitable for `<img src>`.\n\nAll effects must respect `shouldAnimate()` from reduced-motion. When reduced motion is active, effects should either skip entirely or render in their final state instantly.",
+      "acceptance_criteria": [
+        "shockwave.ts exports a function that creates an expanding, fading ring effect",
+        "metallic-fill.ts exports a function that animates a chrome gradient sweep on a rectangle",
+        "line-draw.ts exports a function for progressive line drawing between two points",
+        "glow.ts exports a function that creates a blur-filter halo effect",
+        "grid-overlay.ts exports a function that draws subtle persistent scan-lines",
+        "rank-insignias.ts exports renderInsignia(rank) returning a data URL string",
+        "All effects respect reduced-motion preferences",
+        "pnpm build completes without errors"
+      ],
+      "priority": 3,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 4,
+      "title": "Migrate AmbientParticles to canvas (full replacement)",
+      "description": "Rewrite `apps/web/src/lib/components/overlay/AmbientParticles.svelte` to use the PixiJS canvas instead of HTML divs.\n\nCurrent state: The component renders ~10 div elements with CSS animations for drifting particles.\n\nNew implementation:\n1. Remove all HTML markup (the drifting div elements) and their CSS.\n2. Get the PixiJS app from context via `getContext('pixi-app')`.\n3. On mount: create a `GeometricParticleSystem` instance, start it with the `AMBIENT_FIELD` preset. Also initialize the `grid-overlay` scan-line effect.\n4. On destroy: call `stopAmbient()` and clean up the grid overlay.\n5. The component should render no visible DOM — it's purely a canvas-effect controller.\n\nThis is the simplest migration and validates that the entire PixiJS pipeline (PixiWrapper context → particle system) works end-to-end.",
+      "acceptance_criteria": [
+        "AmbientParticles.svelte no longer renders any HTML divs for particles",
+        "Component gets pixi-app from Svelte context",
+        "Ambient hexagon particles drift on the canvas layer",
+        "Grid scan-line overlay is visible at low opacity",
+        "Effects stop and clean up when component is destroyed",
+        "pnpm build completes without errors"
+      ],
+      "priority": 4,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 5,
+      "title": "Migrate RoundSplash to hybrid canvas + HTML",
+      "description": "Modify `apps/web/src/lib/components/overlay/RoundSplash.svelte` to use canvas effects for visual flair while keeping text in HTML.\n\nCurrent state: The component shows 'Round N of M' text with CSS animations including a `.radial-burst` div and `.accent-line` divs.\n\nNew implementation:\n1. Keep the HTML text ('Round N of M') with its existing `scale-in-overshoot` CSS animation.\n2. Remove the `.radial-burst` div and `.accent-line` divs from the markup.\n3. Remove the corresponding CSS for those removed elements.\n4. Get `pixi-app` from context.\n5. On mount: fire `shockwave` effect at viewport center AND `SHOCKWAVE_DEBRIS` particle burst simultaneously. Both auto-clean after ~600ms.\n6. Keep the existing `onDone` callback timing (component auto-dismisses after its duration).",
+      "acceptance_criteria": [
+        "RoundSplash.svelte no longer has .radial-burst or .accent-line HTML elements",
+        "HTML text 'Round N of M' still renders with CSS animation",
+        "Shockwave ring effect fires on canvas at viewport center on mount",
+        "SHOCKWAVE_DEBRIS particles burst radially on mount",
+        "Effects auto-clean up after completion",
+        "onDone callback still fires to dismiss the splash",
+        "pnpm build completes without errors"
+      ],
+      "priority": 5,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 6,
+      "title": "Migrate TugOfWar to hybrid canvas + HTML",
+      "description": "Modify `apps/web/src/lib/components/overlay/TugOfWar.svelte` — the largest migration. Keep interactive/text elements in HTML, move visual fills and effects to canvas.\n\nCurrent state: Two expanding bar divs with CSS animations, a knot marker, option labels and images, CSS chevrons for momentum.\n\nNew implementation:\n1. Keep in HTML: Labels (A/B names, percentages, vote count), the knot marker circle (positioned via CSS `left: X%`), option images.\n2. Move to Canvas:\n   - Bar fills → `metallic-fill` rectangles with chrome sweep animation. Map position from DOM via `getBoundingClientRect()` on the bar container.\n   - Rope texture → canvas cross-hatch pattern replacing any SVG overlay.\n   - Momentum indicators → geometric particles instead of CSS chevrons.\n   - Knot glow → focused `glow` filter on canvas at the knot's DOM position.\n3. New Canvas effects:\n   - Friction `SPARK` particles at knot position when `isClose` (sides within 10% of each other).\n   - `VOTE_BURST` at the side that just received a vote (throttled: max 1 per 100ms).\n4. Use `$effect()` watching `percentA`, `percentB`, `totalVotes` to trigger updates.\n5. Use a `$effect()` to read bar container `getBoundingClientRect()` and sync canvas positions.\n6. Remove replaced CSS animations/keyframes for bar fills, chevrons, etc.",
+      "acceptance_criteria": [
+        "HTML labels, percentages, knot marker, and images still render correctly",
+        "Bar fills render as metallic-fill canvas rectangles instead of CSS-animated divs",
+        "Knot position has a glow effect on canvas",
+        "SPARK particles appear at knot when sides are within 10%",
+        "VOTE_BURST fires on the side receiving a vote (throttled to 100ms)",
+        "Canvas positions sync with DOM layout via getBoundingClientRect",
+        "Removed CSS animations that are now handled by canvas",
+        "pnpm build completes without errors"
+      ],
+      "priority": 6,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 7,
+      "title": "Migrate Histogram to hybrid canvas + HTML",
+      "description": "Modify `apps/web/src/lib/components/overlay/Histogram.svelte` to render bar rectangles on canvas while keeping text in HTML.\n\nCurrent state: Colored div bars with CSS transitions, vote count numbers above bars (TweenedNumber), labels below bars, total votes pill.\n\nNew implementation:\n1. Keep in HTML: Vote count numbers above bars (TweenedNumber component), bar labels below, total votes pill.\n2. Move to Canvas: Colored bar rectangles → `metallic-fill` Graphics objects with chrome gradient animation.\n3. New Canvas effects:\n   - `VOTE_BURST` at the top of whichever bar just grew (detect by comparing previous vs current `distribution` values). Throttle to max 1 per 100ms per bar.\n   - Leading bar gets a focused purple `glow` filter on canvas.\n4. Bar positions: read DOM container layout via `getBoundingClientRect()`, map to canvas coordinates.\n5. Use `$effect()` watching `distribution` and `totalVotes` to trigger canvas updates.\n6. Remove CSS transitions/animations for the bar fill divs that are now canvas-rendered.",
+      "acceptance_criteria": [
+        "Vote count numbers and labels still render as HTML above/below bars",
+        "Bar rectangles render as metallic-fill canvas graphics instead of colored divs",
+        "VOTE_BURST particles fire at the top of a bar when its vote count increases",
+        "Leading bar has a purple glow effect on canvas",
+        "Burst effects are throttled to max 1 per 100ms per bar",
+        "Canvas bar positions match the DOM layout",
+        "pnpm build completes without errors"
+      ],
+      "priority": 7,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 8,
+      "title": "Migrate BracketViz to hybrid canvas + HTML",
+      "description": "Modify `apps/web/src/lib/components/overlay/BracketViz.svelte` to render connector lines and celebration effects on canvas.\n\nCurrent state: Matchup cards in HTML, CSS `::after` pseudo-elements for connector lines between bracket levels, `.sparkle-dot` CSS elements.\n\nNew implementation:\n1. Keep in HTML: All matchup cards (names, scores, images) — these remain as Svelte/HTML.\n2. Move to Canvas: Connector lines between bracket levels → `line-draw` effect with sequential drawing animation (level 0 connectors draw first, then level 1, etc.).\n3. Replace: CSS `.sparkle-dot` elements → `CELEBRATION` canvas particles.\n4. New: Winner cards get a focused `glow` filter on canvas. The final champion gets a `WINNER_CROWN` particle fountain.\n5. Remove CSS `::after` pseudo-elements used for connectors.\n6. Read card positions from DOM to calculate connector start/end points for canvas drawing.\n7. On bracket completion / winner reveal, fire the celebration effects.",
+      "acceptance_criteria": [
+        "Matchup cards still render correctly as HTML",
+        "Connector lines between bracket levels render on canvas with line-draw animation",
+        "Connectors draw sequentially — earlier levels before later levels",
+        "CSS .sparkle-dot elements are removed and replaced with CELEBRATION particles",
+        "Winner cards have a glow effect on canvas",
+        "Champion gets WINNER_CROWN particle fountain",
+        "CSS ::after connector pseudo-elements are removed",
+        "pnpm build completes without errors"
+      ],
+      "priority": 8,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 9,
+      "title": "Migrate Leaderboard rank badges and GameOverResults celebration",
+      "description": "Update Leaderboard to use canvas-rendered rank insignias and GameOverResults to use canvas celebration effects.\n\n**Leaderboard.svelte:**\n1. Replace emoji medals (trophy/medal emojis) with canvas-rendered rank insignias from `rank-insignias.ts`.\n2. Generate insignia images: call `renderInsignia(rank)` for gold/silver/bronze, convert the returned canvas to a data URL, use as `<img src>` in the HTML markup.\n3. Keep all other HTML (player names, scores, layout) unchanged.\n\n**GameOverResults.svelte:**\n1. Replace the trophy emoji and any `.sparkle-dot` div elements with a `CELEBRATION` canvas particle burst (50 particles, gold + brand purple colors).\n2. Fire the celebration effect on component mount (when game-over phase is entered).\n3. Get `pixi-app` from context.\n4. Keep all text/layout in HTML.\n5. Remove the replaced CSS sparkle animations.",
+      "acceptance_criteria": [
+        "Leaderboard shows rendered shield insignias instead of emoji medals for top 3",
+        "Insignias are gold, silver, and bronze colored shields/chevrons",
+        "GameOverResults fires a CELEBRATION particle burst on mount",
+        "Trophy emoji and .sparkle-dot elements are removed from GameOverResults",
+        "Celebration uses gold and brand purple particle colors",
+        "All HTML text and layout remains intact in both components",
+        "pnpm build completes without errors"
+      ],
+      "priority": 9,
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": 10,
+      "title": "Integrate PixiWrapper into overlay page and clean up replaced CSS",
+      "description": "Wire everything together by mounting the PixiWrapper in the overlay page and removing CSS that has been replaced by canvas effects.\n\n**Modify `apps/web/src/routes/overlay/[sessionId]/+page.svelte`:**\n1. Import `PixiWrapper` from `$lib/canvas`.\n2. Wrap the entire `.overlay-container` content with `<PixiWrapper>`. The canvas renders as the first element at z-index 0 with `pointer-events: none`. All Svelte HTML layers sit on top at higher z-index.\n3. AmbientParticles already renders conditionally during `live` + `round-results` phases — this logic stays as-is.\n4. Verify that the PixiWrapper canvas has transparent background so OBS browser source shows through.\n\n**Clean up `apps/web/src/app.css`:**\n1. Remove any CSS `@keyframes` that were used by the old HTML-based particle divs, sparkle dots, radial burst, accent lines, etc. — anything now handled by canvas.\n2. Keep all CSS that is still in use (transitions for HTML text, Tailwind utilities, etc.).\n\n**Final verification:**\n1. Run `pnpm build` to ensure no TypeScript or build errors.\n2. Run `pnpm run check` (lint + typecheck) to ensure code quality.\n3. Verify all overlay components import from the canvas module correctly.\n4. Confirm no orphaned CSS keyframes or unused imports remain.",
+      "acceptance_criteria": [
+        "PixiWrapper wraps the overlay page content",
+        "Canvas element renders at z-index 0 with pointer-events: none and transparent background",
+        "All HTML content layers render above the canvas",
+        "Replaced CSS keyframes and animations are removed from app.css",
+        "No orphaned imports or unused CSS remain",
+        "pnpm build completes without errors",
+        "pnpm run check passes (lint + typecheck)"
+      ],
+      "priority": 10,
+      "status": "pending",
+      "notes": ""
+    }
+  ]
+}
