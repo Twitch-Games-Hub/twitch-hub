@@ -1,0 +1,39 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 191656,
+  "duration_api_ms": 166509,
+  "num_turns": 29,
+  "result": "Task 8 is complete. Checking remaining tasks — tasks 9-20 are still pending, so there are still incomplete tasks. I will NOT output RALPH_DONE.\n\n## Summary\n\n**Task 8: Migrate BracketViz to hybrid canvas + HTML** — Completed.\n\n### Changes made to `apps/web/src/lib/components/overlay/BracketViz.svelte`:\n\n**Removed:**\n- `.sparkle-dot` span elements (4 CSS-animated dots on champion card)\n- `.champion-card` CSS `champion-glow` pulsing box-shadow animation\n- `.winner-row` CSS box-shadow styling\n- `.bracket-level::after` pseudo-element connector lines\n- Entire `<style>` block\n\n**Added (canvas):**\n- **Connector lines**: `lineDraw()` canvas effect between bracket levels, drawn sequentially (level 0 first via `setTimeout` with `level * SWEEP_DURATION` delay)\n- **Winner glow**: `glow()` effect on all `.winner-row` elements (16px radius, brand purple)\n- **Champion glow**: `glow()` effect on champion card (32px radius, brand purple)\n- **CELEBRATION**: Particle burst at champion card center on reveal\n- **WINNER_CROWN**: Gold particle fountain at champion 300ms after celebration\n\n**Preserved (HTML):**\n- All matchup cards with names, scores, images\n- Champion card with image and name\n- Level headers (Quarterfinals, Semifinals, Final, Champion)\n- `animate-fade-in` CSS entrance animations on cards",
+  "stop_reason": null,
+  "session_id": "ab9ef5f1-a5cc-4277-9bd7-5aae0a9dbf95",
+  "total_cost_usd": 1.3059340000000002,
+  "usage": {
+    "input_tokens": 25,
+    "cache_creation_input_tokens": 61740,
+    "cache_read_input_tokens": 1433818,
+    "output_tokens": 8121,
+    "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+    "service_tier": "standard",
+    "cache_creation": { "ephemeral_1h_input_tokens": 61740, "ephemeral_5m_input_tokens": 0 },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-opus-4-6": {
+      "inputTokens": 25,
+      "outputTokens": 8121,
+      "cacheReadInputTokens": 1433818,
+      "cacheCreationInputTokens": 61740,
+      "webSearchRequests": 0,
+      "costUSD": 1.3059340000000002,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    }
+  },
+  "permission_denials": [],
+  "fast_mode_state": "off",
+  "uuid": "65aa65cd-46a9-4195-87cf-2be71fceb67a"
+}

@@ -133,8 +133,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 8,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Migrated BracketViz.svelte to hybrid canvas + HTML. Removed: sparkle-dot spans, champion-glow CSS animation, winner-row box-shadow CSS, bracket-level::after pseudo-element connectors, and entire <style> block. Replaced with: lineDraw canvas connectors with sequential level-based delay (level * SWEEP_DURATION), glow effects on winner rows and champion card, CELEBRATION particle burst + WINNER_CROWN fountain (300ms delayed) on champion reveal. All canvas positions read from DOM via getBoundingClientRect(). HTML matchup cards, images, scores, labels all preserved. Build passes clean."
     },
     {
       "id": 9,

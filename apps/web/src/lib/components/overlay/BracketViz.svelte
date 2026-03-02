@@ -1,5 +1,17 @@
 <script lang="ts">
+  import { getContext, onMount } from 'svelte';
+  import type { Application, Graphics } from 'pixi.js';
   import type { BracketMatchupResult } from '@twitch-hub/shared-types';
+  import {
+    lineDraw,
+    glow,
+    GeometricParticleSystem,
+    CELEBRATION,
+    WINNER_CROWN,
+    COLORS,
+    TIMING,
+    type GlowEffect,
+  } from '$lib/canvas';
 
   let {
     matchups,
@@ -25,18 +37,175 @@
     return `Round of ${remaining * 2}`;
   }
 
-  const sparkles = [
-    { sx: '24px', sy: '-24px' },
-    { sx: '-24px', sy: '-24px' },
-    { sx: '24px', sy: '24px' },
-    { sx: '-24px', sy: '24px' },
-  ];
+  const pixiCtx = getContext<{ readonly app: Application | null }>('pixi-app');
+
+  // DOM refs for matchup cards and levels, keyed by level
+  let levelRefs: (HTMLDivElement | undefined)[] = $state([]);
+  let championRef: HTMLDivElement | undefined = $state();
+
+  // Canvas effect instances
+  let particles: GeometricParticleSystem | null = $state(null);
+  let winnerGlows: GlowEffect[] = [];
+  let championGlow: GlowEffect | null = null;
+  let connectorLines: Graphics[] = [];
+  let celebrationFired = false;
+
+  onMount(() => {
+    const app = pixiCtx?.app;
+    if (!app) return;
+
+    particles = new GeometricParticleSystem(app);
+
+    return () => {
+      connectorLines.forEach((l) => {
+        app.stage.removeChild(l);
+        l.destroy();
+      });
+      connectorLines = [];
+      winnerGlows.forEach((g) => g.destroy());
+      winnerGlows = [];
+      championGlow?.destroy();
+      championGlow = null;
+      particles?.destroy();
+    };
+  });
+
+  // Draw connector lines between bracket levels — sequentially by level
+  $effect(() => {
+    const app = pixiCtx?.app;
+    const _m = matchups;
+    const _levels = totalLevels;
+
+    if (!app || levelRefs.length === 0) return;
+
+    // Clean up previous connectors
+    connectorLines.forEach((l) => {
+      app.stage.removeChild(l);
+      l.destroy();
+    });
+    connectorLines = [];
+
+    // Draw connectors between adjacent levels
+    for (let level = 0; level < totalLevels; level++) {
+      const currentLevelEl = levelRefs[level];
+      const nextLevelEl = levelRefs[level + 1] ?? championRef;
+
+      if (!currentLevelEl || !nextLevelEl) continue;
+
+      const currentCards = currentLevelEl.querySelectorAll('.matchup-card');
+      const nextCards = nextLevelEl.querySelectorAll('.matchup-card, .champion-card');
+
+      // Each pair of current-level cards feeds into one next-level card
+      for (let j = 0; j < nextCards.length; j++) {
+        const nextRect = nextCards[j].getBoundingClientRect();
+        const nextMidY = nextRect.top + nextRect.height / 2;
+        const nextLeft = nextRect.left;
+
+        // Two source cards per destination
+        const srcIdx = j * 2;
+        for (let k = 0; k < 2; k++) {
+          const srcCard = currentCards[srcIdx + k];
+          if (!srcCard) continue;
+
+          const srcRect = srcCard.getBoundingClientRect();
+          const srcMidY = srcRect.top + srcRect.height / 2;
+          const srcRight = srcRect.right;
+
+          // Delay drawing based on level for sequential animation
+          const delay = level * TIMING.SWEEP_DURATION;
+          setTimeout(() => {
+            if (!pixiCtx?.app) return;
+            const line = lineDraw(
+              app,
+              { x: srcRight, y: srcMidY },
+              { x: nextLeft, y: nextMidY },
+              COLORS.brand,
+              TIMING.SWEEP_DURATION,
+            );
+            connectorLines.push(line);
+          }, delay);
+        }
+      }
+    }
+  });
+
+  // Glow effect on winner rows and champion card
+  $effect(() => {
+    const app = pixiCtx?.app;
+    const _m = matchups;
+
+    if (!app) return;
+
+    // Clean up previous glows
+    winnerGlows.forEach((g) => g.destroy());
+    winnerGlows = [];
+    championGlow?.destroy();
+    championGlow = null;
+
+    // Glow on winner rows within matchup cards
+    for (let level = 0; level < totalLevels; level++) {
+      const levelEl = levelRefs[level];
+      if (!levelEl) continue;
+
+      const winnerRows = levelEl.querySelectorAll('.winner-row');
+      winnerRows.forEach((row) => {
+        const rect = row.getBoundingClientRect();
+        const g = glow(
+          app,
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          16,
+          COLORS.brand,
+        );
+        winnerGlows.push(g);
+      });
+    }
+
+    // Glow on champion card
+    if (championRef) {
+      const card = championRef.querySelector('.champion-card');
+      if (card) {
+        const rect = card.getBoundingClientRect();
+        championGlow = glow(
+          app,
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          32,
+          COLORS.brand,
+        );
+      }
+    }
+  });
+
+  // Fire celebration effects on champion reveal
+  $effect(() => {
+    if (!champion || !championRef || !particles || celebrationFired) return;
+
+    const card = championRef.querySelector('.champion-card');
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    // CELEBRATION particles
+    particles.burst(cx, cy, CELEBRATION);
+
+    // WINNER_CROWN fountain slightly delayed
+    setTimeout(() => {
+      if (particles) {
+        particles.burst(cx, cy, WINNER_CROWN);
+      }
+    }, 300);
+
+    celebrationFired = true;
+  });
 </script>
 
 <div class="bracket-viz overflow-x-auto">
   <div class="flex gap-6 min-w-max items-center">
     {#each Array(totalLevels) as _, level (level)}
-      <div class="bracket-level flex flex-col gap-4">
+      <div bind:this={levelRefs[level]} class="bracket-level flex flex-col gap-4">
         <h4 class="text-center text-xs font-semibold text-text-muted uppercase tracking-wider">
           {getLevelName(level)}
         </h4>
@@ -90,21 +259,13 @@
     {/each}
 
     <!-- Champion -->
-    <div class="flex flex-col gap-4">
+    <div bind:this={championRef} class="flex flex-col gap-4">
       <h4 class="text-center text-xs font-semibold text-brand-400 uppercase tracking-wider">
         Champion
       </h4>
       <div
         class="champion-card relative rounded-lg border-2 border-brand-400 bg-brand-600/10 p-4 text-center min-w-[140px]"
       >
-        <!-- Sparkle burst dots -->
-        {#each sparkles as sparkle, i (i)}
-          <span
-            class="sparkle-dot"
-            style="--sx: {sparkle.sx}; --sy: {sparkle.sy}; animation-delay: {i * 100}ms;"
-          ></span>
-        {/each}
-
         {#if champion.imageUrl}
           <img
             src={champion.imageUrl}
@@ -117,40 +278,3 @@
     </div>
   </div>
 </div>
-
-<style>
-  .winner-row {
-    box-shadow: 0 0 8px rgba(145, 70, 255, 0.3);
-    border-radius: 4px;
-  }
-
-  .champion-card {
-    animation: champion-glow 2s ease-in-out infinite;
-  }
-
-  .sparkle-dot {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgba(145, 70, 255, 0.8);
-    animation: sparkle-burst 0.6s ease-out forwards;
-    pointer-events: none;
-  }
-
-  .bracket-level {
-    position: relative;
-  }
-
-  .bracket-level:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: -12px;
-    top: 50%;
-    width: 12px;
-    height: 1px;
-    background: rgba(145, 70, 255, 0.3);
-  }
-</style>

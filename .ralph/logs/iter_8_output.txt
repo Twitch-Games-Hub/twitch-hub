@@ -1,0 +1,27 @@
+Task 8 is complete. Checking remaining tasks — tasks 9-20 are still pending, so there are still incomplete tasks. I will NOT output RALPH_DONE.
+
+## Summary
+
+**Task 8: Migrate BracketViz to hybrid canvas + HTML** — Completed.
+
+### Changes made to `apps/web/src/lib/components/overlay/BracketViz.svelte`:
+
+**Removed:**
+- `.sparkle-dot` span elements (4 CSS-animated dots on champion card)
+- `.champion-card` CSS `champion-glow` pulsing box-shadow animation
+- `.winner-row` CSS box-shadow styling
+- `.bracket-level::after` pseudo-element connector lines
+- Entire `<style>` block
+
+**Added (canvas):**
+- **Connector lines**: `lineDraw()` canvas effect between bracket levels, drawn sequentially (level 0 first via `setTimeout` with `level * SWEEP_DURATION` delay)
+- **Winner glow**: `glow()` effect on all `.winner-row` elements (16px radius, brand purple)
+- **Champion glow**: `glow()` effect on champion card (32px radius, brand purple)
+- **CELEBRATION**: Particle burst at champion card center on reveal
+- **WINNER_CROWN**: Gold particle fountain at champion 300ms after celebration
+
+**Preserved (HTML):**
+- All matchup cards with names, scores, images
+- Champion card with image and name
+- Level headers (Quarterfinals, Semifinals, Final, Champion)
+- `animate-fade-in` CSS entrance animations on cards
