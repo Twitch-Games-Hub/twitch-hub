@@ -38,7 +38,8 @@ COPY --from=builder --chown=server:nodejs /app/packages/shared-types/dist ./pack
 COPY --from=builder --chown=server:nodejs /app/docs/package.json ./docs/package.json
 
 # Install production dependencies (including Prisma runtime)
-RUN pnpm install --frozen-lockfile --prod
+# --ignore-scripts avoids running the root "prepare" hook (husky) which is a devDependency
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy Prisma assets
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma/schema.prisma ./prisma/schema.prisma
