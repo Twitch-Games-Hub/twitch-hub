@@ -53,6 +53,7 @@ async function main() {
       title: 'Hot Take Meter: Video Games',
       description:
         'Ten spicy gaming opinions — rate each from 1 (strongly disagree) to 10 (strongly agree)!',
+      coverImageUrl: 'https://images.unsplash.com/photo-1664092815283-19c6196f5319?w=800&q=80',
       status: 'READY' as const,
       config: {
         statements: [
@@ -78,6 +79,7 @@ async function main() {
       type: 'BALANCE' as const,
       title: 'Would You Rather: Superpowers',
       description: 'Impossible choices between amazing superpowers. Pick your side!',
+      coverImageUrl: 'https://images.unsplash.com/photo-1761075665831-6dfd2464f822?w=800&q=80',
       status: 'READY' as const,
       config: {
         questions: [
@@ -102,6 +104,7 @@ async function main() {
       title: 'Guess the Movie',
       description:
         'Progressive hints reveal a famous movie — type your guess before time runs out!',
+      coverImageUrl: 'https://images.unsplash.com/photo-1766844649143-af98d71e346b?w=800&q=80',
       status: 'READY' as const,
       config: {
         rounds: [
@@ -190,6 +193,7 @@ async function main() {
       title: 'Greatest Video Game of All Time',
       description:
         'Sixteen iconic games battle head-to-head in a bracket tournament. Vote for your favorite each round!',
+      coverImageUrl: 'https://images.unsplash.com/photo-1528870884180-5649b20f6435?w=800&q=80',
       status: 'READY' as const,
       config: {
         items: [
@@ -223,6 +227,7 @@ async function main() {
       update: {
         title: game.title,
         description: game.description,
+        coverImageUrl: game.coverImageUrl,
         status: game.status,
         config: game.config,
       },
