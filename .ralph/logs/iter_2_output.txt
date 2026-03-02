@@ -1,24 +1,20 @@
-Task 2 is complete. Here's a summary of what was implemented:
+There are still 3 pending tasks (18, 19, 20), so I should NOT output RALPH_DONE.
 
-## Task 2 — Completed
+**Task 17 is complete.** Here's what was implemented:
 
 **Files created:**
-- `apps/web/src/lib/canvas/particles/shapes.ts` — 5 geometric shape generators (triangle, diamond, hexagon, line, dot) with metallic chrome sheen effect
-- `apps/web/src/lib/canvas/particles/presets.ts` — `ParticlePreset` interface + 6 named presets (VOTE_BURST, AMBIENT_FIELD, CELEBRATION, SPARK, SHOCKWAVE_DEBRIS, WINNER_CROWN)
-- `apps/web/src/lib/canvas/particles/GeometricParticleSystem.ts` — Custom particle system with sprite pooling, ticker-driven animation, 200 particle cap, `burst()`/`startAmbient()`/`stopAmbient()` API
-- `apps/web/src/lib/canvas/particles/index.ts` — Barrel export
+- `apps/web/src/routes/leaderboard/+page.svelte` — New SvelteKit route with paginated global XP leaderboard
 
 **Files modified:**
-- `apps/web/src/lib/canvas/index.ts` — Added particles re-export
+- `apps/web/src/routes/+layout.svelte` — Added "Leaderboard" link to both desktop and mobile navigation
 
-**Key decision:** Built a custom particle system using PixiJS v8's native API instead of wrapping `@pixi/particle-emitter` v5, because the emitter depends on PixiJS v7 module structure (`@pixi/core`, `@pixi/display`) which is incompatible with v8. The custom system uses `Graphics→Texture` generation, `Sprite` pooling, and ticker callbacks.
-
-**All acceptance criteria met:**
-- shapes.ts exports all 5 shape generators
-- GeometricParticleSystem has burst(), startAmbient(), stopAmbient()
-- Pool caps at 200 active particles
-- All 6 presets defined and exported
-- shouldAnimate() checked in burst() and startAmbient()
-- `pnpm build` passes clean
-
-There are still 8 pending tasks remaining, so not outputting RALPH_DONE.
+**Acceptance criteria verified:**
+1. Route `/leaderboard` renders a global XP leaderboard page
+2. Page fetches from `/api/gamification/leaderboard` endpoint with limit/offset
+3. Table shows rank, player avatar+name, rank badge (RankBadge component), level, and total XP
+4. Top 3 players have visually highlighted rows (gold/silver/bronze backgrounds)
+5. Player rows link to `/u/{twitchLogin}` profile pages
+6. Pagination with Previous/Next works correctly (disabled at boundaries, "Page X of Y")
+7. Loading state shows animated skeleton rows while data fetches
+8. Navigation includes a Leaderboard link (both desktop and mobile)
+9. `pnpm build` completes without errors

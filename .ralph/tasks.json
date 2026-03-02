@@ -292,8 +292,8 @@
         "pnpm build completes without errors"
       ],
       "priority": 17,
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "notes": "Created /leaderboard route with paginated global XP leaderboard page. Fetches from /api/gamification/leaderboard with limit=50/offset params. Table shows rank (medals for top 3), player avatar+name, RankBadge, level, total XP. Top 3 rows highlighted (gold/silver/bronze backgrounds). Player rows link to /u/{twitchLogin}. Pagination with Previous/Next and Page X of Y. Loading skeleton state. Added Leaderboard link to both desktop and mobile nav in +layout.svelte. Build passes clean."
     },
     {
       "id": 18,

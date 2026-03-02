@@ -69,6 +69,7 @@
         <!-- Desktop nav -->
         <div class="hidden items-center gap-4 sm:flex">
           <Button href="/explore" variant="ghost" size="sm">Explore</Button>
+          <Button href="/leaderboard" variant="ghost" size="sm">Leaderboard</Button>
           {#if authStore.loading}
             <div class="h-8 w-24 animate-pulse rounded-lg bg-surface-elevated"></div>
           {:else if authStore.user}
@@ -133,6 +134,15 @@
             onclick={() => (mobileMenuOpen = false)}
           >
             Explore
+          </Button>
+          <Button
+            href="/leaderboard"
+            variant="ghost"
+            size="sm"
+            class="w-full !justify-start"
+            onclick={() => (mobileMenuOpen = false)}
+          >
+            Leaderboard
           </Button>
           {#if authStore.user}
             <a
