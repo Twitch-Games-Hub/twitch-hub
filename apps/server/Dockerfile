@@ -47,6 +47,7 @@ COPY --from=builder --chown=server:nodejs /app/apps/server/src/generated/prisma 
 
 USER server
 ENV NODE_ENV=production
+ENV NODE_PATH=/app/apps/server/node_modules
 ENV SERVER_PORT=3001
 EXPOSE 3001
 

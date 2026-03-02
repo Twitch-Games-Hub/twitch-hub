@@ -49,6 +49,7 @@ COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/build ./build
 USER sveltekit
 
 ENV NODE_ENV=production
+ENV NODE_PATH=/app/apps/web/node_modules
 ENV PORT=3000
 EXPOSE 3000
 CMD ["node", "build/index.js"]
