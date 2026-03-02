@@ -26,15 +26,27 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
     pnpm --filter @twitch-hub/web run build
 
 # Runtime stage
-FROM node:22.14-alpine AS runner
+FROM node:22-alpine AS runner
+RUN corepack enable
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 sveltekit
-USER sveltekit
+
+# Copy manifests for production install
+COPY --from=builder --chown=sveltekit:nodejs /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder --chown=sveltekit:nodejs /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder --chown=sveltekit:nodejs /app/packages/shared-types/package.json ./packages/shared-types/package.json
+COPY --from=builder --chown=sveltekit:nodejs /app/packages/shared-types/dist ./packages/shared-types/dist
+COPY --from=builder --chown=sveltekit:nodejs /app/docs/package.json ./docs/package.json
+
+# Install production dependencies (instrumentation.server.ts needs @sentry/sveltekit at runtime)
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/build ./build
-COPY --from=builder --chown=sveltekit:nodejs /app/apps/web/package.json ./package.json
+
+USER sveltekit
 
 ENV NODE_ENV=production
 ENV PORT=3000
