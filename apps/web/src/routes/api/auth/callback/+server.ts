@@ -5,6 +5,20 @@ import { dev } from '$app/environment';
 import * as Sentry from '@sentry/sveltekit';
 import { SERVER_URL } from '$lib/server/config';
 
+async function safeFetch(url: string, init: RequestInit, label: string): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    const cause = err instanceof Error ? (err.cause ?? err.message) : err;
+    Sentry.logger.error(`${label} fetch failed (network)`, {
+      url,
+      cause: String(cause),
+    });
+    console.error(`[OAuth] ${label} fetch failed:`, cause);
+    error(502, `${label}: service unreachable`);
+  }
+}
+
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
@@ -22,17 +36,21 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   cookies.delete('oauth_state', { path: '/' });
 
   // Exchange code for tokens
-  const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: env.TWITCH_CLIENT_ID || '',
-      client_secret: env.TWITCH_CLIENT_SECRET || '',
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
-    }),
-  });
+  const tokenRes = await safeFetch(
+    'https://id.twitch.tv/oauth2/token',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: env.TWITCH_CLIENT_ID || '',
+        client_secret: env.TWITCH_CLIENT_SECRET || '',
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
+      }),
+    },
+    'Twitch token exchange',
+  );
 
   if (!tokenRes.ok) {
     Sentry.logger.error('Twitch token exchange failed', { status: tokenRes.status });
@@ -42,12 +60,16 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const tokens = await tokenRes.json();
 
   // Get user info from Twitch
-  const userRes = await fetch('https://api.twitch.tv/helix/users', {
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      'Client-Id': env.TWITCH_CLIENT_ID || '',
+  const userRes = await safeFetch(
+    'https://api.twitch.tv/helix/users',
+    {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+        'Client-Id': env.TWITCH_CLIENT_ID || '',
+      },
     },
-  });
+    'Twitch user fetch',
+  );
 
   if (!userRes.ok) {
     Sentry.logger.error('Twitch user fetch failed', { status: userRes.status });
@@ -59,22 +81,26 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   } = await userRes.json();
 
   // Upsert user via real-time server API (prefer internal Docker URL)
-  const upsertRes = await fetch(`${SERVER_URL}/api/auth/upsert`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Internal-Secret': env.INTERNAL_API_SECRET || '',
+  const upsertRes = await safeFetch(
+    `${SERVER_URL}/api/auth/upsert`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': env.INTERNAL_API_SECRET || '',
+      },
+      body: JSON.stringify({
+        twitchId: twitchUser.id,
+        twitchLogin: twitchUser.login,
+        displayName: twitchUser.display_name,
+        profileImageUrl: twitchUser.profile_image_url,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+      }),
     },
-    body: JSON.stringify({
-      twitchId: twitchUser.id,
-      twitchLogin: twitchUser.login,
-      displayName: twitchUser.display_name,
-      profileImageUrl: twitchUser.profile_image_url,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-    }),
-  });
+    'User upsert',
+  );
 
   if (!upsertRes.ok) {
     Sentry.logger.error('User upsert failed', {
