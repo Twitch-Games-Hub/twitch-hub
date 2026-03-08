@@ -56,6 +56,6 @@ ENV SERVER_PORT=3001
 EXPOSE 3001
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
-  CMD wget -qO /dev/null http://localhost:3001/healthz || exit 1
+  CMD wget -qO /dev/null http://127.0.0.1:3001/healthz || exit 1
 
 CMD ["node", "--import", "./apps/server/dist/instrument.js", "./apps/server/dist/index.js"]
