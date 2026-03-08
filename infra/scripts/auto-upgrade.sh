@@ -81,6 +81,37 @@ rollback() {
 log "Starting upgrade in ${DEPLOY_DIR}"
 
 # ---------------------------------------------------------------------------
+# Step 0: Sync deploy files from the repository
+# ---------------------------------------------------------------------------
+log "Step 0: Syncing deploy files from repository..."
+
+REPO="${GITHUB_USERNAME}/twitch-hub"
+BRANCH="main"
+RAW_BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
+
+# Files that must stay in sync with the repo
+SYNC_FILES=(
+    "docker-compose.prod.yml"
+    "Caddyfile"
+)
+
+for file in "${SYNC_FILES[@]}"; do
+    tmp=$(mktemp)
+    if curl -fsSL -H "Authorization: token ${GHCR_TOKEN}" \
+        "${RAW_BASE}/${file}" -o "$tmp" 2>/dev/null; then
+        if ! cmp -s "$tmp" "${DEPLOY_DIR}/${file}" 2>/dev/null; then
+            cp "$tmp" "${DEPLOY_DIR}/${file}"
+            log "Updated ${file}"
+        else
+            log "${file} is already up to date"
+        fi
+    else
+        warn "Failed to fetch ${file} — continuing with existing version"
+    fi
+    rm -f "$tmp"
+done
+
+# ---------------------------------------------------------------------------
 # Step 1: Capture current image digests for rollback
 # ---------------------------------------------------------------------------
 log "Step 1/8: Capturing current image digests..."
