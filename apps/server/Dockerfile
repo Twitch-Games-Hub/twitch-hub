@@ -47,6 +47,8 @@ COPY --from=builder --chown=server:nodejs /app/apps/server/dist ./apps/server/di
 # Copy Prisma assets alongside the server
 COPY --from=builder --chown=server:nodejs /app/apps/server/prisma/schema.prisma ./apps/server/dist/prisma/schema.prisma
 COPY --from=builder --chown=server:nodejs /app/apps/server/src/generated/prisma ./apps/server/dist/src/generated/prisma
+# prisma.config.ts is needed by dbsetup (prisma db push) at deploy time
+COPY --from=builder --chown=server:nodejs /app/apps/server/prisma.config.ts ./apps/server/prisma.config.ts
 
 USER server
 ENV NODE_ENV=production
