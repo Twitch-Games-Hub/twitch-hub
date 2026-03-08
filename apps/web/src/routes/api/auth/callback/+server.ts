@@ -1,9 +1,14 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 import * as Sentry from '@sentry/sveltekit';
-import { SERVER_URL } from '$lib/server/config';
+import {
+  SERVER_URL,
+  TWITCH_CLIENT_ID,
+  TWITCH_CLIENT_SECRET,
+  TWITCH_REDIRECT_URI,
+  INTERNAL_API_SECRET,
+} from '$lib/server/config';
 
 async function safeFetch(url: string, init: RequestInit, label: string): Promise<Response> {
   try {
@@ -42,18 +47,20 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: env.TWITCH_CLIENT_ID || '',
-        client_secret: env.TWITCH_CLIENT_SECRET || '',
+        client_id: TWITCH_CLIENT_ID,
+        client_secret: TWITCH_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
+        redirect_uri: TWITCH_REDIRECT_URI,
       }),
     },
     'Twitch token exchange',
   );
 
   if (!tokenRes.ok) {
-    Sentry.logger.error('Twitch token exchange failed', { status: tokenRes.status });
+    const body = await tokenRes.text();
+    Sentry.logger.error('Twitch token exchange failed', { status: tokenRes.status, body });
+    console.error('[OAuth] Twitch token exchange failed:', tokenRes.status, body);
     error(500, 'Failed to exchange token with Twitch');
   }
 
@@ -65,7 +72,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
-        'Client-Id': env.TWITCH_CLIENT_ID || '',
+        'Client-Id': TWITCH_CLIENT_ID,
       },
     },
     'Twitch user fetch',
@@ -87,7 +94,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Secret': env.INTERNAL_API_SECRET || '',
+        'X-Internal-Secret': INTERNAL_API_SECRET,
       },
       body: JSON.stringify({
         twitchId: twitchUser.id,

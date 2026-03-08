@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
+import { TWITCH_CLIENT_ID, TWITCH_REDIRECT_URI } from '$lib/server/config';
 
 export const GET: RequestHandler = async ({ cookies }) => {
   const state = crypto.randomUUID();
@@ -14,8 +14,8 @@ export const GET: RequestHandler = async ({ cookies }) => {
   });
 
   const params = new URLSearchParams({
-    client_id: env.TWITCH_CLIENT_ID || '',
-    redirect_uri: env.TWITCH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback',
+    client_id: TWITCH_CLIENT_ID,
+    redirect_uri: TWITCH_REDIRECT_URI,
     response_type: 'code',
     scope:
       'openid user:read:chat user:write:chat user:read:follows moderator:read:followers user:read:subscriptions moderation:read',
