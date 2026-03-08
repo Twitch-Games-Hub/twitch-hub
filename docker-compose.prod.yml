@@ -207,7 +207,7 @@ services:
       [
         'sh',
         '-c',
-        'npx prisma db push --schema=apps/server/dist/prisma/schema.prisma --accept-data-loss && node apps/server/dist/seeds/seed.js',
+        'npx --yes prisma db push --schema=apps/server/dist/prisma/schema.prisma --accept-data-loss && node apps/server/dist/seeds/seed.js',
       ]
     networks:
       - internal
