@@ -15,7 +15,7 @@ set +a
 REPO="${GITHUB_USERNAME}/twitch-hub"
 RAW_URL="https://raw.githubusercontent.com/${REPO}/main/infra/scripts/auto-upgrade.sh"
 tmp=$(mktemp)
-if curl -fsSL -H "Authorization: token ${GHCR_TOKEN}" "$RAW_URL" -o "$tmp" 2>/dev/null; then
+if wget -qO "$tmp" --header="Authorization: token ${GHCR_TOKEN}" "$RAW_URL" 2>/dev/null; then
     if ! cmp -s "$tmp" /opt/twitch-hub/auto-upgrade.sh 2>/dev/null; then
         cp "$tmp" /opt/twitch-hub/auto-upgrade.sh
         chmod +x /opt/twitch-hub/auto-upgrade.sh

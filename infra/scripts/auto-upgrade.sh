@@ -97,8 +97,8 @@ SYNC_FILES=(
 
 for file in "${SYNC_FILES[@]}"; do
     tmp=$(mktemp)
-    if curl -fsSL -H "Authorization: token ${GHCR_TOKEN}" \
-        "${RAW_BASE}/${file}" -o "$tmp" 2>/dev/null; then
+    if wget -qO "$tmp" --header="Authorization: token ${GHCR_TOKEN}" \
+        "${RAW_BASE}/${file}" 2>/dev/null; then
         if ! cmp -s "$tmp" "${DEPLOY_DIR}/${file}" 2>/dev/null; then
             cp "$tmp" "${DEPLOY_DIR}/${file}"
             log "Updated ${file}"
