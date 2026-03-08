@@ -38,7 +38,8 @@ COPY --from=builder --chown=server:nodejs /app/docs/package.json ./docs/package.
 
 # Install production dependencies (including Prisma runtime)
 # --ignore-scripts avoids running the root "prepare" hook (husky) which is a devDependency
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts && \
+    chown -R server:nodejs node_modules/.pnpm/@prisma+engines*/
 
 # Copy bundled server output into the workspace package directory so ESM
 # resolution walks up to apps/server/node_modules/ for external deps.
